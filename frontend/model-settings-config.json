@@ -18,348 +18,6 @@
       "description": "Size of the prompt context (default: 0, 0 = loaded from model)"
     },
     {
-      "id": "predict_tokens",
-      "name": "Predict Tokens",
-      "type": "slider",
-      "argument": "-n",
-      "aliases": [
-        "--predict",
-        "--n-predict"
-      ],
-      "isFlag": false,
-      "min": -1,
-      "max": 8192,
-      "step": 1,
-      "default": -1,
-      "unit": "tokens",
-      "category": "Generation",
-      "description": "Number of tokens to predict (-1 = infinity)"
-    },
-    {
-      "id": "temperature",
-      "name": "Temperature",
-      "type": "slider",
-      "argument": "--temp",
-      "isFlag": false,
-      "min": 0.1,
-      "max": 2.0,
-      "step": 0.01,
-      "default": 0.8,
-      "unit": "",
-      "category": "Generation",
-      "description": "Temperature for sampling (default: 0.8)"
-    },
-    {
-      "id": "top_k",
-      "name": "Top-K",
-      "type": "slider",
-      "argument": "--top-k",
-      "isFlag": false,
-      "min": 0,
-      "max": 100,
-      "step": 1,
-      "default": 40,
-      "unit": "",
-      "category": "Generation",
-      "description": "Top-k sampling (default: 40, 0 = disabled)"
-    },
-    {
-      "id": "top_p",
-      "name": "Top-P",
-      "type": "slider",
-      "argument": "--top-p",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 1.0,
-      "step": 0.01,
-      "default": 0.9,
-      "unit": "",
-      "category": "Generation",
-      "description": "Top-p sampling (default: 0.9, 1.0 = disabled)"
-    },
-    {
-      "id": "min_p",
-      "name": "Min-P",
-      "type": "slider",
-      "argument": "--min-p",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 1.0,
-      "step": 0.01,
-      "default": 0.1,
-      "unit": "",
-      "category": "Generation",
-      "description": "Min-p sampling (default: 0.1, 0.0 = disabled)"
-    },
-    {
-      "id": "top_nsigma",
-      "name": "Top-N-Sigma",
-      "type": "slider",
-      "argument": "--top-nsigma",
-      "isFlag": false,
-      "min": -1.0,
-      "max": 5.0,
-      "step": 0.1,
-      "default": -1.0,
-      "unit": "",
-      "category": "Generation",
-      "description": "Top-n-sigma sampling (default: -1.0, -1.0 = disabled)"
-    },
-    {
-      "id": "xtc_probability",
-      "name": "XTC Probability",
-      "type": "slider",
-      "argument": "--xtc-probability",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 1.0,
-      "step": 0.01,
-      "default": 0.0,
-      "unit": "",
-      "category": "Generation",
-      "description": "XTC probability (default: 0.0, 0.0 = disabled)"
-    },
-    {
-      "id": "xtc_threshold",
-      "name": "XTC Threshold",
-      "type": "slider",
-      "argument": "--xtc-threshold",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 1.0,
-      "step": 0.01,
-      "default": 0.1,
-      "unit": "",
-      "category": "Generation",
-      "description": "XTC threshold (default: 0.1, 1.0 = disabled)"
-    },
-    {
-      "id": "typical",
-      "name": "Typical Sampling",
-      "type": "slider",
-      "argument": "--typical",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 2.0,
-      "step": 0.01,
-      "default": 1.0,
-      "unit": "",
-      "category": "Generation",
-      "description": "Locally typical sampling, parameter p (default: 1.0, 1.0 = disabled)"
-    },
-    {
-      "id": "repeat_penalty",
-      "name": "Repeat Penalty",
-      "type": "slider",
-      "argument": "--repeat-penalty",
-      "isFlag": false,
-      "min": 1.0,
-      "max": 2.0,
-      "step": 0.01,
-      "default": 1.0,
-      "unit": "",
-      "category": "Generation",
-      "description": "Penalize repeat sequence of tokens (default: 1.0, 1.0 = disabled)"
-    },
-    {
-      "id": "repeat_last_n",
-      "name": "Repeat Last N",
-      "type": "slider",
-      "argument": "--repeat-last-n",
-      "isFlag": false,
-      "min": -1,
-      "max": 512,
-      "step": 1,
-      "default": 64,
-      "unit": "tokens",
-      "category": "Generation",
-      "description": "Last n tokens to consider for penalize (default: 64, 0 = disabled, -1 = ctx_size)"
-    },
-    {
-      "id": "presence_penalty",
-      "name": "Presence Penalty",
-      "type": "slider",
-      "argument": "--presence-penalty",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 2.0,
-      "step": 0.01,
-      "default": 0.0,
-      "unit": "",
-      "category": "Generation",
-      "description": "Repeat alpha presence penalty (default: 0.0, 0.0 = disabled)"
-    },
-    {
-      "id": "frequency_penalty",
-      "name": "Frequency Penalty",
-      "type": "slider",
-      "argument": "--frequency-penalty",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 2.0,
-      "step": 0.01,
-      "default": 0.0,
-      "unit": "",
-      "category": "Generation",
-      "description": "Repeat alpha frequency penalty (default: 0.0, 0.0 = disabled)"
-    },
-    {
-      "id": "dry_multiplier",
-      "name": "DRY Multiplier",
-      "type": "slider",
-      "argument": "--dry-multiplier",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 5.0,
-      "step": 0.1,
-      "default": 0.0,
-      "unit": "",
-      "category": "Generation",
-      "description": "Set DRY sampling multiplier (default: 0.0, 0.0 = disabled)"
-    },
-    {
-      "id": "dry_base",
-      "name": "DRY Base",
-      "type": "slider",
-      "argument": "--dry-base",
-      "isFlag": false,
-      "min": 1.0,
-      "max": 4.0,
-      "step": 0.05,
-      "default": 1.75,
-      "unit": "",
-      "category": "Generation",
-      "description": "Set DRY sampling base value (default: 1.75)"
-    },
-    {
-      "id": "dry_allowed_length",
-      "name": "DRY Allowed Length",
-      "type": "slider",
-      "argument": "--dry-allowed-length",
-      "isFlag": false,
-      "min": 1,
-      "max": 10,
-      "step": 1,
-      "default": 2,
-      "unit": "",
-      "category": "Generation",
-      "description": "Set allowed length for DRY sampling (default: 2)"
-    },
-    {
-      "id": "dynatemp_range",
-      "name": "Dynamic Temperature Range",
-      "type": "slider",
-      "argument": "--dynatemp-range",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 2.0,
-      "step": 0.01,
-      "default": 0.0,
-      "unit": "",
-      "category": "Generation",
-      "description": "Dynamic temperature range (default: 0.0, 0.0 = disabled)"
-    },
-    {
-      "id": "dynatemp_exp",
-      "name": "Dynamic Temperature Exponent",
-      "type": "slider",
-      "argument": "--dynatemp-exp",
-      "isFlag": false,
-      "min": 0.1,
-      "max": 5.0,
-      "step": 0.1,
-      "default": 1.0,
-      "unit": "",
-      "category": "Generation",
-      "description": "Dynamic temperature exponent (default: 1.0)"
-    },
-    {
-      "id": "mirostat",
-      "name": "Mirostat Mode",
-      "type": "select",
-      "argument": "--mirostat",
-      "isFlag": false,
-      "options": [
-        {
-          "value": "0",
-          "label": "Disabled"
-        },
-        {
-          "value": "1",
-          "label": "Mirostat v1"
-        },
-        {
-          "value": "2",
-          "label": "Mirostat v2"
-        }
-      ],
-      "default": "0",
-      "category": "Generation",
-      "description": "Use Mirostat sampling (default: 0, 0 = disabled, 1 = Mirostat, 2 = Mirostat 2.0)"
-    },
-    {
-      "id": "mirostat_lr",
-      "name": "Mirostat Learning Rate",
-      "type": "slider",
-      "argument": "--mirostat-lr",
-      "isFlag": false,
-      "min": 0.01,
-      "max": 1.0,
-      "step": 0.01,
-      "default": 0.1,
-      "unit": "",
-      "category": "Generation",
-      "description": "Mirostat learning rate, parameter eta (default: 0.1)"
-    },
-    {
-      "id": "mirostat_ent",
-      "name": "Mirostat Target Entropy",
-      "type": "slider",
-      "argument": "--mirostat-ent",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 10.0,
-      "step": 0.1,
-      "default": 5.0,
-      "unit": "",
-      "category": "Generation",
-      "description": "Mirostat target entropy, parameter tau (default: 5.0)"
-    },
-    {
-      "id": "cpu_threads",
-      "name": "CPU Threads",
-      "type": "slider",
-      "argument": "-t",
-      "aliases": [
-        "--threads"
-      ],
-      "isFlag": false,
-      "min": 1,
-      "max": 64,
-      "step": 1,
-      "default": -1,
-      "unit": "",
-      "category": "Hardware",
-      "description": "Number of CPU threads to use during generation (default: -1)"
-    },
-    {
-      "id": "cpu_threads_batch",
-      "name": "CPU Threads (Batch)",
-      "type": "slider",
-      "argument": "-tb",
-      "aliases": [
-        "--threads-batch"
-      ],
-      "isFlag": false,
-      "min": 1,
-      "max": 64,
-      "step": 1,
-      "default": -1,
-      "unit": "",
-      "category": "Hardware",
-      "description": "Number of threads to use during batch and prompt processing (default: same as --threads)"
-    },
-    {
       "id": "batch_size",
       "name": "Batch Size (Logical)",
       "type": "slider",
@@ -392,123 +50,6 @@
       "unit": "",
       "category": "Context",
       "description": "Physical maximum batch size (default: 512)"
-    },
-    {
-      "id": "keep_tokens",
-      "name": "Keep Tokens",
-      "type": "slider",
-      "argument": "--keep",
-      "isFlag": false,
-      "min": -1,
-      "max": 1024,
-      "step": 1,
-      "default": 0,
-      "unit": "tokens",
-      "category": "Context",
-      "description": "Number of tokens to keep from the initial prompt (default: 0, -1 = all)"
-    },
-    {
-      "id": "swa_full",
-      "name": "SWA Full Cache",
-      "type": "toggle",
-      "argument": "--swa-full",
-      "isFlag": true,
-      "default": false,
-      "category": "Context",
-      "description": "Use full-size SWA cache (default: false)"
-    },
-    {
-      "id": "flash_attention",
-      "name": "Flash Attention",
-      "type": "select",
-      "argument": "-fa",
-      "aliases": [
-        "--flash-attn"
-      ],
-      "isFlag": false,
-      "options": [
-        {
-          "value": "auto",
-          "label": "Auto"
-        },
-        {
-          "value": "on",
-          "label": "Enabled"
-        },
-        {
-          "value": "off",
-          "label": "Disabled"
-        }
-      ],
-      "default": "auto",
-      "category": "Hardware",
-      "description": "Set Flash Attention use (default: 'auto')"
-    },
-    {
-      "id": "rope_scaling",
-      "name": "RoPE Scaling",
-      "type": "select",
-      "argument": "--rope-scaling",
-      "isFlag": false,
-      "options": [
-        {
-          "value": "none",
-          "label": "None"
-        },
-        {
-          "value": "linear",
-          "label": "Linear"
-        },
-        {
-          "value": "yarn",
-          "label": "YaRN"
-        }
-      ],
-      "default": "linear",
-      "category": "Model",
-      "description": "RoPE frequency scaling method, defaults to linear unless specified by the model"
-    },
-    {
-      "id": "rope_scale",
-      "name": "RoPE Scale",
-      "type": "slider",
-      "argument": "--rope-scale",
-      "isFlag": false,
-      "min": 0.1,
-      "max": 8.0,
-      "step": 0.1,
-      "default": 1.0,
-      "unit": "",
-      "category": "Model",
-      "description": "RoPE context scaling factor, expands context by a factor of N"
-    },
-    {
-      "id": "rope_freq_base",
-      "name": "RoPE Frequency Base",
-      "type": "slider",
-      "argument": "--rope-freq-base",
-      "isFlag": false,
-      "min": 1000,
-      "max": 1000000,
-      "step": 1000,
-      "default": 0,
-      "unit": "",
-      "category": "Model",
-      "description": "RoPE base frequency, used by NTK-aware scaling (default: loaded from model)"
-    },
-    {
-      "id": "rope_freq_scale",
-      "name": "RoPE Frequency Scale",
-      "type": "slider",
-      "argument": "--rope-freq-scale",
-      "isFlag": false,
-      "min": 0.1,
-      "max": 2.0,
-      "step": 0.1,
-      "default": 1.0,
-      "unit": "",
-      "category": "Model",
-      "description": "RoPE frequency scaling factor, expands context by a factor of 1/N"
     },
     {
       "id": "cache_type_k",
@@ -613,6 +154,655 @@
       "description": "KV cache data type for V (default: f16)"
     },
     {
+      "id": "parallel_slots",
+      "name": "Parallel Slots",
+      "type": "slider",
+      "argument": "-np",
+      "aliases": [
+        "--parallel"
+      ],
+      "isFlag": false,
+      "min": -1,
+      "max": 16,
+      "step": 1,
+      "default": -1,
+      "unit": "",
+      "category": "Context",
+      "description": "Number of server slots (default: -1, -1 = auto)"
+    },
+    {
+      "id": "continuous_batching",
+      "name": "Continuous Batching",
+      "type": "toggle",
+      "argument": "-cb",
+      "aliases": [
+        "--cont-batching"
+      ],
+      "isFlag": true,
+      "default": true,
+      "category": "Context",
+      "description": "Whether to enable continuous batching (a.k.a dynamic batching) (default: enabled)"
+    },
+    {
+      "id": "cache_ram",
+      "name": "Cache RAM",
+      "type": "slider",
+      "argument": "-cram",
+      "aliases": [
+        "--cache-ram"
+      ],
+      "isFlag": false,
+      "min": -1,
+      "max": 32768,
+      "step": 256,
+      "default": 8192,
+      "unit": "MiB",
+      "category": "Context",
+      "description": "Set the maximum cache size in MiB (default: 8192, -1 - no limit, 0 - disable)"
+    },
+    {
+      "id": "keep_tokens",
+      "name": "Keep Tokens",
+      "type": "slider",
+      "argument": "--keep",
+      "isFlag": false,
+      "min": -1,
+      "max": 1024,
+      "step": 1,
+      "default": 0,
+      "unit": "tokens",
+      "category": "Context",
+      "description": "Number of tokens to keep from the initial prompt (default: 0, -1 = all)"
+    },
+    {
+      "id": "swa_full",
+      "name": "SWA Full Cache",
+      "type": "toggle",
+      "argument": "--swa-full",
+      "isFlag": true,
+      "default": false,
+      "category": "Context",
+      "description": "Use full-size SWA cache (default: false)"
+    },
+    {
+      "id": "ctx_checkpoints",
+      "name": "Context Checkpoints",
+      "type": "slider",
+      "argument": "--ctx-checkpoints",
+      "aliases": [
+        "--swa-checkpoints"
+      ],
+      "isFlag": false,
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "default": 8,
+      "unit": "",
+      "category": "Context",
+      "description": "Max number of context checkpoints to create per slot (default: 8)"
+    },
+    {
+      "id": "kv_unified",
+      "name": "KV Unified",
+      "type": "toggle",
+      "argument": "--kv-unified",
+      "isFlag": true,
+      "default": true,
+      "category": "Context",
+      "description": "Use single unified KV buffer shared across all sequences (default: enabled if number of slots is auto)"
+    },
+    {
+      "id": "cache_reuse",
+      "name": "Cache Reuse",
+      "type": "slider",
+      "argument": "--cache-reuse",
+      "isFlag": false,
+      "min": 0,
+      "max": 8192,
+      "step": 64,
+      "default": 0,
+      "unit": "",
+      "category": "Context",
+      "description": "Min chunk size to attempt reusing from the cache via KV shifting (default: 0)"
+    },
+    {
+      "id": "slot_prompt_similarity",
+      "name": "Slot Prompt Similarity",
+      "type": "slider",
+      "argument": "--slot-prompt-similarity",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 1.0,
+      "step": 0.01,
+      "default": 0.1,
+      "unit": "",
+      "category": "Context",
+      "description": "How much the prompt of a request must match the prompt of a slot in order to use that slot (default: 0.10, 0.0 = disabled)"
+    },
+    {
+      "id": "slot_save_path",
+      "name": "Slot Save Path",
+      "type": "text",
+      "argument": "--slot-save-path",
+      "isFlag": false,
+      "default": "",
+      "category": "Context",
+      "description": "Path to save slot kv cache (default: disabled)"
+    },
+    {
+      "id": "context_shift",
+      "name": "Context Shift",
+      "type": "toggle",
+      "argument": "--context-shift",
+      "isFlag": true,
+      "default": false,
+      "category": "Context",
+      "description": "Whether to use context shift on infinite text generation (default: disabled)"
+    },
+    {
+      "id": "predict_tokens",
+      "name": "Predict Tokens",
+      "type": "slider",
+      "argument": "-n",
+      "aliases": [
+        "--predict",
+        "--n-predict"
+      ],
+      "isFlag": false,
+      "min": -1,
+      "max": 8192,
+      "step": 1,
+      "default": -1,
+      "unit": "tokens",
+      "category": "Generation",
+      "description": "Number of tokens to predict (-1 = infinity)"
+    },
+    {
+      "id": "temperature",
+      "name": "Temperature",
+      "type": "slider",
+      "argument": "--temp",
+      "isFlag": false,
+      "min": 0.1,
+      "max": 2.0,
+      "step": 0.01,
+      "default": 0.8,
+      "unit": "",
+      "category": "Generation",
+      "description": "Temperature for sampling (default: 0.8)"
+    },
+    {
+      "id": "top_p",
+      "name": "Top-P",
+      "type": "slider",
+      "argument": "--top-p",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 1.0,
+      "step": 0.01,
+      "default": 0.9,
+      "unit": "",
+      "category": "Generation",
+      "description": "Top-p sampling (default: 0.9, 1.0 = disabled)"
+    },
+    {
+      "id": "min_p",
+      "name": "Min-P",
+      "type": "slider",
+      "argument": "--min-p",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 1.0,
+      "step": 0.01,
+      "default": 0.1,
+      "unit": "",
+      "category": "Generation",
+      "description": "Min-p sampling (default: 0.1, 0.0 = disabled)"
+    },
+    {
+      "id": "top_k",
+      "name": "Top-K",
+      "type": "slider",
+      "argument": "--top-k",
+      "isFlag": false,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "default": 40,
+      "unit": "",
+      "category": "Generation",
+      "description": "Top-k sampling (default: 40, 0 = disabled)"
+    },
+    {
+      "id": "repeat_penalty",
+      "name": "Repeat Penalty",
+      "type": "slider",
+      "argument": "--repeat-penalty",
+      "isFlag": false,
+      "min": 1.0,
+      "max": 2.0,
+      "step": 0.01,
+      "default": 1.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "Penalize repeat sequence of tokens (default: 1.0, 1.0 = disabled)"
+    },
+    {
+      "id": "repeat_last_n",
+      "name": "Repeat Last N",
+      "type": "slider",
+      "argument": "--repeat-last-n",
+      "isFlag": false,
+      "min": -1,
+      "max": 512,
+      "step": 1,
+      "default": 64,
+      "unit": "tokens",
+      "category": "Generation",
+      "description": "Last n tokens to consider for penalize (default: 64, 0 = disabled, -1 = ctx_size)"
+    },
+    {
+      "id": "presence_penalty",
+      "name": "Presence Penalty",
+      "type": "slider",
+      "argument": "--presence-penalty",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 2.0,
+      "step": 0.01,
+      "default": 0.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "Repeat alpha presence penalty (default: 0.0, 0.0 = disabled)"
+    },
+    {
+      "id": "frequency_penalty",
+      "name": "Frequency Penalty",
+      "type": "slider",
+      "argument": "--frequency-penalty",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 2.0,
+      "step": 0.01,
+      "default": 0.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "Repeat alpha frequency penalty (default: 0.0, 0.0 = disabled)"
+    },
+    {
+      "id": "mirostat",
+      "name": "Mirostat Mode",
+      "type": "select",
+      "argument": "--mirostat",
+      "isFlag": false,
+      "options": [
+        {
+          "value": "0",
+          "label": "Disabled"
+        },
+        {
+          "value": "1",
+          "label": "Mirostat v1"
+        },
+        {
+          "value": "2",
+          "label": "Mirostat v2"
+        }
+      ],
+      "default": "0",
+      "category": "Generation",
+      "description": "Use Mirostat sampling (default: 0, 0 = disabled, 1 = Mirostat, 2 = Mirostat 2.0)"
+    },
+    {
+      "id": "mirostat_lr",
+      "name": "Mirostat Learning Rate",
+      "type": "slider",
+      "argument": "--mirostat-lr",
+      "isFlag": false,
+      "min": 0.01,
+      "max": 1.0,
+      "step": 0.01,
+      "default": 0.1,
+      "unit": "",
+      "category": "Generation",
+      "description": "Mirostat learning rate, parameter eta (default: 0.1)"
+    },
+    {
+      "id": "mirostat_ent",
+      "name": "Mirostat Target Entropy",
+      "type": "slider",
+      "argument": "--mirostat-ent",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 10.0,
+      "step": 0.1,
+      "default": 5.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "Mirostat target entropy, parameter tau (default: 5.0)"
+    },
+    {
+      "id": "reasoning_format",
+      "name": "Reasoning Format",
+      "type": "select",
+      "argument": "--reasoning-format",
+      "isFlag": false,
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "deepseek",
+          "label": "DeepSeek"
+        },
+        {
+          "value": "deepseek-legacy",
+          "label": "DeepSeek Legacy"
+        }
+      ],
+      "default": "auto",
+      "category": "Generation",
+      "description": "Controls whether thought tags are allowed and/or extracted from the response (default: auto)"
+    },
+    {
+      "id": "reasoning_budget",
+      "name": "Reasoning Budget",
+      "type": "slider",
+      "argument": "--reasoning-budget",
+      "isFlag": false,
+      "min": -1,
+      "max": 10000,
+      "step": 100,
+      "default": -1,
+      "unit": "",
+      "category": "Generation",
+      "description": "Controls the amount of thinking allowed (-1 for unrestricted, 0 to disable) (default: -1)"
+    },
+    {
+      "id": "ignore_eos",
+      "name": "Ignore EOS Token",
+      "type": "toggle",
+      "argument": "--ignore-eos",
+      "isFlag": true,
+      "default": false,
+      "category": "Generation",
+      "description": "Ignore end of stream token and continue generating"
+    },
+    {
+      "id": "grammar",
+      "name": "Grammar",
+      "type": "text",
+      "argument": "--grammar",
+      "isFlag": false,
+      "default": "",
+      "category": "Generation",
+      "description": "BNF-like grammar to constrain generations"
+    },
+    {
+      "id": "grammar_file",
+      "name": "Grammar File",
+      "type": "text",
+      "argument": "--grammar-file",
+      "isFlag": false,
+      "default": "",
+      "category": "Generation",
+      "description": "File to read grammar from"
+    },
+    {
+      "id": "json_schema",
+      "name": "JSON Schema",
+      "type": "text",
+      "argument": "-j",
+      "aliases": [
+        "--json-schema"
+      ],
+      "isFlag": false,
+      "default": "",
+      "category": "Generation",
+      "description": "JSON schema to constrain generations"
+    },
+    {
+      "id": "json_schema_file",
+      "name": "JSON Schema File",
+      "type": "text",
+      "argument": "-jf",
+      "aliases": [
+        "--json-schema-file"
+      ],
+      "isFlag": false,
+      "default": "",
+      "category": "Generation",
+      "description": "File containing a JSON schema to constrain generations"
+    },
+    {
+      "id": "samplers",
+      "name": "Samplers",
+      "type": "text",
+      "argument": "--samplers",
+      "isFlag": false,
+      "default": "penalties;dry;top_n_sigma;top_k;typ_p;top_p;min_p;xtc;temperature",
+      "category": "Generation",
+      "description": "Samplers that will be used for generation in the order, separated by ';'"
+    },
+    {
+      "id": "sampler_seq",
+      "name": "Sampler Sequence",
+      "type": "text",
+      "argument": "--sampler-seq",
+      "aliases": [
+        "--sampling-seq"
+      ],
+      "isFlag": false,
+      "default": "edskypmxt",
+      "category": "Generation",
+      "description": "Simplified sequence for samplers that will be used"
+    },
+    {
+      "id": "dry_multiplier",
+      "name": "DRY Multiplier",
+      "type": "slider",
+      "argument": "--dry-multiplier",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 5.0,
+      "step": 0.1,
+      "default": 0.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "Set DRY sampling multiplier (default: 0.0, 0.0 = disabled)"
+    },
+    {
+      "id": "dry_base",
+      "name": "DRY Base",
+      "type": "slider",
+      "argument": "--dry-base",
+      "isFlag": false,
+      "min": 1.0,
+      "max": 4.0,
+      "step": 0.05,
+      "default": 1.75,
+      "unit": "",
+      "category": "Generation",
+      "description": "Set DRY sampling base value (default: 1.75)"
+    },
+    {
+      "id": "dry_allowed_length",
+      "name": "DRY Allowed Length",
+      "type": "slider",
+      "argument": "--dry-allowed-length",
+      "isFlag": false,
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "default": 2,
+      "unit": "",
+      "category": "Generation",
+      "description": "Set allowed length for DRY sampling (default: 2)"
+    },
+    {
+      "id": "dry_penalty_last_n",
+      "name": "DRY Penalty Last N",
+      "type": "slider",
+      "argument": "--dry-penalty-last-n",
+      "isFlag": false,
+      "min": -1,
+      "max": 1024,
+      "step": 1,
+      "default": -1,
+      "unit": "tokens",
+      "category": "Generation",
+      "description": "Set DRY penalty for the last n tokens (default: -1, 0 = disable, -1 = context size)"
+    },
+    {
+      "id": "dry_sequence_breaker",
+      "name": "DRY Sequence Breaker",
+      "type": "text",
+      "argument": "--dry-sequence-breaker",
+      "isFlag": false,
+      "default": "",
+      "category": "Generation",
+      "description": "Add sequence breaker for DRY sampling, clearing out default breakers"
+    },
+    {
+      "id": "xtc_probability",
+      "name": "XTC Probability",
+      "type": "slider",
+      "argument": "--xtc-probability",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 1.0,
+      "step": 0.01,
+      "default": 0.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "XTC probability (default: 0.0, 0.0 = disabled)"
+    },
+    {
+      "id": "xtc_threshold",
+      "name": "XTC Threshold",
+      "type": "slider",
+      "argument": "--xtc-threshold",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 1.0,
+      "step": 0.01,
+      "default": 0.1,
+      "unit": "",
+      "category": "Generation",
+      "description": "XTC threshold (default: 0.1, 1.0 = disabled)"
+    },
+    {
+      "id": "top_nsigma",
+      "name": "Top-N-Sigma",
+      "type": "slider",
+      "argument": "--top-nsigma",
+      "isFlag": false,
+      "min": -1.0,
+      "max": 5.0,
+      "step": 0.1,
+      "default": -1.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "Top-n-sigma sampling (default: -1.0, -1.0 = disabled)"
+    },
+    {
+      "id": "typical",
+      "name": "Typical Sampling",
+      "type": "slider",
+      "argument": "--typical",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 2.0,
+      "step": 0.01,
+      "default": 1.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "Locally typical sampling, parameter p (default: 1.0, 1.0 = disabled)"
+    },
+    {
+      "id": "dynatemp_range",
+      "name": "Dynamic Temperature Range",
+      "type": "slider",
+      "argument": "--dynatemp-range",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 2.0,
+      "step": 0.01,
+      "default": 0.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "Dynamic temperature range (default: 0.0, 0.0 = disabled)"
+    },
+    {
+      "id": "dynatemp_exp",
+      "name": "Dynamic Temperature Exponent",
+      "type": "slider",
+      "argument": "--dynatemp-exp",
+      "isFlag": false,
+      "min": 0.1,
+      "max": 5.0,
+      "step": 0.1,
+      "default": 1.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "Dynamic temperature exponent (default: 1.0)"
+    },
+    {
+      "id": "backend_sampling",
+      "name": "Backend Sampling",
+      "type": "toggle",
+      "argument": "--backend-sampling",
+      "isFlag": true,
+      "default": false,
+      "category": "Generation",
+      "description": "Enable backend sampling (experimental) (default: disabled)"
+    },
+    {
+      "id": "escape",
+      "name": "Process Escape Sequences",
+      "type": "toggle",
+      "argument": "--escape",
+      "isFlag": true,
+      "default": true,
+      "category": "Generation",
+      "description": "Whether to process escapes sequences (\\n, \\r, \\t, \\', \\\", \\\\) (default: true)"
+    },
+    {
+      "id": "special",
+      "name": "Special Tokens Output",
+      "type": "toggle",
+      "argument": "--special",
+      "isFlag": true,
+      "default": false,
+      "category": "Generation",
+      "description": "Special tokens output enabled (default: false)"
+    },
+    {
+      "id": "spm_infill",
+      "name": "SPM Infill",
+      "type": "toggle",
+      "argument": "--spm-infill",
+      "isFlag": true,
+      "default": false,
+      "category": "Generation",
+      "description": "Use Suffix/Prefix/Middle pattern for infill (instead of Prefix/Suffix/Middle) as some models prefer this (default: disabled)"
+    },
+    {
+      "id": "prefill_assistant",
+      "name": "Prefill Assistant",
+      "type": "toggle",
+      "argument": "--prefill-assistant",
+      "isFlag": true,
+      "default": true,
+      "category": "Generation",
+      "description": "Whether to prefill the assistant's response if the last message is an assistant message (default: enabled)"
+    },
+    {
       "id": "gpu_offload",
       "name": "GPU Layers",
       "type": "slider",
@@ -629,6 +819,84 @@
       "unit": "layers",
       "category": "Hardware",
       "description": "Max. number of layers to store in VRAM, either an exact number, 'auto', or 'all' (default: auto)"
+    },
+    {
+      "id": "cpu_moe_offload",
+      "name": "CPU MoE Layers",
+      "type": "slider",
+      "argument": "-ncmoe",
+      "aliases": [
+        "--n-cpu-moe"
+      ],
+      "isFlag": false,
+      "min": 0,
+      "max": 99,
+      "step": 1,
+      "default": 0,
+      "unit": "layers",
+      "category": "Hardware",
+      "description": "Keep the Mixture of Experts (MoE) weights of the first N layers in the CPU"
+    },    
+    {
+      "id": "cpu_threads",
+      "name": "CPU Threads",
+      "type": "slider",
+      "argument": "-t",
+      "aliases": [
+        "--threads"
+      ],
+      "isFlag": false,
+      "min": 1,
+      "max": 64,
+      "step": 1,
+      "default": -1,
+      "unit": "",
+      "category": "Hardware",
+      "description": "Number of CPU threads to use during generation (default: -1)"
+    },
+    {
+      "id": "cpu_threads_batch",
+      "name": "CPU Threads (Batch)",
+      "type": "slider",
+      "argument": "-tb",
+      "aliases": [
+        "--threads-batch"
+      ],
+      "isFlag": false,
+      "min": 1,
+      "max": 64,
+      "step": 1,
+      "default": -1,
+      "unit": "",
+      "category": "Hardware",
+      "description": "Number of threads to use during batch and prompt processing (default: same as --threads)"
+    },
+    {
+      "id": "flash_attention",
+      "name": "Flash Attention",
+      "type": "select",
+      "argument": "-fa",
+      "aliases": [
+        "--flash-attn"
+      ],
+      "isFlag": false,
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "on",
+          "label": "Enabled"
+        },
+        {
+          "value": "off",
+          "label": "Disabled"
+        }
+      ],
+      "default": "auto",
+      "category": "Hardware",
+      "description": "Set Flash Attention use (default: 'auto')"
     },
     {
       "id": "split_mode",
@@ -675,23 +943,6 @@
       "description": "The GPU to use for the model (with split-mode = none), or for intermediate results and KV (default: 0)"
     },
     {
-      "id": "cpu_moe_offload",
-      "name": "CPU MoE Layers",
-      "type": "slider",
-      "argument": "-ncmoe",
-      "aliases": [
-        "--n-cpu-moe"
-      ],
-      "isFlag": false,
-      "min": 0,
-      "max": 99,
-      "step": 1,
-      "default": 0,
-      "unit": "layers",
-      "category": "Hardware",
-      "description": "Keep the Mixture of Experts (MoE) weights of the first N layers in the CPU"
-    },
-    {
       "id": "offload_kv_cache",
       "name": "KV Cache Offload",
       "type": "toggle",
@@ -702,192 +953,186 @@
       "description": "Whether to enable KV cache offloading (default: enabled)"
     },
     {
-      "id": "continuous_batching",
-      "name": "Continuous Batching",
+      "id": "op_offload",
+      "name": "Operation Offload",
       "type": "toggle",
-      "argument": "-cb",
-      "aliases": [
-        "--cont-batching"
-      ],
+      "argument": "--op-offload",
       "isFlag": true,
       "default": true,
-      "category": "Context",
-      "description": "Whether to enable continuous batching (a.k.a dynamic batching) (default: enabled)"
+      "category": "Hardware",
+      "description": "Whether to offload host tensor operations to device (default: true)"
     },
     {
-      "id": "parallel_slots",
-      "name": "Parallel Slots",
-      "type": "slider",
-      "argument": "-np",
-      "aliases": [
-        "--parallel"
-      ],
-      "isFlag": false,
-      "min": -1,
-      "max": 16,
-      "step": 1,
-      "default": -1,
-      "unit": "",
-      "category": "Context",
-      "description": "Number of server slots (default: -1, -1 = auto)"
+      "id": "mlock",
+      "name": "Memory Lock",
+      "type": "toggle",
+      "argument": "--mlock",
+      "isFlag": true,
+      "default": false,
+      "category": "Hardware",
+      "description": "Force system to keep model in RAM rather than swapping or compressing"
     },
     {
-      "id": "cache_ram",
-      "name": "Cache RAM",
-      "type": "slider",
-      "argument": "-cram",
-      "aliases": [
-        "--cache-ram"
-      ],
+      "id": "mmap",
+      "name": "Memory Map",
+      "type": "toggle",
+      "argument": "--mmap",
+      "isFlag": true,
+      "default": true,
+      "category": "Hardware",
+      "description": "Whether to memory-map model (default: enabled)"
+    },
+    {
+      "id": "numa",
+      "name": "NUMA Optimization",
+      "type": "select",
+      "argument": "--numa",
       "isFlag": false,
-      "min": -1,
-      "max": 32768,
+      "options": [
+        {
+          "value": "",
+          "label": "Disabled"
+        },
+        {
+          "value": "distribute",
+          "label": "Distribute"
+        },
+        {
+          "value": "isolate",
+          "label": "Isolate"
+        },
+        {
+          "value": "numactl",
+          "label": "Numactl"
+        }
+      ],
+      "default": "",
+      "category": "Hardware",
+      "description": "Attempt optimizations that help on some NUMA systems"
+    },
+    {
+      "id": "warmup",
+      "name": "Warmup",
+      "type": "toggle",
+      "argument": "--warmup",
+      "isFlag": true,
+      "default": true,
+      "category": "Hardware",
+      "description": "Whether to perform warmup with an empty run (default: enabled)"
+    },
+    {
+      "id": "cpu_strict",
+      "name": "CPU Strict Placement",
+      "type": "toggle",
+      "argument": "--cpu-strict",
+      "isFlag": true,
+      "default": false,
+      "category": "Hardware",
+      "description": "Use strict CPU placement (default: 0)"
+    },
+    {
+      "id": "fit",
+      "name": "Auto Fit",
+      "type": "select",
+      "argument": "--fit",
+      "isFlag": false,
+      "options": [
+        {
+          "value": "on",
+          "label": "On"
+        },
+        {
+          "value": "off",
+          "label": "Off"
+        }
+      ],
+      "default": "on",
+      "category": "Hardware",
+      "description": "Whether to adjust unset arguments to fit in device memory (default: 'on')"
+    },
+    {
+      "id": "fit_target",
+      "name": "Fit Target",
+      "type": "slider",
+      "argument": "--fit-target",
+      "isFlag": false,
+      "min": 256,
+      "max": 8192,
       "step": 256,
-      "default": 8192,
+      "default": 1024,
       "unit": "MiB",
-      "category": "Context",
-      "description": "Set the maximum cache size in MiB (default: 8192, -1 - no limit, 0 - disable)"
+      "category": "Hardware",
+      "description": "Target margin per device for --fit option (default: 1024)"
     },
     {
-      "id": "ctx_checkpoints",
-      "name": "Context Checkpoints",
+      "id": "fit_ctx",
+      "name": "Fit Context",
       "type": "slider",
-      "argument": "--ctx-checkpoints",
-      "aliases": [
-        "--swa-checkpoints"
-      ],
+      "argument": "--fit-ctx",
+      "isFlag": false,
+      "min": 512,
+      "max": 32768,
+      "step": 512,
+      "default": 4096,
+      "unit": "tokens",
+      "category": "Hardware",
+      "description": "Minimum ctx size that can be set by --fit option (default: 4096)"
+    },
+    {
+      "id": "repack",
+      "name": "Weight Repacking",
+      "type": "toggle",
+      "argument": "--repack",
+      "isFlag": true,
+      "default": true,
+      "category": "Hardware",
+      "description": "Whether to enable weight repacking (default: enabled)"
+    },
+    {
+      "id": "poll",
+      "name": "Polling Level",
+      "type": "slider",
+      "argument": "--poll",
       "isFlag": false,
       "min": 0,
-      "max": 32,
+      "max": 100,
       "step": 1,
-      "default": 8,
+      "default": 50,
       "unit": "",
-      "category": "Context",
-      "description": "Max number of context checkpoints to create per slot (default: 8)"
+      "category": "Hardware",
+      "description": "Use polling level to wait for work (0 - no polling, default: 50)"
     },
     {
-      "id": "host",
-      "name": "Host",
-      "type": "text",
-      "argument": "--host",
+      "id": "prio",
+      "name": "Process Priority",
+      "type": "select",
+      "argument": "--prio",
       "isFlag": false,
-      "default": "127.0.0.1",
-      "category": "Network",
-      "description": "IP address to listen, or bind to an UNIX socket if the address ends with .sock (default: 127.0.0.1)"
-    },
-    {
-      "id": "port",
-      "name": "Server Port",
-      "type": "slider",
-      "argument": "--port",
-      "isFlag": false,
-      "min": 1024,
-      "max": 65535,
-      "step": 1,
-      "default": 8080,
-      "unit": "",
-      "category": "Network",
-      "description": "Port to listen (default: 8080)"
-    },
-    {
-      "id": "timeout",
-      "name": "Timeout",
-      "type": "slider",
-      "argument": "-to",
-      "aliases": [
-        "--timeout"
+      "options": [
+        {
+          "value": "-1",
+          "label": "Low"
+        },
+        {
+          "value": "0",
+          "label": "Normal"
+        },
+        {
+          "value": "1",
+          "label": "Medium"
+        },
+        {
+          "value": "2",
+          "label": "High"
+        },
+        {
+          "value": "3",
+          "label": "Realtime"
+        }
       ],
-      "isFlag": false,
-      "min": 60,
-      "max": 3600,
-      "step": 60,
-      "default": 600,
-      "unit": "seconds",
-      "category": "Network",
-      "description": "Server read/write timeout in seconds (default: 600)"
-    },
-    {
-      "id": "threads_http",
-      "name": "HTTP Threads",
-      "type": "slider",
-      "argument": "--threads-http",
-      "isFlag": false,
-      "min": -1,
-      "max": 32,
-      "step": 1,
-      "default": -1,
-      "unit": "",
-      "category": "Network",
-      "description": "Number of threads used to process HTTP requests (default: -1)"
-    },
-    {
-      "id": "webui",
-      "name": "Web UI",
-      "type": "toggle",
-      "argument": "--webui",
-      "isFlag": true,
-      "default": true,
-      "category": "Network",
-      "description": "Whether to enable the Web UI (default: enabled)"
-    },
-    {
-      "id": "embedding",
-      "name": "Embedding Mode",
-      "type": "toggle",
-      "argument": "--embedding",
-      "aliases": [
-        "--embeddings"
-      ],
-      "isFlag": true,
-      "default": false,
-      "category": "Model",
-      "description": "Restrict to only support embedding use case; use only with dedicated embedding models (default: disabled)"
-    },
-    {
-      "id": "rerank",
-      "name": "Reranking",
-      "type": "toggle",
-      "argument": "--rerank",
-      "aliases": [
-        "--reranking"
-      ],
-      "isFlag": true,
-      "default": false,
-      "category": "Model",
-      "description": "Enable reranking endpoint on server (default: disabled)"
-    },
-    {
-      "id": "mmproj",
-      "name": "Multimodal Projector",
-      "type": "model-select",
-      "argument": "-mm",
-      "aliases": [
-        "--mmproj"
-      ],
-      "isFlag": false,
-      "default": "",
-      "category": "Model",
-      "description": "Path to a multimodal projector file. see tools/mtmd/README.md"
-    },
-    {
-      "id": "mmproj_offload",
-      "name": "Multimodal Projector Offload",
-      "type": "toggle",
-      "argument": "--mmproj-offload",
-      "isFlag": true,
-      "default": true,
-      "category": "Model",
-      "description": "Whether to enable GPU offloading for multimodal projector (default: enabled)"
-    },
-    {
-      "id": "jinja",
-      "name": "Jinja Template Engine",
-      "type": "toggle",
-      "argument": "--jinja",
-      "isFlag": true,
-      "default": true,
-      "category": "Model",
-      "description": "Whether to use jinja template engine for chat (default: enabled)"
+      "default": "0",
+      "category": "Hardware",
+      "description": "Set process/thread priority (default: 0)"
     },
     {
       "id": "chat_template",
@@ -980,295 +1225,14 @@
       "description": "Set custom jinja chat template file (default: template taken from model's metadata)"
     },
     {
-      "id": "reasoning_format",
-      "name": "Reasoning Format",
-      "type": "select",
-      "argument": "--reasoning-format",
-      "isFlag": false,
-      "options": [
-        {
-          "value": "auto",
-          "label": "Auto"
-        },
-        {
-          "value": "none",
-          "label": "None"
-        },
-        {
-          "value": "deepseek",
-          "label": "DeepSeek"
-        },
-        {
-          "value": "deepseek-legacy",
-          "label": "DeepSeek Legacy"
-        }
-      ],
-      "default": "auto",
-      "category": "Generation",
-      "description": "Controls whether thought tags are allowed and/or extracted from the response (default: auto)"
-    },
-    {
-      "id": "reasoning_budget",
-      "name": "Reasoning Budget",
-      "type": "slider",
-      "argument": "--reasoning-budget",
-      "isFlag": false,
-      "min": -1,
-      "max": 10000,
-      "step": 100,
-      "default": -1,
-      "unit": "",
-      "category": "Generation",
-      "description": "Controls the amount of thinking allowed (-1 for unrestricted, 0 to disable) (default: -1)"
-    },
-    {
-      "id": "metrics",
-      "name": "Metrics Endpoint",
+      "id": "jinja",
+      "name": "Jinja Template Engine",
       "type": "toggle",
-      "argument": "--metrics",
-      "isFlag": true,
-      "default": false,
-      "category": "Network",
-      "description": "Enable prometheus compatible metrics endpoint (default: disabled)"
-    },
-    {
-      "id": "slots_endpoint",
-      "name": "Slots Endpoint",
-      "type": "toggle",
-      "argument": "--slots",
+      "argument": "--jinja",
       "isFlag": true,
       "default": true,
-      "category": "Network",
-      "description": "Expose slots monitoring endpoint (default: enabled)"
-    },
-    {
-      "id": "props_endpoint",
-      "name": "Props Endpoint",
-      "type": "toggle",
-      "argument": "--props",
-      "isFlag": true,
-      "default": false,
-      "category": "Network",
-      "description": "Enable changing global properties via POST /props (default: disabled)"
-    },
-    {
-      "id": "ignore_eos",
-      "name": "Ignore EOS Token",
-      "type": "toggle",
-      "argument": "--ignore-eos",
-      "isFlag": true,
-      "default": false,
-      "category": "Generation",
-      "description": "Ignore end of stream token and continue generating"
-    },
-    {
-      "id": "grammar",
-      "name": "Grammar",
-      "type": "text",
-      "argument": "--grammar",
-      "isFlag": false,
-      "default": "",
-      "category": "Generation",
-      "description": "BNF-like grammar to constrain generations"
-    },
-    {
-      "id": "grammar_file",
-      "name": "Grammar File",
-      "type": "text",
-      "argument": "--grammar-file",
-      "isFlag": false,
-      "default": "",
-      "category": "Generation",
-      "description": "File to read grammar from"
-    },
-    {
-      "id": "json_schema",
-      "name": "JSON Schema",
-      "type": "text",
-      "argument": "-j",
-      "aliases": [
-        "--json-schema"
-      ],
-      "isFlag": false,
-      "default": "",
-      "category": "Generation",
-      "description": "JSON schema to constrain generations"
-    },
-    {
-      "id": "json_schema_file",
-      "name": "JSON Schema File",
-      "type": "text",
-      "argument": "-jf",
-      "aliases": [
-        "--json-schema-file"
-      ],
-      "isFlag": false,
-      "default": "",
-      "category": "Generation",
-      "description": "File containing a JSON schema to constrain generations"
-    },
-    {
-      "id": "samplers",
-      "name": "Samplers",
-      "type": "text",
-      "argument": "--samplers",
-      "isFlag": false,
-      "default": "penalties;dry;top_n_sigma;top_k;typ_p;top_p;min_p;xtc;temperature",
-      "category": "Generation",
-      "description": "Samplers that will be used for generation in the order, separated by ';'"
-    },
-    {
-      "id": "sampler_seq",
-      "name": "Sampler Sequence",
-      "type": "text",
-      "argument": "--sampler-seq",
-      "aliases": [
-        "--sampling-seq"
-      ],
-      "isFlag": false,
-      "default": "edskypmxt",
-      "category": "Generation",
-      "description": "Simplified sequence for samplers that will be used"
-    },
-    {
-      "id": "api_key",
-      "name": "API Key",
-      "type": "text",
-      "argument": "--api-key",
-      "isFlag": false,
-      "default": "",
-      "category": "Network",
-      "description": "API key to use for authentication, multiple keys can be provided as a comma-separated list"
-    },
-    {
-      "id": "api_key_file",
-      "name": "API Key File",
-      "type": "text",
-      "argument": "--api-key-file",
-      "isFlag": false,
-      "default": "",
-      "category": "Network",
-      "description": "Path to file containing API keys"
-    },
-    {
-      "id": "ssl_key_file",
-      "name": "SSL Key File",
-      "type": "text",
-      "argument": "--ssl-key-file",
-      "isFlag": false,
-      "default": "",
-      "category": "Network",
-      "description": "Path to file a PEM-encoded SSL private key"
-    },
-    {
-      "id": "ssl_cert_file",
-      "name": "SSL Certificate File",
-      "type": "text",
-      "argument": "--ssl-cert-file",
-      "isFlag": false,
-      "default": "",
-      "category": "Network",
-      "description": "Path to file a PEM-encoded SSL certificate"
-    },
-    {
-      "id": "context_shift",
-      "name": "Context Shift",
-      "type": "toggle",
-      "argument": "--context-shift",
-      "isFlag": true,
-      "default": false,
-      "category": "Context",
-      "description": "Whether to use context shift on infinite text generation (default: disabled)"
-    },
-    {
-      "id": "warmup",
-      "name": "Warmup",
-      "type": "toggle",
-      "argument": "--warmup",
-      "isFlag": true,
-      "default": true,
-      "category": "Hardware",
-      "description": "Whether to perform warmup with an empty run (default: enabled)"
-    },
-    {
-      "id": "pooling",
-      "name": "Pooling Type",
-      "type": "select",
-      "argument": "--pooling",
-      "isFlag": false,
-      "options": [
-        {
-          "value": "",
-          "label": "Model Default"
-        },
-        {
-          "value": "none",
-          "label": "None"
-        },
-        {
-          "value": "mean",
-          "label": "Mean"
-        },
-        {
-          "value": "cls",
-          "label": "CLS"
-        },
-        {
-          "value": "last",
-          "label": "Last"
-        },
-        {
-          "value": "rank",
-          "label": "Rank"
-        }
-      ],
-      "default": "",
       "category": "Model",
-      "description": "Pooling type for embeddings, use model default if unspecified"
-    },
-    {
-      "id": "lora",
-      "name": "LoRA Adapter",
-      "type": "text",
-      "argument": "--lora",
-      "isFlag": false,
-      "default": "",
-      "category": "Model",
-      "description": "Path to LoRA adapter (use comma-separated values to load multiple adapters)"
-    },
-    {
-      "id": "lora_scaled",
-      "name": "LoRA Adapter (Scaled)",
-      "type": "text",
-      "argument": "--lora-scaled",
-      "isFlag": false,
-      "default": "",
-      "category": "Model",
-      "description": "Path to LoRA adapter with user defined scaling (format: FNAME:SCALE,...)"
-    },
-    {
-      "id": "api_prefix",
-      "name": "API Prefix",
-      "type": "text",
-      "argument": "--api-prefix",
-      "isFlag": false,
-      "default": "",
-      "category": "Network",
-      "description": "Prefix path the server serves from, without the trailing slash"
-    },
-    {
-      "id": "cache_reuse",
-      "name": "Cache Reuse",
-      "type": "slider",
-      "argument": "--cache-reuse",
-      "isFlag": false,
-      "min": 0,
-      "max": 8192,
-      "step": 64,
-      "default": 0,
-      "unit": "",
-      "category": "Context",
-      "description": "Min chunk size to attempt reusing from the cache via KV shifting (default: 0)"
+      "description": "Whether to use jinja template engine for chat (default: enabled)"
     },
     {
       "id": "chat_template_kwargs",
@@ -1281,378 +1245,129 @@
       "description": "Sets additional params for the json template parser, must be a valid json object string"
     },
     {
-      "id": "check_tensors",
-      "name": "Check Tensors",
+      "id": "lora",
+      "name": "LoRA Adapter",
+      "type": "text",
+      "argument": "--lora",
+      "isFlag": false,
+      "default": "",
+      "category": "Model",
+      "description": "Path to LoRA adapter (use comma-separated values to load multiple adapters)"
+    },
+    {
+      "id": "mmproj",
+      "name": "Multimodal Projector",
+      "type": "model-select",
+      "argument": "-mm",
+      "aliases": [
+        "--mmproj"
+      ],
+      "isFlag": false,
+      "default": "",
+      "category": "Model",
+      "description": "Path to a multimodal projector file. see tools/mtmd/README.md"
+    },
+    {
+      "id": "mmproj_offload",
+      "name": "Multimodal Projector Offload",
       "type": "toggle",
-      "argument": "--check-tensors",
+      "argument": "--mmproj-offload",
+      "isFlag": true,
+      "default": true,
+      "category": "Model",
+      "description": "Whether to enable GPU offloading for multimodal projector (default: enabled)"
+    },
+    {
+      "id": "embedding",
+      "name": "Embedding Mode",
+      "type": "toggle",
+      "argument": "--embedding",
+      "aliases": [
+        "--embeddings"
+      ],
       "isFlag": true,
       "default": false,
       "category": "Model",
-      "description": "Check model tensor data for invalid values (default: false)"
+      "description": "Restrict to only support embedding use case; use only with dedicated embedding models (default: disabled)"
     },
     {
-      "id": "control_vector",
-      "name": "Control Vector",
-      "type": "text",
-      "argument": "--control-vector",
-      "isFlag": false,
-      "default": "",
-      "category": "Model",
-      "description": "Add a control vector"
-    },
-    {
-      "id": "control_vector_scaled",
-      "name": "Control Vector (Scaled)",
-      "type": "text",
-      "argument": "--control-vector-scaled",
-      "isFlag": false,
-      "default": "",
-      "category": "Model",
-      "description": "Add a control vector with user defined scaling SCALE"
-    },
-    {
-      "id": "cpu_strict",
-      "name": "CPU Strict Placement",
+      "id": "rerank",
+      "name": "Reranking",
       "type": "toggle",
-      "argument": "--cpu-strict",
+      "argument": "--rerank",
+      "aliases": [
+        "--reranking"
+      ],
       "isFlag": true,
       "default": false,
-      "category": "Hardware",
-      "description": "Use strict CPU placement (default: 0)"
-    },
-    {
-      "id": "dry_penalty_last_n",
-      "name": "DRY Penalty Last N",
-      "type": "slider",
-      "argument": "--dry-penalty-last-n",
-      "isFlag": false,
-      "min": -1,
-      "max": 1024,
-      "step": 1,
-      "default": -1,
-      "unit": "tokens",
-      "category": "Generation",
-      "description": "Set DRY penalty for the last n tokens (default: -1, 0 = disable, -1 = context size)"
-    },
-    {
-      "id": "dry_sequence_breaker",
-      "name": "DRY Sequence Breaker",
-      "type": "text",
-      "argument": "--dry-sequence-breaker",
-      "isFlag": false,
-      "default": "",
-      "category": "Generation",
-      "description": "Add sequence breaker for DRY sampling, clearing out default breakers"
-    },
-    {
-      "id": "image_min_tokens",
-      "name": "Image Min Tokens",
-      "type": "slider",
-      "argument": "--image-min-tokens",
-      "isFlag": false,
-      "min": 1,
-      "max": 1024,
-      "step": 1,
-      "default": 0,
-      "unit": "tokens",
       "category": "Model",
-      "description": "Minimum number of tokens each image can take, only used by vision models with dynamic resolution (default: read from model)"
+      "description": "Enable reranking endpoint on server (default: disabled)"
     },
     {
-      "id": "image_max_tokens",
-      "name": "Image Max Tokens",
-      "type": "slider",
-      "argument": "--image-max-tokens",
-      "isFlag": false,
-      "min": 1,
-      "max": 4096,
-      "step": 1,
-      "default": 0,
-      "unit": "tokens",
-      "category": "Model",
-      "description": "Maximum number of tokens each image can take, only used by vision models with dynamic resolution (default: read from model)"
-    },
-    {
-      "id": "log_disable",
-      "name": "Disable Logging",
-      "type": "toggle",
-      "argument": "--log-disable",
-      "isFlag": true,
-      "default": false,
-      "category": "System",
-      "description": "Log disable"
-    },
-    {
-      "id": "log_file",
-      "name": "Log File",
-      "type": "text",
-      "argument": "--log-file",
-      "isFlag": false,
-      "default": "",
-      "category": "System",
-      "description": "Log to file"
-    },
-    {
-      "id": "log_colors",
-      "name": "Log Colors",
+      "id": "rope_scaling",
+      "name": "RoPE Scaling",
       "type": "select",
-      "argument": "--log-colors",
+      "argument": "--rope-scaling",
       "isFlag": false,
       "options": [
         {
-          "value": "auto",
-          "label": "Auto"
+          "value": "none",
+          "label": "None"
         },
         {
-          "value": "on",
-          "label": "On"
+          "value": "linear",
+          "label": "Linear"
         },
         {
-          "value": "off",
-          "label": "Off"
+          "value": "yarn",
+          "label": "YaRN"
         }
       ],
-      "default": "auto",
-      "category": "System",
-      "description": "Set colored logging ('on', 'off', or 'auto', default: 'auto')"
-    },
-    {
-      "id": "log_prefix",
-      "name": "Log Prefix",
-      "type": "toggle",
-      "argument": "--log-prefix",
-      "isFlag": true,
-      "default": false,
-      "category": "System",
-      "description": "Enable prefix in log messages"
-    },
-    {
-      "id": "log_timestamps",
-      "name": "Log Timestamps",
-      "type": "toggle",
-      "argument": "--log-timestamps",
-      "isFlag": true,
-      "default": false,
-      "category": "System",
-      "description": "Enable timestamps in log messages"
-    },
-    {
-      "id": "lora_init_without_apply",
-      "name": "LoRA Init Without Apply",
-      "type": "toggle",
-      "argument": "--lora-init-without-apply",
-      "isFlag": true,
-      "default": false,
+      "default": "linear",
       "category": "Model",
-      "description": "Load LoRA adapters without applying them (apply later via POST /lora-adapters)"
+      "description": "RoPE frequency scaling method, defaults to linear unless specified by the model"
     },
     {
-      "id": "mlock",
-      "name": "Memory Lock",
-      "type": "toggle",
-      "argument": "--mlock",
-      "isFlag": true,
-      "default": false,
-      "category": "Hardware",
-      "description": "Force system to keep model in RAM rather than swapping or compressing"
-    },
-    {
-      "id": "mmap",
-      "name": "Memory Map",
-      "type": "toggle",
-      "argument": "--mmap",
-      "isFlag": true,
-      "default": true,
-      "category": "Hardware",
-      "description": "Whether to memory-map model (default: enabled)"
-    },
-    {
-      "id": "numa",
-      "name": "NUMA Optimization",
-      "type": "select",
-      "argument": "--numa",
-      "isFlag": false,
-      "options": [
-        {
-          "value": "",
-          "label": "Disabled"
-        },
-        {
-          "value": "distribute",
-          "label": "Distribute"
-        },
-        {
-          "value": "isolate",
-          "label": "Isolate"
-        },
-        {
-          "value": "numactl",
-          "label": "Numactl"
-        }
-      ],
-      "default": "",
-      "category": "Hardware",
-      "description": "Attempt optimizations that help on some NUMA systems"
-    },
-    {
-      "id": "offline",
-      "name": "Offline Mode",
-      "type": "toggle",
-      "argument": "--offline",
-      "isFlag": true,
-      "default": false,
-      "category": "Network",
-      "description": "Offline mode: forces use of cache, prevents network access"
-    },
-    {
-      "id": "op_offload",
-      "name": "Operation Offload",
-      "type": "toggle",
-      "argument": "--op-offload",
-      "isFlag": true,
-      "default": true,
-      "category": "Hardware",
-      "description": "Whether to offload host tensor operations to device (default: true)"
-    },
-    {
-      "id": "path",
-      "name": "Static Files Path",
-      "type": "text",
-      "argument": "--path",
-      "isFlag": false,
-      "default": "",
-      "category": "Network",
-      "description": "Path to serve static files from"
-    },
-    {
-      "id": "perf",
-      "name": "Performance Timings",
-      "type": "toggle",
-      "argument": "--perf",
-      "isFlag": true,
-      "default": false,
-      "category": "System",
-      "description": "Whether to enable internal libllama performance timings (default: false)"
-    },
-    {
-      "id": "poll",
-      "name": "Polling Level",
+      "id": "rope_scale",
+      "name": "RoPE Scale",
       "type": "slider",
-      "argument": "--poll",
+      "argument": "--rope-scale",
       "isFlag": false,
-      "min": 0,
-      "max": 100,
-      "step": 1,
-      "default": 50,
+      "min": 0.1,
+      "max": 8.0,
+      "step": 0.1,
+      "default": 1.0,
       "unit": "",
-      "category": "Hardware",
-      "description": "Use polling level to wait for work (0 - no polling, default: 50)"
+      "category": "Model",
+      "description": "RoPE context scaling factor, expands context by a factor of N"
     },
     {
-      "id": "prefill_assistant",
-      "name": "Prefill Assistant",
-      "type": "toggle",
-      "argument": "--prefill-assistant",
-      "isFlag": true,
-      "default": true,
-      "category": "Generation",
-      "description": "Whether to prefill the assistant's response if the last message is an assistant message (default: enabled)"
-    },
-    {
-      "id": "prio",
-      "name": "Process Priority",
-      "type": "select",
-      "argument": "--prio",
-      "isFlag": false,
-      "options": [
-        {
-          "value": "-1",
-          "label": "Low"
-        },
-        {
-          "value": "0",
-          "label": "Normal"
-        },
-        {
-          "value": "1",
-          "label": "Medium"
-        },
-        {
-          "value": "2",
-          "label": "High"
-        },
-        {
-          "value": "3",
-          "label": "Realtime"
-        }
-      ],
-      "default": "0",
-      "category": "Hardware",
-      "description": "Set process/thread priority (default: 0)"
-    },
-    {
-      "id": "repack",
-      "name": "Weight Repacking",
-      "type": "toggle",
-      "argument": "--repack",
-      "isFlag": true,
-      "default": true,
-      "category": "Hardware",
-      "description": "Whether to enable weight repacking (default: enabled)"
-    },
-    {
-      "id": "rpc",
-      "name": "RPC Servers",
-      "type": "text",
-      "argument": "--rpc",
-      "isFlag": false,
-      "default": "",
-      "category": "Network",
-      "description": "Comma separated list of RPC servers (host:port)"
-    },
-    {
-      "id": "sleep_idle_seconds",
-      "name": "Sleep Idle Seconds",
+      "id": "rope_freq_base",
+      "name": "RoPE Frequency Base",
       "type": "slider",
-      "argument": "--sleep-idle-seconds",
+      "argument": "--rope-freq-base",
       "isFlag": false,
-      "min": -1,
-      "max": 3600,
-      "step": 1,
-      "default": -1,
-      "unit": "seconds",
-      "category": "System",
-      "description": "Number of seconds of idleness after which the server will sleep (default: -1; -1 = disabled)"
+      "min": 1000,
+      "max": 1000000,
+      "step": 1000,
+      "default": 0,
+      "unit": "",
+      "category": "Model",
+      "description": "RoPE base frequency, used by NTK-aware scaling (default: loaded from model)"
     },
     {
-      "id": "slot_save_path",
-      "name": "Slot Save Path",
-      "type": "text",
-      "argument": "--slot-save-path",
+      "id": "rope_freq_scale",
+      "name": "RoPE Frequency Scale",
+      "type": "slider",
+      "argument": "--rope-freq-scale",
       "isFlag": false,
-      "default": "",
-      "category": "Context",
-      "description": "Path to save slot kv cache (default: disabled)"
-    },
-    {
-      "id": "webui_config",
-      "name": "WebUI Config",
-      "type": "text",
-      "argument": "--webui-config",
-      "isFlag": false,
-      "default": "",
-      "category": "Network",
-      "description": "JSON that provides default WebUI settings (overrides WebUI defaults)"
-    },
-    {
-      "id": "webui_config_file",
-      "name": "WebUI Config File",
-      "type": "text",
-      "argument": "--webui-config-file",
-      "isFlag": false,
-      "default": "",
-      "category": "Network",
-      "description": "JSON file that provides default WebUI settings (overrides WebUI defaults)"
+      "min": 0.1,
+      "max": 2.0,
+      "step": 0.1,
+      "default": 1.0,
+      "unit": "",
+      "category": "Model",
+      "description": "RoPE frequency scaling factor, expands context by a factor of 1/N"
     },
     {
       "id": "yarn_orig_ctx",
@@ -1725,22 +1440,345 @@
       "description": "YaRN: low correction dim or beta (default: -1.0)"
     },
     {
-      "id": "kv_unified",
-      "name": "KV Unified",
-      "type": "toggle",
-      "argument": "--kv-unified",
-      "isFlag": true,
-      "default": true,
-      "category": "Context",
-      "description": "Use single unified KV buffer shared across all sequences (default: enabled if number of slots is auto)"
-    },
-    {
-      "id": "fit",
-      "name": "Auto Fit",
+      "id": "pooling",
+      "name": "Pooling Type",
       "type": "select",
-      "argument": "--fit",
+      "argument": "--pooling",
       "isFlag": false,
       "options": [
+        {
+          "value": "",
+          "label": "Model Default"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "mean",
+          "label": "Mean"
+        },
+        {
+          "value": "cls",
+          "label": "CLS"
+        },
+        {
+          "value": "last",
+          "label": "Last"
+        },
+        {
+          "value": "rank",
+          "label": "Rank"
+        }
+      ],
+      "default": "",
+      "category": "Model",
+      "description": "Pooling type for embeddings, use model default if unspecified"
+    },
+    {
+      "id": "lora_scaled",
+      "name": "LoRA Adapter (Scaled)",
+      "type": "text",
+      "argument": "--lora-scaled",
+      "isFlag": false,
+      "default": "",
+      "category": "Model",
+      "description": "Path to LoRA adapter with user defined scaling (format: FNAME:SCALE,...)"
+    },
+    {
+      "id": "lora_init_without_apply",
+      "name": "LoRA Init Without Apply",
+      "type": "toggle",
+      "argument": "--lora-init-without-apply",
+      "isFlag": true,
+      "default": false,
+      "category": "Model",
+      "description": "Load LoRA adapters without applying them (apply later via POST /lora-adapters)"
+    },
+    {
+      "id": "control_vector",
+      "name": "Control Vector",
+      "type": "text",
+      "argument": "--control-vector",
+      "isFlag": false,
+      "default": "",
+      "category": "Model",
+      "description": "Add a control vector"
+    },
+    {
+      "id": "control_vector_scaled",
+      "name": "Control Vector (Scaled)",
+      "type": "text",
+      "argument": "--control-vector-scaled",
+      "isFlag": false,
+      "default": "",
+      "category": "Model",
+      "description": "Add a control vector with user defined scaling SCALE"
+    },
+    {
+      "id": "check_tensors",
+      "name": "Check Tensors",
+      "type": "toggle",
+      "argument": "--check-tensors",
+      "isFlag": true,
+      "default": false,
+      "category": "Model",
+      "description": "Check model tensor data for invalid values (default: false)"
+    },
+    {
+      "id": "image_min_tokens",
+      "name": "Image Min Tokens",
+      "type": "slider",
+      "argument": "--image-min-tokens",
+      "isFlag": false,
+      "min": 1,
+      "max": 1024,
+      "step": 1,
+      "default": 0,
+      "unit": "tokens",
+      "category": "Model",
+      "description": "Minimum number of tokens each image can take, only used by vision models with dynamic resolution (default: read from model)"
+    },
+    {
+      "id": "image_max_tokens",
+      "name": "Image Max Tokens",
+      "type": "slider",
+      "argument": "--image-max-tokens",
+      "isFlag": false,
+      "min": 1,
+      "max": 4096,
+      "step": 1,
+      "default": 0,
+      "unit": "tokens",
+      "category": "Model",
+      "description": "Maximum number of tokens each image can take, only used by vision models with dynamic resolution (default: read from model)"
+    },
+    {
+      "id": "host",
+      "name": "Host",
+      "type": "text",
+      "argument": "--host",
+      "isFlag": false,
+      "default": "127.0.0.1",
+      "category": "Network",
+      "description": "IP address to listen, or bind to an UNIX socket if the address ends with .sock (default: 127.0.0.1)"
+    },
+    {
+      "id": "port",
+      "name": "Server Port",
+      "type": "slider",
+      "argument": "--port",
+      "isFlag": false,
+      "min": 1024,
+      "max": 65535,
+      "step": 1,
+      "default": 8080,
+      "unit": "",
+      "category": "Network",
+      "description": "Port to listen (default: 8080)"
+    },
+    {
+      "id": "api_key",
+      "name": "API Key",
+      "type": "text",
+      "argument": "--api-key",
+      "isFlag": false,
+      "default": "",
+      "category": "Network",
+      "description": "API key to use for authentication, multiple keys can be provided as a comma-separated list"
+    },
+    {
+      "id": "api_key_file",
+      "name": "API Key File",
+      "type": "text",
+      "argument": "--api-key-file",
+      "isFlag": false,
+      "default": "",
+      "category": "Network",
+      "description": "Path to file containing API keys"
+    },
+    {
+      "id": "webui",
+      "name": "Web UI",
+      "type": "toggle",
+      "argument": "--webui",
+      "isFlag": true,
+      "default": true,
+      "category": "Network",
+      "description": "Whether to enable the Web UI (default: enabled)"
+    },
+    {
+      "id": "timeout",
+      "name": "Timeout",
+      "type": "slider",
+      "argument": "-to",
+      "aliases": [
+        "--timeout"
+      ],
+      "isFlag": false,
+      "min": 60,
+      "max": 3600,
+      "step": 60,
+      "default": 600,
+      "unit": "seconds",
+      "category": "Network",
+      "description": "Server read/write timeout in seconds (default: 600)"
+    },
+    {
+      "id": "metrics",
+      "name": "Metrics Endpoint",
+      "type": "toggle",
+      "argument": "--metrics",
+      "isFlag": true,
+      "default": false,
+      "category": "Network",
+      "description": "Enable prometheus compatible metrics endpoint (default: disabled)"
+    },
+    {
+      "id": "slots_endpoint",
+      "name": "Slots Endpoint",
+      "type": "toggle",
+      "argument": "--slots",
+      "isFlag": true,
+      "default": true,
+      "category": "Network",
+      "description": "Expose slots monitoring endpoint (default: enabled)"
+    },
+    {
+      "id": "props_endpoint",
+      "name": "Props Endpoint",
+      "type": "toggle",
+      "argument": "--props",
+      "isFlag": true,
+      "default": false,
+      "category": "Network",
+      "description": "Enable changing global properties via POST /props (default: disabled)"
+    },
+    {
+      "id": "ssl_key_file",
+      "name": "SSL Key File",
+      "type": "text",
+      "argument": "--ssl-key-file",
+      "isFlag": false,
+      "default": "",
+      "category": "Network",
+      "description": "Path to file a PEM-encoded SSL private key"
+    },
+    {
+      "id": "ssl_cert_file",
+      "name": "SSL Certificate File",
+      "type": "text",
+      "argument": "--ssl-cert-file",
+      "isFlag": false,
+      "default": "",
+      "category": "Network",
+      "description": "Path to file a PEM-encoded SSL certificate"
+    },
+    {
+      "id": "api_prefix",
+      "name": "API Prefix",
+      "type": "text",
+      "argument": "--api-prefix",
+      "isFlag": false,
+      "default": "",
+      "category": "Network",
+      "description": "Prefix path the server serves from, without the trailing slash"
+    },
+    {
+      "id": "offline",
+      "name": "Offline Mode",
+      "type": "toggle",
+      "argument": "--offline",
+      "isFlag": true,
+      "default": false,
+      "category": "Network",
+      "description": "Offline mode: forces use of cache, prevents network access"
+    },
+    {
+      "id": "rpc",
+      "name": "RPC Servers",
+      "type": "text",
+      "argument": "--rpc",
+      "isFlag": false,
+      "default": "",
+      "category": "Network",
+      "description": "Comma separated list of RPC servers (host:port)"
+    },
+    {
+      "id": "threads_http",
+      "name": "HTTP Threads",
+      "type": "slider",
+      "argument": "--threads-http",
+      "isFlag": false,
+      "min": -1,
+      "max": 32,
+      "step": 1,
+      "default": -1,
+      "unit": "",
+      "category": "Network",
+      "description": "Number of threads used to process HTTP requests (default: -1)"
+    },
+    {
+      "id": "webui_config",
+      "name": "WebUI Config",
+      "type": "text",
+      "argument": "--webui-config",
+      "isFlag": false,
+      "default": "",
+      "category": "Network",
+      "description": "JSON that provides default WebUI settings (overrides WebUI defaults)"
+    },
+    {
+      "id": "webui_config_file",
+      "name": "WebUI Config File",
+      "type": "text",
+      "argument": "--webui-config-file",
+      "isFlag": false,
+      "default": "",
+      "category": "Network",
+      "description": "JSON file that provides default WebUI settings (overrides WebUI defaults)"
+    },
+    {
+      "id": "path",
+      "name": "Static Files Path",
+      "type": "text",
+      "argument": "--path",
+      "isFlag": false,
+      "default": "",
+      "category": "Network",
+      "description": "Path to serve static files from"
+    },
+    {
+      "id": "log_disable",
+      "name": "Disable Logging",
+      "type": "toggle",
+      "argument": "--log-disable",
+      "isFlag": true,
+      "default": false,
+      "category": "System",
+      "description": "Log disable"
+    },
+    {
+      "id": "log_file",
+      "name": "Log File",
+      "type": "text",
+      "argument": "--log-file",
+      "isFlag": false,
+      "default": "",
+      "category": "System",
+      "description": "Log to file"
+    },
+    {
+      "id": "log_colors",
+      "name": "Log Colors",
+      "type": "select",
+      "argument": "--log-colors",
+      "isFlag": false,
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
         {
           "value": "on",
           "label": "On"
@@ -1750,47 +1788,53 @@
           "label": "Off"
         }
       ],
-      "default": "on",
-      "category": "Hardware",
-      "description": "Whether to adjust unset arguments to fit in device memory (default: 'on')"
+      "default": "auto",
+      "category": "System",
+      "description": "Set colored logging ('on', 'off', or 'auto', default: 'auto')"
     },
     {
-      "id": "fit_target",
-      "name": "Fit Target",
-      "type": "slider",
-      "argument": "--fit-target",
-      "isFlag": false,
-      "min": 256,
-      "max": 8192,
-      "step": 256,
-      "default": 1024,
-      "unit": "MiB",
-      "category": "Hardware",
-      "description": "Target margin per device for --fit option (default: 1024)"
-    },
-    {
-      "id": "fit_ctx",
-      "name": "Fit Context",
-      "type": "slider",
-      "argument": "--fit-ctx",
-      "isFlag": false,
-      "min": 512,
-      "max": 32768,
-      "step": 512,
-      "default": 4096,
-      "unit": "tokens",
-      "category": "Hardware",
-      "description": "Minimum ctx size that can be set by --fit option (default: 4096)"
-    },
-    {
-      "id": "backend_sampling",
-      "name": "Backend Sampling",
+      "id": "log_prefix",
+      "name": "Log Prefix",
       "type": "toggle",
-      "argument": "--backend-sampling",
+      "argument": "--log-prefix",
       "isFlag": true,
       "default": false,
-      "category": "Generation",
-      "description": "Enable backend sampling (experimental) (default: disabled)"
+      "category": "System",
+      "description": "Enable prefix in log messages"
+    },
+    {
+      "id": "log_timestamps",
+      "name": "Log Timestamps",
+      "type": "toggle",
+      "argument": "--log-timestamps",
+      "isFlag": true,
+      "default": false,
+      "category": "System",
+      "description": "Enable timestamps in log messages"
+    },
+    {
+      "id": "perf",
+      "name": "Performance Timings",
+      "type": "toggle",
+      "argument": "--perf",
+      "isFlag": true,
+      "default": false,
+      "category": "System",
+      "description": "Whether to enable internal libllama performance timings (default: false)"
+    },
+    {
+      "id": "sleep_idle_seconds",
+      "name": "Sleep Idle Seconds",
+      "type": "slider",
+      "argument": "--sleep-idle-seconds",
+      "isFlag": false,
+      "min": -1,
+      "max": 3600,
+      "step": 1,
+      "default": -1,
+      "unit": "seconds",
+      "category": "System",
+      "description": "Number of seconds of idleness after which the server will sleep (default: -1; -1 = disabled)"
     },
     {
       "id": "verbose_prompt",
@@ -1801,50 +1845,6 @@
       "default": false,
       "category": "System",
       "description": "Print a verbose prompt before generation (default: false)"
-    },
-    {
-      "id": "escape",
-      "name": "Process Escape Sequences",
-      "type": "toggle",
-      "argument": "--escape",
-      "isFlag": true,
-      "default": true,
-      "category": "Generation",
-      "description": "Whether to process escapes sequences (\\n, \\r, \\t, \\', \\\", \\\\) (default: true)"
-    },
-    {
-      "id": "special",
-      "name": "Special Tokens Output",
-      "type": "toggle",
-      "argument": "--special",
-      "isFlag": true,
-      "default": false,
-      "category": "Generation",
-      "description": "Special tokens output enabled (default: false)"
-    },
-    {
-      "id": "spm_infill",
-      "name": "SPM Infill",
-      "type": "toggle",
-      "argument": "--spm-infill",
-      "isFlag": true,
-      "default": false,
-      "category": "Generation",
-      "description": "Use Suffix/Prefix/Middle pattern for infill (instead of Prefix/Suffix/Middle) as some models prefer this (default: disabled)"
-    },
-    {
-      "id": "slot_prompt_similarity",
-      "name": "Slot Prompt Similarity",
-      "type": "slider",
-      "argument": "--slot-prompt-similarity",
-      "isFlag": false,
-      "min": 0.0,
-      "max": 1.0,
-      "step": 0.01,
-      "default": 0.10,
-      "unit": "",
-      "category": "Context",
-      "description": "How much the prompt of a request must match the prompt of a slot in order to use that slot (default: 0.10, 0.0 = disabled)"
     }
   ]
 }
