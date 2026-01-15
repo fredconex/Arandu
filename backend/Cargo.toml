@@ -1,6 +1,6 @@
 [package]
 name = "Arandu"
-version = "0.5.0-beta"
+version = "0.5.1-beta"
 description = "Arandu: Desktop UI for llama.cpp model management and server launching"
 authors = ["Alfredo Fernandes"]
 edition = "2021"
