@@ -105,7 +105,7 @@ pub async fn search_models(
     
     // Build search URL with parameters - add full parameter to get complete model information
     let url = format!(
-        "https://huggingface.co/api/models?search={}&filter=gguf,text-generation&sort={}&limit={}&full=true",
+        "https://huggingface.co/api/models?search={}&filter=gguf,conversational&sort={}&limit={}&full=true",
         urlencoding::encode(&query),
         match sort_by.as_str() {
             "downloads" => "downloads",
