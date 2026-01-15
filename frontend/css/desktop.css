@@ -33,14 +33,9 @@
 	overflow: hidden;
 }
 
-.desktop-memory-monitor:hover {
-	background: var(--theme-hover);
-	transform: scale(1.02);
-}
-
 .desktop-memory-monitor.active {
-	background: var(--theme-surface-light);
-	box-shadow: 0 0 16px var(--theme-glow);
+	background: var(--theme-surface);
+	box-shadow: 0 0 16px rgba(0, 0, 0, 0.3);
 }
 
 .desktop-memory-monitor.expanded {
