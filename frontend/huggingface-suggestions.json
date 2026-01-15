@@ -3,11 +3,13 @@
     "qwen",
     "minimax",
     "glm",
+    "gpt-oss",
     "mistral",
     "llama",
     "codellama",
     "phi",
     "gemma",
-    "devstral"
+    "devstral",
+    "lfm"
   ]
 }
