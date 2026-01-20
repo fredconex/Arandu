@@ -11,7 +11,7 @@
       "isFlag": false,
       "min": 0,
       "max": 131072,
-      "step": 512,
+      "step": 1024,
       "default": 0,
       "unit": "tokens",
       "category": "Context",
