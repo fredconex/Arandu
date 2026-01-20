@@ -81,6 +81,7 @@ class LlamaCppReleasesManager {
                 invoke('get_config')
             ]);
             this.renderInstalledVersions(versions, cfg);
+            this.updateLatestInstalledBuildDisplay();
         } catch (e) {
             console.error('Failed to load installed versions:', e);
             container.innerHTML = `<div class="error-installed">${e?.message || 'Failed to load installed versions'}</div>`;
@@ -214,6 +215,7 @@ class LlamaCppReleasesManager {
             if (!invoke) throw new Error('Tauri API not available');
             await invoke('set_active_llamacpp_version', { path });
             this.loadInstalledVersions();
+            this.updateLatestInstalledBuildDisplay();
         } catch (e) {
             alert(`Failed to set active version: ${e.message || e}`);
         }
@@ -239,6 +241,7 @@ class LlamaCppReleasesManager {
             if (!invoke) throw new Error('Tauri API not available');
             await invoke('delete_llamacpp_version', { path });
             this.loadInstalledVersions();
+            this.updateLatestInstalledBuildDisplay();
         } catch (e) {
             alert(`Failed to delete version: ${e.message || e}`);
         }
@@ -358,6 +361,9 @@ class LlamaCppReleasesManager {
                     
                     // Refresh the releases to show the "Installed" tag
                     this.loadLlamaCppReleases();
+                    
+                    // Update the latest installed build display
+                    this.updateLatestInstalledBuildDisplay();
                     
                     return true;
                 }
@@ -516,6 +522,7 @@ class LlamaCppReleasesManager {
                     <button class="top-tab" data-top-tab="installed" onclick="llamacppReleasesManager.switchTopTab(this, 'installed')">
                         <span class="material-icons">inventory_2</span> Installed Versions
                     </button>
+                    <div class="latest-installed-build" id="latest-installed-build">Loading latest build...</div>
                 </div>
                 <div class="llamacpp-manager-content" id="llamacpp-manager-content">
                     <div class="loading-releases">Loading releases...</div>
@@ -534,6 +541,7 @@ class LlamaCppReleasesManager {
         // Load releases after window is created
         this.loadLlamaCppReleases();
         this.loadInstalledVersions();
+        this.updateLatestInstalledBuildDisplay();
     }
 
     async loadLlamaCppReleases() {
@@ -560,6 +568,7 @@ class LlamaCppReleasesManager {
 
     async refreshLlamaCppReleases() {
         await this.loadLlamaCppReleases();
+        this.updateLatestInstalledBuildDisplay();
     }
 
     renderLlamaCppReleases(releases, installedVersions = []) {
@@ -716,6 +725,7 @@ class LlamaCppReleasesManager {
             // Re-render with cached releases and newly fetched installed versions
             this.getInvoke()('list_llamacpp_versions').then(installed => {
                 this.renderLlamaCppReleases(this.lastReleases, installed);
+                this.updateLatestInstalledBuildDisplay();
             });
         }
     }
@@ -773,5 +783,62 @@ class LlamaCppReleasesManager {
         if (!commitInfo) return null;
         
         return commitInfo.message;
+    }
+    
+    // Extract version number from name
+    extractVersionNumber(name) {
+        const match = String(name).match(/(\d+)/);
+        return match ? parseInt(match[1], 10) : -Infinity;
+    }
+    
+    // Get the latest installed build
+    async updateLatestInstalledBuildDisplay() {
+        try {
+            const invoke = this.getInvoke();
+            if (!invoke) throw new Error('Tauri API not available');
+            
+            const versions = await invoke('list_llamacpp_versions');
+            
+            if (!Array.isArray(versions) || versions.length === 0) {
+                const latestBuildElement = document.getElementById('latest-installed-build');
+                if (latestBuildElement) {
+                    latestBuildElement.textContent = 'No builds installed';
+                    latestBuildElement.title = 'No builds installed';
+                }
+                return;
+            }
+            
+            // Group versions by base version (ignoring backend suffix)
+            const versionGroups = {};
+            versions.forEach(v => {
+                // Handle both new nested format (b7779-cuda) and old flat format
+                const baseName = v.name.includes('-') ? v.name.split('-')[0] : v.name;
+                if (!versionGroups[baseName]) {
+                    versionGroups[baseName] = [];
+                }
+                versionGroups[baseName].push(v);
+            });
+            
+            // Sort version groups by numeric version descending
+            const sortedGroupNames = Object.keys(versionGroups).sort((a, b) =>
+                this.extractVersionNumber(b) - this.extractVersionNumber(a)
+            );
+            
+            // Get the latest build name (without backend suffix)
+            const latestBuildName = sortedGroupNames.length > 0 ? sortedGroupNames[0] : 'None';
+            
+            const latestBuildElement = document.getElementById('latest-installed-build');
+            if (latestBuildElement) {
+                latestBuildElement.textContent = `Latest installed: ${latestBuildName}`;
+                latestBuildElement.title = `Latest installed build: ${latestBuildName}`;
+            }
+        } catch (error) {
+            console.error('Failed to update latest installed build display:', error);
+            const latestBuildElement = document.getElementById('latest-installed-build');
+            if (latestBuildElement) {
+                latestBuildElement.textContent = 'Error loading build';
+                latestBuildElement.title = 'Error loading build information';
+            }
+        }
     }
 }

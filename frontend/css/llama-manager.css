@@ -24,6 +24,59 @@
 .llamacpp-manager-controls {
 	display: flex;
 	align-items: center;
+	gap: 12px;
+}
+
+.llamacpp-top-tabs {
+	display: flex;
+	gap: 8px;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--theme-border);
+	background: var(--theme-surface);
+}
+
+.llamacpp-top-tabs .top-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	background: var(--theme-surface);
+	color: var(--theme-text-muted);
+	border: 1px solid var(--theme-border);
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+	transition: all 0.2s ease;
+}
+
+.llamacpp-top-tabs .top-tab:hover {
+	background: var(--theme-surface-elevated);
+	color: var(--theme-text);
+	border-color: var(--theme-primary);
+}
+
+.llamacpp-top-tabs .top-tab.active {
+	background: var(--theme-primary);
+	color: #fff;
+	border-color: var(--theme-primary);
+}
+
+.latest-installed-build {
+    display: inline-block;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--theme-text-muted);
+    opacity: 0.7;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: auto; /* Push to the right */
+    max-width: 200px;
 }
 
 .llamacpp-refresh {
