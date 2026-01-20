@@ -21,7 +21,7 @@ class DesktopManager {
     init() {
         // Update system stats every 2 seconds
         this.updateSystemStats();
-        setInterval(() => this.updateSystemStats(), 2000);
+        setInterval(() => this.updateSystemStats(), 1000);
 
         // Set up system monitor icon click event
         this.setupSystemMonitorIcon();
