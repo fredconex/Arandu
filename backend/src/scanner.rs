@@ -273,16 +273,21 @@ pub async fn scan_mmproj_files(directory: &str) -> Result<Vec<String>, Box<dyn s
     }
     
     let base_path = Path::new(directory);
-    let pattern = format!("{}/**/*mmproj*.gguf", directory);
+    let pattern = format!("{}/**/*.gguf", directory);
     let entries = glob(&pattern)?;
     
     let mut files = Vec::new();
     for entry in entries {
         if let Ok(path) = entry {
-            if let Ok(rel_path) = path.strip_prefix(base_path) {
-                files.push(rel_path.to_string_lossy().to_string());
-            } else {
-                files.push(path.to_string_lossy().to_string());
+            // Check if this GGUF file has CLIP architecture
+            if let Ok(metadata) = extract_gguf_metadata(&path) {
+                if metadata.architecture.to_lowercase() == "clip" {
+                    if let Ok(rel_path) = path.strip_prefix(base_path) {
+                        files.push(rel_path.to_string_lossy().to_string());
+                    } else {
+                        files.push(path.to_string_lossy().to_string());
+                    }
+                }
             }
         }
     }
