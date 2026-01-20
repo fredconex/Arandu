@@ -5,7 +5,7 @@ use tokio::fs;
 use crate::models::*;
 use crate::AppState;
 
-const SETTINGS_FILE: &str = "launcher_settings.json";
+const SETTINGS_FILE: &str = "settings.json";
 
 pub async fn get_settings_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let mut path = dirs::home_dir()
