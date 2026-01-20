@@ -1904,7 +1904,26 @@ class DesktopManager {
                 // Open server terminal window immediately
                 // Get active llama.cpp version
                 const config = await invoke('get_config');
-                const activeVersion = config.active_executable_version || 'N/A';
+                let activeVersion = 'N/A';
+                if (config.active_executable_folder) {
+                    // Extract version and backend from path like "versions/b7779/cuda" or "versions/b7779-cuda"
+                    const pathParts = config.active_executable_folder.replace(/\\/g, '/').split('/');
+                    if (pathParts.length >= 2) {
+                        const versionPart = pathParts[pathParts.length - 2]; // Second to last part
+                        const backendPart = pathParts[pathParts.length - 1]; // Last part
+                        
+                        // Check if it's nested structure (version/backend) or flat (version-backend)
+                        if (versionPart === 'versions') {
+                            // Flat structure: versions/b7779-cuda
+                            activeVersion = backendPart;
+                        } else {
+                            // Nested structure: versions/b7779/cuda -> format as b7779-cuda
+                            activeVersion = `${versionPart}-${backendPart}`;
+                        }
+                    }
+                } else if (config.active_executable_version) {
+                    activeVersion = config.active_executable_version;
+                }
 
                 const terminal = await terminalManager.openServerTerminal(
                     result.process_id,
@@ -2035,7 +2054,26 @@ class DesktopManager {
 
                 // Get active llama.cpp version
                 const config = await invoke('get_config');
-                const activeVersion = config.active_executable_version || 'N/A';
+                let activeVersion = 'N/A';
+                if (config.active_executable_folder) {
+                    // Extract version and backend from path like "versions/b7779/cuda" or "versions/b7779-cuda"
+                    const pathParts = config.active_executable_folder.replace(/\\/g, '/').split('/');
+                    if (pathParts.length >= 2) {
+                        const versionPart = pathParts[pathParts.length - 2]; // Second to last part
+                        const backendPart = pathParts[pathParts.length - 1]; // Last part
+                        
+                        // Check if it's nested structure (version/backend) or flat (version-backend)
+                        if (versionPart === 'versions') {
+                            // Flat structure: versions/b7779-cuda
+                            activeVersion = backendPart;
+                        } else {
+                            // Nested structure: versions/b7779/cuda -> format as b7779-cuda
+                            activeVersion = `${versionPart}-${backendPart}`;
+                        }
+                    }
+                } else if (config.active_executable_version) {
+                    activeVersion = config.active_executable_version;
+                }
 
                 const terminal = await terminalManager.openServerTerminal(
                     result.process_id,

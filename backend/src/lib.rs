@@ -45,17 +45,6 @@ fn detect_backend_type(asset_name: &str) -> String {
     }
 }
 
-/// Get backend display information
-fn get_backend_info(backend_type: &str) -> (String, String) {
-    match backend_type {
-        "cuda" => ("CUDA".to_string(), "NVIDIA GPU acceleration".to_string()),
-        "vulkan" => ("Vulkan".to_string(), "Cross-platform GPU acceleration".to_string()),
-        "opencl" => ("OpenCL".to_string(), "OpenCL GPU acceleration".to_string()),
-        "metal" => ("Metal".to_string(), "Apple GPU acceleration".to_string()),
-        "cpu" => ("CPU".to_string(), "CPU-only execution".to_string()),
-        _ => ("Unknown".to_string(), "Unknown backend type".to_string()),
-    }
-}
 
 // Global application state
 #[derive(Debug)]
@@ -1241,51 +1230,98 @@ async fn list_llamacpp_versions(state: tauri::State<'_, AppState>) -> Result<Vec
     };
     let versions_dir = std::path::Path::new(&base_exec).join("versions");
     let mut out = Vec::new();
+    
     if versions_dir.exists() {
         if let Ok(read_dir) = fs::read_dir(&versions_dir) {
             for entry in read_dir.flatten() {
                 let path = entry.path();
                 if path.is_dir() {
-                    let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
+                    let version_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
+                    
+                    // Check if this is a nested structure (version/backend) or old flat structure
+                    if let Ok(backend_dir) = fs::read_dir(&path) {
+                        for backend_entry in backend_dir.flatten() {
+                            let backend_path = backend_entry.path();
+                            if backend_path.is_dir() {
+                                let backend_name = backend_path.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
+                                let server_name = if cfg!(windows) { "llama-server.exe" } else { "llama-server" };
+                                let has_server = backend_path.join(server_name).exists();
+                                let created = backend_entry.metadata().ok()
+                                    .and_then(|m| m.created().ok())
+                                    .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                                    .map(|d| d.as_secs() as i64);
+                                let path_string = backend_path.to_string_lossy().to_string();
+                                let backend_type = backend_name.clone();
+                                
+                                // Determine active by comparing full path
+                                let is_active = if let Some(active_path) = &active_path {
+                                    #[cfg(windows)]
+                                    {
+                                        let a = active_path.replace('\\', "/").trim_end_matches('/').to_lowercase();
+                                        let b = path_string.replace('\\', "/").trim_end_matches('/').to_lowercase();
+                                        a == b
+                                    }
+                                    #[cfg(not(windows))]
+                                    {
+                                        let a = active_path.trim_end_matches('/');
+                                        let b = path_string.trim_end_matches('/');
+                                        a == b
+                                    }
+                                } else { false };
+                                
+                                out.push(LlamaCppInstalledVersion { 
+                                    name: format!("{}-{}", version_name, backend_name), 
+                                    path: path_string, 
+                                    has_server, 
+                                    created, 
+                                    is_active,
+                                    backend_type: Some(backend_type),
+                                });
+                            }
+                        }
+                    }
+                    
+                    // Also check for old flat structure (backward compatibility)
                     let server_name = if cfg!(windows) { "llama-server.exe" } else { "llama-server" };
-                    let has_server = path.join(server_name).exists();
-                    let created = entry.metadata().ok()
-                        .and_then(|m| m.created().ok())
-                        .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-                        .map(|d| d.as_secs() as i64);
-                    let path_string = path.to_string_lossy().to_string();
-                    // Detect backend type from the folder name or any contained files
-                    let backend_type = detect_backend_type(&name);
-                    // Determine active by version name first, then fallback to path match
-                    let is_active = if let Some(active_ver) = &active_version {
-                        active_ver == &name
-                    } else if let Some(active_path) = &active_path {
-                        // normalize both paths for comparison (case-insensitive on Windows)
-                        #[cfg(windows)]
-                        {
-                            let a = active_path.replace('\\', "/").trim_end_matches('/').to_lowercase();
-                            let b = path_string.replace('\\', "/").trim_end_matches('/').to_lowercase();
-                            a == b
-                        }
-                        #[cfg(not(windows))]
-                        {
-                            let a = active_path.trim_end_matches('/');
-                            let b = path_string.trim_end_matches('/');
-                            a == b
-                        }
-                    } else { false };
-                    out.push(LlamaCppInstalledVersion { 
-                        name, 
-                        path: path_string, 
-                        has_server, 
-                        created, 
-                        is_active,
-                        backend_type: Some(backend_type),
-                    });
+                    if path.join(server_name).exists() {
+                        let created = entry.metadata().ok()
+                            .and_then(|m| m.created().ok())
+                            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                            .map(|d| d.as_secs() as i64);
+                        let path_string = path.to_string_lossy().to_string();
+                        let backend_type = detect_backend_type(&version_name);
+                        
+                        let is_active = if let Some(active_version) = &active_version {
+                            active_version == &version_name
+                        } else if let Some(active_path) = &active_path {
+                            #[cfg(windows)]
+                            {
+                                let a = active_path.replace('\\', "/").trim_end_matches('/').to_lowercase();
+                                let b = path_string.replace('\\', "/").trim_end_matches('/').to_lowercase();
+                                a == b
+                            }
+                            #[cfg(not(windows))]
+                            {
+                                let a = active_path.trim_end_matches('/');
+                                let b = path_string.trim_end_matches('/');
+                                a == b
+                            }
+                        } else { false };
+                        
+                        out.push(LlamaCppInstalledVersion { 
+                            name: version_name, 
+                            path: path_string, 
+                            has_server: true, 
+                            created, 
+                            is_active,
+                            backend_type: Some(backend_type),
+                        });
+                    }
                 }
             }
         }
     }
+    
     // If there is exactly one installed version and none is active, set it active automatically
     let has_active = out.iter().any(|v| v.is_active);
     if out.len() == 1 && !has_active {
@@ -1294,11 +1330,7 @@ async fn list_llamacpp_versions(state: tauri::State<'_, AppState>) -> Result<Vec
             {
                 let mut cfg = state.config.lock().await;
                 cfg.active_executable_folder = Some(only.path.clone());
-                cfg.active_executable_version = Some(std::path::Path::new(&only.path)
-                    .file_name()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("")
-                    .to_string());
+                cfg.active_executable_version = Some(only.name.clone());
             }
             // Best-effort save; if it fails, we still return the list
             if let Err(e) = save_settings(&state).await {
@@ -1340,18 +1372,34 @@ async fn delete_llamacpp_version(path: String, state: tauri::State<'_, AppState>
 
     let versions_root = Path::new(&base_exec).join("versions");
     let path_buf = Path::new(&path).to_path_buf();
+    
     // Ensure deletion target is under versions root
     if !path_buf.starts_with(&versions_root) {
         return Err("Cannot delete outside versions directory".into());
     }
+    
     if path_buf.exists() {
         fs::remove_dir_all(&path_buf).map_err(|e| format!("Failed to delete version: {}", e))?;
+        
+        // If we deleted a backend folder, check if the parent version folder is now empty
+        if let Some(parent) = path_buf.parent() {
+            if parent != versions_root && parent.exists() {
+                if let Ok(entries) = fs::read_dir(parent) {
+                    if entries.count() == 0 {
+                        // Parent version folder is empty, remove it too
+                        let _ = fs::remove_dir(parent);
+                    }
+                }
+            }
+        }
     }
+    
     // Clear active if it pointed here
     {
         let mut cfg = state.config.lock().await;
         if cfg.active_executable_folder.as_deref() == Some(&path) {
             cfg.active_executable_folder = None;
+            cfg.active_executable_version = None;
         }
     }
     save_settings(&state).await.map_err(|e| format!("Failed to save settings: {}", e))

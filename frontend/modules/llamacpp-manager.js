@@ -98,7 +98,8 @@ class LlamaCppReleasesManager {
         // Group versions by base version (ignoring backend suffix)
         const versionGroups = {};
         versions.forEach(v => {
-            const baseName = v.name.split('-')[0]; // Get base version name
+            // Handle both new nested format (b7779-cuda) and old flat format
+            const baseName = v.name.includes('-') ? v.name.split('-')[0] : v.name;
             if (!versionGroups[baseName]) {
                 versionGroups[baseName] = [];
             }
@@ -302,11 +303,8 @@ class LlamaCppReleasesManager {
             baseVersion = (name || '').replace(/\.zip$/i, '').replace(/[^A-Za-z0-9._-]/g, '_');
         }
         
-        // Create version folder name with backend suffix if not CPU
-        let versionFolder = baseVersion;
-        if (backendType !== 'cpu') {
-            versionFolder = `${baseVersion}-${backendType}`;
-        }
+        // Create nested folder structure: baseVersion/backendType
+        let versionFolder = `${baseVersion}/${backendType}`;
 
         try {
             const invoke = this.getInvoke();

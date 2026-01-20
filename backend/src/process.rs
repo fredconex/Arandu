@@ -17,37 +17,49 @@ async fn resolve_llama_server_path_with_fallback(
     use std::time::SystemTime;
 
     let exe_name = if cfg!(windows) { "llama-server.exe" } else { "llama-server" };
-    // First, build the preferred path using active version or active folder
-    let preferred = if let Some(version_name) = &global_config.active_executable_version {
-        std::path::Path::new(&global_config.executable_folder)
-            .join("versions")
-            .join(version_name)
-            .join(exe_name)
-    } else if let Some(active_path) = &global_config.active_executable_folder {
-        std::path::Path::new(active_path).join(exe_name)
-    } else {
-        std::path::Path::new(&global_config.executable_folder).join(exe_name)
-    };
-
-    if preferred.exists() {
-        return preferred;
+    
+    // First, try the preferred path using active executable folder
+    if let Some(active_path) = &global_config.active_executable_folder {
+        let preferred = std::path::Path::new(active_path).join(exe_name);
+        if preferred.exists() {
+            return preferred;
+        }
     }
-
-    // Fallback: look for the latest installed version under <exec>/versions having the server binary
+    
+    // Fallback: look for the latest installed version under <exec>/versions
     let versions_dir = std::path::Path::new(&global_config.executable_folder).join("versions");
     let mut candidates: Vec<(std::path::PathBuf, Option<SystemTime>)> = Vec::new();
+    
     if versions_dir.exists() {
         if let Ok(read_dir) = fs::read_dir(&versions_dir) {
             for entry in read_dir.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    let server_path = path.join(exe_name);
+                let version_path = entry.path();
+                if version_path.is_dir() {
+                    // Check for nested structure (version/backend/)
+                    if let Ok(backend_dir) = fs::read_dir(&version_path) {
+                        for backend_entry in backend_dir.flatten() {
+                            let backend_path = backend_entry.path();
+                            if backend_path.is_dir() {
+                                let server_path = backend_path.join(exe_name);
+                                if server_path.exists() {
+                                    let created = backend_entry
+                                        .metadata()
+                                        .ok()
+                                        .and_then(|m| m.created().ok());
+                                    candidates.push((backend_path.clone(), created));
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Also check for old flat structure (backward compatibility)
+                    let server_path = version_path.join(exe_name);
                     if server_path.exists() {
                         let created = entry
                             .metadata()
                             .ok()
                             .and_then(|m| m.created().ok());
-                        candidates.push((path.clone(), created));
+                        candidates.push((version_path.clone(), created));
                     }
                 }
             }
@@ -67,13 +79,12 @@ async fn resolve_llama_server_path_with_fallback(
         {
             let mut cfg = state.config.lock().await;
             let path_str = chosen_dir.to_string_lossy().to_string();
-            let version_name = chosen_dir
+            cfg.active_executable_folder = Some(path_str);
+            cfg.active_executable_version = Some(chosen_dir
                 .file_name()
                 .and_then(|s| s.to_str())
                 .unwrap_or("")
-                .to_string();
-            cfg.active_executable_folder = Some(path_str);
-            cfg.active_executable_version = Some(version_name);
+                .to_string());
         }
         if let Err(e) = save_settings(state).await {
             eprintln!("Warning: failed to save settings after fallback activation: {}", e);
@@ -81,7 +92,8 @@ async fn resolve_llama_server_path_with_fallback(
         return chosen_dir.join(exe_name);
     }
 
-    preferred
+    // Final fallback to the base executable folder
+    std::path::Path::new(&global_config.executable_folder).join(exe_name)
 }
 
 // Simple wrapper for child process that ensures cleanup
