@@ -346,7 +346,22 @@ class LlamaCppReleasesManager {
 
         const matchesTarget = (v) => {
             const folderName = (v?.name || (v?.path ? v.path.split(/[\\/]/).pop() : '') || '').trim();
-            return folderName.toLowerCase() === String(versionFolder).trim().toLowerCase();
+            // Check if the installed version name matches the expected versionFolder format (e.g., "b7779/cpu")
+            // Or if the base name matches the version part (for cross-checking)
+            const normalizedExpected = String(versionFolder).trim().toLowerCase();
+            const normalizedActual = folderName.toLowerCase();
+            
+            // Direct match of folder name
+            if (normalizedActual === normalizedExpected) {
+                return true;
+            }
+            
+            // Check if installed version base name matches the expected version part
+            // e.g., installed version name is "b7779-cpu" and expected folder is "b7779/cpu"
+            const installedBaseName = v.name.includes('-') ? v.name.split('-')[0] : v.name;
+            const expectedVersionPart = normalizedExpected.split('/')[0];
+            
+            return installedBaseName.toLowerCase() === expectedVersionPart;
         };
 
         const check = async () => {
@@ -572,15 +587,24 @@ class LlamaCppReleasesManager {
     }
 
     renderLlamaCppReleases(releases, installedVersions = []) {
-        const content = document.getElementById('llamacpp-manager-content');
-        if (!content) return;
+     const content = document.getElementById('llamacpp-manager-content');
+     if (!content) return;
 
-        if (releases.length === 0) {
-            content.innerHTML = '<div class="no-releases">No releases found</div>';
-            return;
-        }
+     if (releases.length === 0) {
+         content.innerHTML = '<div class="no-releases">No releases found</div>';
+         return;
+     }
 
-        const installedTags = new Set(installedVersions.map(v => v.name.toLowerCase()));
+     // Create a mapping from release tag names to installed versions
+     // Handle both formats: 'b7779-cuda' (new) and 'b7779' (old)
+     const installedByVersionTag = new Map();
+     installedVersions.forEach(v => {
+         // Extract the base version from the installed version name
+         // For 'b7779-cuda', extract 'b7779'
+         // For 'b7779', use as is
+         const baseName = v.name.includes('-') ? v.name.split('-')[0] : v.name;
+         installedByVersionTag.set(baseName.toLowerCase(), v);
+     });
 
         const isWindowsAsset = (name) => {
             const n = String(name);
@@ -599,7 +623,9 @@ class LlamaCppReleasesManager {
         const releasesHTML = releases.map(release => {
             const releaseDate = new Date(release.published_at).toLocaleDateString();
             const relativeTime = this.formatRelativeTime(release.published_at);
-            const isInstalled = installedTags.has(release.tag_name.toLowerCase());
+            // Extract the tag name without the 'v' prefix for comparison
+            const tagNameWithoutPrefix = release.tag_name.toLowerCase().replace(/^v/, '');
+            const isInstalled = installedByVersionTag.has(tagNameWithoutPrefix);
             const installedBadge = isInstalled ? '<span class="badge installed">Installed</span>' : '';
 
             // Preserve expansion state by not altering release-item class outside
@@ -724,6 +750,8 @@ class LlamaCppReleasesManager {
         if (this.lastReleases) {
             // Re-render with cached releases and newly fetched installed versions
             this.getInvoke()('list_llamacpp_versions').then(installed => {
+                // Use the same logic as loadLlamaCppReleases to get both releases and installed versions
+                // but use cached releases to avoid refetching
                 this.renderLlamaCppReleases(this.lastReleases, installed);
                 this.updateLatestInstalledBuildDisplay();
             });
