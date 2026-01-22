@@ -252,11 +252,13 @@ class TerminalManager {
                     return;
                 }
 
-                // Update scroll position tracking
-                const scrollTop = outputDiv.scrollTop;
-                const scrollHeight = outputDiv.scrollHeight;
-                const clientHeight = outputDiv.clientHeight;
-                isScrolledToBottom = (scrollTop + clientHeight >= scrollHeight - 5);
+                // Update scroll position tracking ONLY if visible
+                if (outputDiv.offsetParent !== null) {
+                    const scrollTop = outputDiv.scrollTop;
+                    const scrollHeight = outputDiv.scrollHeight;
+                    const clientHeight = outputDiv.clientHeight;
+                    isScrolledToBottom = (scrollTop + clientHeight >= scrollHeight - 5);
+                }
 
                 // Add new output lines to buffer if they exist
                 if (data.output && Array.isArray(data.output) && data.output.length > 0) {
@@ -683,6 +685,15 @@ class TerminalManager {
             chatTab?.classList.remove('active');
             terminalPanel?.classList.add('active');
             chatPanel?.classList.remove('active');
+
+            // Fix: Scroll to bottom when switching back to terminal
+            const outputDiv = document.getElementById(`server-output-${windowId}`);
+            if (outputDiv) {
+                // Use a small timeout to ensure the display: flex has taken effect
+                setTimeout(() => {
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                }, 50);
+            }
         } else {
             terminalTab?.classList.remove('active');
             chatTab?.classList.add('active');
