@@ -278,7 +278,112 @@ class DesktopManager {
         document.body.dataset.background = config.background_color || 'dark-gray';
     }
 
+    updateDockAutoHidingStatus() {
+        const maximizedWindows = document.querySelectorAll('.window.maximized:not([style*="display: none"])');
+        if (maximizedWindows.length > 0) {
+            document.body.classList.add('has-maximized-window');
+            // If we just entered maximized mode, hide the dock immediately unless hovered
+            const dock = document.querySelector('.dock');
+            if (dock && !dock.matches(':hover')) {
+                 dock.classList.remove('visible');
+            }
+        } else {
+            document.body.classList.remove('has-maximized-window');
+            // If leaving maximized mode, ensure dock is visible
+             const dock = document.querySelector('.dock');
+             if (dock) dock.classList.add('visible');
+        }
+    }
+
+    setupDockBehavior() {
+        const dock = document.querySelector('.dock');
+        if (!dock) return;
+
+        let isDockHovered = false;
+        let hideTimeout = null;
+
+        // Dock Trigger Zone Logic (for handling iframes)
+        const dockTrigger = document.getElementById('dock-trigger');
+        if (dockTrigger) {
+            dockTrigger.addEventListener('mouseenter', () => {
+                if (document.body.classList.contains('has-maximized-window')) {
+                    if (hideTimeout) {
+                        clearTimeout(hideTimeout);
+                        hideTimeout = null;
+                    }
+                    dock.classList.add('visible');
+                }
+            });
+        }
+
+        dock.addEventListener('mouseenter', () => {
+            isDockHovered = true;
+            if (hideTimeout) {
+                clearTimeout(hideTimeout);
+                hideTimeout = null;
+            }
+            dock.classList.add('visible');
+        });
+
+        dock.addEventListener('mouseleave', () => {
+            isDockHovered = false;
+            // If we leave the dock, start the hide timer if appropriate
+             if (document.body.classList.contains('has-maximized-window')) {
+                if (hideTimeout) clearTimeout(hideTimeout);
+                hideTimeout = setTimeout(() => {
+                    if (!isDockHovered && document.body.classList.contains('has-maximized-window')) {
+                         dock.classList.remove('visible');
+                    }
+                    hideTimeout = null;
+                }, 2000);
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+             // If NO maximized window, dock is always visible (handled by CSS default + class absence)
+             // We only need to manage auto-hide when 'has-maximized-window' is present.
+            if (!document.body.classList.contains('has-maximized-window')) {
+                if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                    hideTimeout = null;
+                }
+                return;
+            }
+
+            const h = window.innerHeight;
+            const w = window.innerWidth;
+            
+            // Trigger: Bottom 15px, Center 60%
+            const inTriggerZone = (e.clientY >= h - 15) && (e.clientX >= w * 0.2 && e.clientX <= w * 0.8);
+            
+            // Keep Visible: Bottom 100px or hovered
+            const inKeepAliveZone = (e.clientY >= h - 100);
+
+            if (inTriggerZone) {
+                if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                    hideTimeout = null;
+                }
+                dock.classList.add('visible');
+            } else if (dock.classList.contains('visible') && !inKeepAliveZone && !isDockHovered) {
+                if (!hideTimeout) {
+                    hideTimeout = setTimeout(() => {
+                        if (!isDockHovered && document.body.classList.contains('has-maximized-window')) {
+                            dock.classList.remove('visible');
+                        }
+                        hideTimeout = null;
+                    }, 2000);
+                }
+            } else if (inKeepAliveZone && hideTimeout) {
+                // If we moved back into keep alive zone, cancel hiding
+                clearTimeout(hideTimeout);
+                hideTimeout = null;
+            }
+        });
+    }
+
     setupEventListeners() {
+        this.setupDockBehavior();
         const themeColor = document.getElementById('theme-color');
         const backgroundColor = document.getElementById('background-color');
         const themeSyncButton = document.getElementById('theme-sync-button');
@@ -3017,6 +3122,8 @@ class DesktopManager {
 
             // Remove from session storage
             this.removeWindowFromSession(id);
+            
+            this.updateDockAutoHidingStatus();
         }
     }
 
@@ -3037,6 +3144,7 @@ class DesktopManager {
                 if (taskbarItem) {
                     taskbarItem.classList.remove('active');
                 }
+                this.updateDockAutoHidingStatus();
             }
         }
     }
@@ -3080,6 +3188,7 @@ class DesktopManager {
                 });
             }
             window.classList.toggle('maximized');
+            this.updateDockAutoHidingStatus();
         }
     }
 
@@ -3101,6 +3210,7 @@ class DesktopManager {
                         console.warn('Failed to restore window position:', e);
                     }
                 }
+                this.updateDockAutoHidingStatus();
             } else {
                 // Maximize
                 this.maximizeWindow(id);
