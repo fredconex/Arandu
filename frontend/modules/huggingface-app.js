@@ -182,7 +182,6 @@ class HuggingFaceApp {
             <div class="huggingface-search-container">
                 <div class="search-section">
                     <div class="search-header">
-                        <h3>Hugging Face Model Search</h3>
                     <div class="search-controls" style="position: relative;">
                         <div style="position: relative; flex: 1; display: flex; align-items: center;">
                             <input type="text" id="hf-search-input" class="search-input" placeholder="Search for models (e.g., llama, mistral, qwen, codellama)" autocomplete="off" style="flex: 1;">

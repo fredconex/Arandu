@@ -497,6 +497,10 @@
 	min-height: 600px;
 }
 
+.huggingface-search-window .window-content {
+	padding: 0;
+}
+
 /* Llama.cpp Manager Window */
 .llamacpp-manager-window {
 	width: 900px;
