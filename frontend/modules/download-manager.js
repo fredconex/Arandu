@@ -252,12 +252,44 @@ class DownloadManager {
     
     // Update the download manager icon state based on active downloads
     updateDownloadManagerIcon() {
-        const downloadIcon = document.getElementById('download-history-icon');
-        if (downloadIcon) {
-            if (this.hasActiveDownloads()) {
-                downloadIcon.classList.add('pulse');
-            } else {
-                downloadIcon.classList.remove('pulse');
+        const downloadIcon = document.getElementById('downloads-dock-icon');
+        if (!downloadIcon) return;
+
+        const activeDownloads = this.downloads.filter(download => 
+            download.status === 'Downloading' || 
+            download.status === 'Starting' || 
+            download.status === 'Extracting'
+        );
+
+        if (activeDownloads.length > 0) {
+            downloadIcon.classList.add('pulse');
+            
+            // Calculate overall progress
+            let totalProgress = 0;
+            activeDownloads.forEach(d => {
+                if (d.status === 'Extracting') {
+                    totalProgress += (d.extraction_progress || 0);
+                } else {
+                    totalProgress += (d.progress || 0);
+                }
+            });
+            const avgProgress = activeDownloads.length > 0 ? totalProgress / activeDownloads.length : 0;
+
+            // Update dock progress bar
+            const progressContainer = downloadIcon.querySelector('.dock-progress-container');
+            const progressBar = downloadIcon.querySelector('.dock-progress-bar');
+            
+            if (progressContainer && progressBar) {
+                progressContainer.classList.remove('hidden');
+                progressBar.style.width = `${avgProgress}%`;
+            }
+        } else {
+            downloadIcon.classList.remove('pulse');
+            
+            // Hide dock progress bar
+            const progressContainer = downloadIcon.querySelector('.dock-progress-container');
+            if (progressContainer) {
+                progressContainer.classList.add('hidden');
             }
         }
     }
@@ -267,7 +299,7 @@ class DownloadManager {
         
         // Update button active state
         if (this.desktop) {
-            this.desktop.updateTaskbarButtonState('download-history-icon', true);
+            this.desktop.updateTaskbarButtonState('downloads-dock-icon', true);
             // Update focused state for downloads dock icon
             this.desktop.updateDockFocusedState('download-history-window');
         }
@@ -305,7 +337,7 @@ class DownloadManager {
     hideDownloadManager() {
         // Update button active state
         if (this.desktop) {
-            this.desktop.updateTaskbarButtonState('download-history-icon', false);
+            this.desktop.updateTaskbarButtonState('downloads-dock-icon', false);
         }
         
         const manager = document.getElementById('download-manager');

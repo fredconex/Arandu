@@ -269,6 +269,33 @@ body.has-maximized-window .dock.visible {
 	font-size: 20px;
 }
 
+/* Dock Item Progress Bar */
+.dock-progress-container {
+    position: absolute;
+    bottom: 4px;
+    left: 6px;
+    right: 6px;
+    height: 3px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.dock-progress-container.hidden {
+    display: none;
+}
+
+.dock-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: #ffffff;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+}
+
 /* Dock tooltip */
 .dock-item::before,
 .taskbar-item::before {
@@ -675,7 +702,8 @@ body.has-maximized-window .dock.visible {
 	}
 }
 
-.download-history-icon.pulse .material-icons {
+.download-history-icon.pulse .material-icons,
+#downloads-dock-icon.pulse .material-icons {
 	animation: movingGradient 2s linear infinite;
 	background: linear-gradient(180deg, 
 		rgba(255, 255, 255, 0.1) 0%, 
