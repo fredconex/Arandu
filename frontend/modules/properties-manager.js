@@ -201,6 +201,14 @@ class PropertiesManager {
                                     ${visualizerHTML}
                                 </div>
                                 <div class="drag-hint">Drag to reorganize, Click to edit.</div>
+                                <div class="copy-args-container">
+                                    <button class="copy-args-btn" onclick="propertiesManager.copyArgumentsAsRaw()" title="Copy all arguments as raw text">
+                                        <span class="material-icons">content_copy</span>
+                                    </button>
+                                    <button class="paste-args-btn" onclick="propertiesManager.pasteArgumentsAsRaw()" title="Paste arguments from clipboard">
+                                        <span class="material-icons">content_paste</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -2109,6 +2117,69 @@ class PropertiesManager {
         
         // Refresh the settings list to update the "in use" status
         await this.refreshSettingsList();
+    }
+
+    async copyArgumentsAsRaw() {
+        const activeWindow = document.querySelector('.properties-window:not(.hidden)');
+        if (!activeWindow) return;
+
+        const textarea = activeWindow.querySelector('[data-field="custom_args"]');
+        if (!textarea) return;
+
+        const argsString = textarea.value.trim();
+        
+        if (!argsString) {
+            console.warn('No arguments to copy');
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(argsString);
+            console.log('Arguments copied to clipboard:', argsString);
+            
+            // Show a notification
+            if (this.desktop.showNotification) {
+                this.desktop.showNotification('Arguments copied to clipboard', 'success');
+            }
+        } catch (error) {
+            console.error('Error copying arguments:', error);
+            if (this.desktop.showNotification) {
+                this.desktop.showNotification('Failed to copy arguments', 'error');
+            }
+        }
+    }
+
+    async pasteArgumentsAsRaw() {
+        const activeWindow = document.querySelector('.properties-window:not(.hidden)');
+        if (!activeWindow) return;
+
+        const textarea = activeWindow.querySelector('[data-field="custom_args"]');
+        if (!textarea) return;
+
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text && text.trim()) {
+                textarea.value = text.trim();
+                
+                // Update visualizer
+                await this.regenerateVisualizer(activeWindow, text.trim());
+                
+                // Show a notification
+                if (this.desktop.showNotification) {
+                    this.desktop.showNotification('Arguments pasted from clipboard', 'success');
+                }
+            } else {
+                console.warn('Clipboard is empty or does not contain text');
+                if (this.desktop.showNotification) {
+                    this.desktop.showNotification('Clipboard is empty', 'info');
+                }
+            }
+        } catch (error) {
+            console.error('Error pasting arguments:', error);
+            if (this.desktop.showNotification) {
+                this.desktop.showNotification('Failed to paste arguments', 'error');
+            }
+        }
     }
 
     async addSettingFromMenu(settingId) {

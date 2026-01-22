@@ -414,6 +414,52 @@ select.property-input {
 	margin-top: 8px;
 }
 
+/* Copy Arguments Button */
+.copy-args-container {
+	margin-top: 12px;
+	display: flex;
+	justify-content: flex-start;
+	gap: 8px;
+}
+
+.copy-args-btn,
+.paste-args-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	background: var(--theme-surface-light);
+	border: 1px solid var(--theme-border);
+	border-radius: 6px;
+	color: var(--theme-accent);
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.copy-args-btn:hover,
+.paste-args-btn:hover {
+	background: var(--theme-hover);
+	border-color: var(--theme-accent);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.copy-args-btn:active,
+.paste-args-btn:active {
+	transform: translateY(0);
+}
+
+.copy-args-btn .material-icons,
+.paste-args-btn .material-icons {
+	font-size: 18px;
+}
+
+.copy-args-btn:hover .material-icons,
+.paste-args-btn:hover .material-icons {
+	color: var(--theme-accent);
+}
+
 .button-section {
 	display: flex;
 	align-items: center;
