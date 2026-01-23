@@ -425,7 +425,7 @@ select.property-input {
 	background: var(--theme-surface-light);
 	border: 1px solid var(--theme-border);
 	border-radius: 6px;
-	color: var(--theme-accent);
+	color: var(--theme-border);
 	cursor: pointer;
 	transition: all 0.2s ease;
 }
@@ -433,14 +433,8 @@ select.property-input {
 .copy-args-btn:hover,
 .paste-args-btn:hover {
 	background: var(--theme-hover);
-	border-color: var(--theme-accent);
-	transform: translateY(-1px);
+	border-color: var(--theme-border);
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.copy-args-btn:active,
-.paste-args-btn:active {
-	transform: translateY(0);
 }
 
 .copy-args-btn .material-icons,
@@ -448,10 +442,7 @@ select.property-input {
 	font-size: 18px;
 }
 
-.copy-args-btn:hover .material-icons,
-.paste-args-btn:hover .material-icons {
-	color: var(--theme-accent);
-}
+
 
 .button-section {
 	display: flex;
@@ -1549,7 +1540,6 @@ select.property-input {
 	background: var(--theme-surface-light);
 	border-color: var(--theme-border);
 	border-left-color: rgba(255, 255, 255, 0.2);
-	transform: translateX(2px);
 }
 
 .preset-item.selected {
