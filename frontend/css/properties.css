@@ -406,12 +406,6 @@ select.property-input {
 	display: none;
 }
 
-.drag-hint {
-	text-align: center;
-	color: var(--theme-text-muted);
-	font-size: 11px;
-	margin-top: 8px;
-}
 
 /* Copy Arguments Button */
 .copy-args-container {

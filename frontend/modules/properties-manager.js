@@ -200,7 +200,6 @@ class PropertiesManager {
                                 <div class="arguments-visualizer" id="arguments-visualizer">
                                     ${visualizerHTML}
                                 </div>
-                                <div class="drag-hint">Drag to reorganize, Click to edit.</div>
                                 <div class="copy-args-container">
                                     <button class="copy-args-btn" onclick="propertiesManager.copyArgumentsAsRaw()" title="Copy all arguments as raw text">
                                         <span class="material-icons">content_copy</span>
@@ -217,6 +216,14 @@ class PropertiesManager {
                                  <div class="custom-args-section">
                                     <textarea class="property-textarea" data-field="custom_args" placeholder="Additional custom arguments will be preserved" spellcheck="false">${config.custom_args || ''}</textarea>
                                 </div>
+                               <div class="copy-args-container">
+                                   <button class="copy-args-btn" onclick="propertiesManager.copyArgumentsAsRaw()" title="Copy all arguments as raw text">
+                                       <span class="material-icons">content_copy</span>
+                                   </button>
+                                   <button class="paste-args-btn" onclick="propertiesManager.pasteArgumentsAsRaw()" title="Paste arguments from clipboard">
+                                       <span class="material-icons">content_paste</span>
+                                   </button>
+                               </div>
                             </div>
                         </div>
                     </div>
