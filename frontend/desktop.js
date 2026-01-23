@@ -1207,7 +1207,7 @@ class DesktopManager {
             hint.style.left = `${rect.right + 10}px`;
             hint.style.top = `${rect.top}px`;
             hint.classList.remove('hidden');
-        }, 1000); // 1000ms delay (doubled from 500ms)
+        }, 500);
     }
 
     hideModelHint() {
@@ -4187,14 +4187,14 @@ class DesktopManager {
 
         // Helper to get color from gray to red
         function getBarColor(percent) {
-            // 0-60%: gray (#888), 60-100%: transition to red (#e74c3c)
+            // 0-80%: gray (#888), 80-100%: transition to red (#e74c3c)
             const start = { r: 136, g: 136, b: 136 };
             const end = { r: 231, g: 76, b: 60 };
-            if (percent <= 60) {
+            if (percent <= 80) {
                 return `rgb(${start.r},${start.g},${start.b})`;
             } else {
-                // t goes from 0 (at 60%) to 1 (at 100%)
-                const t = Math.min(Math.max(percent - 60, 0), 40) / 40;
+                // t goes from 0 (at 80%) to 1 (at 100%)
+                const t = Math.min(Math.max(percent - 80, 0), 20) / 20;
                 const r = Math.round(start.r + (end.r - start.r) * t);
                 const g = Math.round(start.g + (end.g - start.g) * t);
                 const b = Math.round(start.b + (end.b - start.b) * t);
