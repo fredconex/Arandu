@@ -252,7 +252,7 @@ class HuggingFaceApp {
             e.stopPropagation();
             const dropdown = window.querySelector('#hf-search-history-dropdown');
             if (dropdown) {
-                this.updateHfSearchHistoryDropdown();
+                this.updateHfSearchHistoryDropdown(searchInput.value);
                 if (dropdown.classList.contains('show')) {
                     dropdown.classList.remove('show');
                 } else if (typeof searchHistory !== 'undefined' && searchHistory.hasHistory()) {
@@ -267,8 +267,16 @@ class HuggingFaceApp {
         // Hide dropdown when typing
         searchInput.addEventListener('input', (e) => {
             const dropdown = window.querySelector('#hf-search-history-dropdown');
-            if (dropdown && e.target.value.trim() !== '') {
-                dropdown.classList.remove('show');
+            if (dropdown) {
+                // Update dropdown with filtered results but keep it shown if it was already shown
+                this.updateHfSearchHistoryDropdown(e.target.value);
+                
+                // Only show dropdown if there are matching results and input is not empty
+                if (e.target.value.trim() !== '' && (typeof searchHistory !== 'undefined' && searchHistory.hasHistory())) {
+                    dropdown.classList.add('show');
+                } else {
+                    dropdown.classList.remove('show');
+                }
             }
         });
 
@@ -357,7 +365,7 @@ class HuggingFaceApp {
         setTimeout(() => searchInput.focus(), 100);
     }
 
-    updateHfSearchHistoryDropdown() {
+    updateHfSearchHistoryDropdown(filterTerm = null) {
         const window = this.desktop.windows.get(this.windowId);
         if (!window) return;
 
@@ -369,10 +377,21 @@ class HuggingFaceApp {
             return;
         }
 
-        const history = searchHistory.getHistory(10); // Show last 10
+        let history = searchHistory.getHistory(30); // Show up to 30 items
+        
+        // Filter history based on the current search term if provided
+        if (filterTerm && filterTerm.trim() !== '') {
+            const lowerFilterTerm = filterTerm.toLowerCase().trim();
+            history = history.filter(term =>
+                term.toLowerCase().includes(lowerFilterTerm)
+            );
+        } else {
+            // If no filter, limit to 10 for display purposes
+            history = history.slice(0, 10);
+        }
 
         if (history.length === 0) {
-            historyList.innerHTML = '<li class="search-history-empty">No recent searches</li>';
+            historyList.innerHTML = '<li class="search-history-empty">No matching searches</li>';
             return;
         }
 

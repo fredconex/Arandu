@@ -1,6 +1,6 @@
 // Shared Search History Manager
 class SearchHistory {
-    constructor(maxHistory = 20) {
+    constructor(maxHistory = 50) {
         this.maxHistory = maxHistory;
         this.storageKey = 'Arandu-search-history';
         this.history = this.loadHistory();
