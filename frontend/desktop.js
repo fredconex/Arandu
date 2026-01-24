@@ -354,7 +354,7 @@ class DesktopManager {
             const w = window.innerWidth;
             
             // Trigger: Bottom 15px, Center 60%
-            const inTriggerZone = (e.clientY >= h - 15) && (e.clientX >= w * 0.2 && e.clientX <= w * 0.8);
+            const inTriggerZone = (e.clientY >= h ) && (e.clientX >= w * 0.2 && e.clientX <= w * 0.8);
             
             // Keep Visible: Bottom 100px or hovered
             const inKeepAliveZone = (e.clientY >= h - 100);
