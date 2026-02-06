@@ -1,12 +1,12 @@
 # Arandu
 <img width="256" height="256" alt="Icon_source" src="https://github.com/user-attachments/assets/d96ead1f-faa9-4ee5-a156-3eee750294e6" />
 
-This is an application I'm developing, the idea is to create a small system around llama.cpp tools but without need to hook with the dll files.
+This is Arandu, an app to help with Llama.cpp usage, the idea is to create a small system around llama-server without need to hook with the dll files.
 
 - [x] Model management
 - [x] HuggingFace Integration
 - [x] Llama.cpp GitHub Integration with releases management
-- [x] Llama-server terminal launching with easy arguments customization, Internal / External
+- [x] Llama-server terminal launching with easy arguments customization and presets, Internal / External
 - [x] Llama-server native chat UI integrated
 - [x] Hardware monitor
 - [x] Color themes
