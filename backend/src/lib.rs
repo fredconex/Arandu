@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tauri::{Manager, Listener};
+use tauri::{Manager, Listener, tray::TrayIconBuilder, menu::{Menu, MenuItemBuilder}};
 use tokio::sync::Mutex;
 use std::sync::Arc;
 
@@ -1083,6 +1083,23 @@ async fn check_file_exists(
 }
 
 #[tauri::command]
+async fn hide_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(main_window) = app.get_webview_window("main") {
+        main_window.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn show_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(main_window) = app.get_webview_window("main") {
+        main_window.show().map_err(|e| e.to_string())?;
+        main_window.set_focus().ok();
+    }
+    Ok(())
+}
+
+#[tauri::command]
 async fn remove_window_state(
     window_id: String,
     state: tauri::State<'_, AppState>,
@@ -1465,36 +1482,99 @@ pub fn run() {
             
             println!("Application started, process tracking enabled with kill_on_drop");
             
-            // Handle main window close event specifically
+            // Build the tray icon with menu
+            let restore = MenuItemBuilder::with_id("restore", "Restore").build(app)?;
+            let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+            
+            let tray_menu = Menu::with_items(app, &[&restore, &quit])?;
+            
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("Arandu - Click to restore")
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(move |app, event| {
+                    match event.id.as_ref() {
+                        "restore" => {
+                            if let Some(win) = app.get_webview_window("main") {
+                                win.show().ok();
+                                win.set_focus().ok();
+                            }
+                        }
+                        "quit" => {
+                            // Perform cleanup and exit
+                            let state = app.state::<AppState>();
+                            let rt = tokio::runtime::Runtime::new().unwrap();
+                            rt.block_on(async {
+                                state.cleanup_all_processes().await;
+                            });
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    use tauri::tray::{TrayIconEvent, MouseButton, MouseButtonState};
+                    
+                    match event {
+                        TrayIconEvent::Click { button, button_state, .. } => {
+                            if button == MouseButton::Left && button_state == MouseButtonState::Up {
+                                if let Some(window) = tray.app_handle().get_webview_window("main") {
+                                    let is_visible = window.is_visible().unwrap_or(false);
+                                    let is_minimized = window.is_minimized().unwrap_or(false);
+
+                                    if is_visible && !is_minimized {
+                                        let _ = window.hide();
+                                    } else {
+                                        if is_minimized {
+                                            let _ = window.unminimize();
+                                        }
+                                        let _ = window.show();
+                                        let _ = window.set_focus();
+                                    }
+                                }
+                            }
+                        }
+                        TrayIconEvent::DoubleClick { button, .. } => {
+                            if button == MouseButton::Left {
+                                if let Some(window) = tray.app_handle().get_webview_window("main") {
+                                    if window.is_minimized().unwrap_or(false) {
+                                        let _ = window.unminimize();
+                                    }
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                })
+                .build(app)?;
+            
+            // Handle main window close event - hide to tray instead
+            let app_handle = app.handle().clone();
             if let Some(main_window) = app.get_webview_window("main") {
                 let version = env!("CARGO_PKG_VERSION");
                 let title = format!("Arandu v{}", version);
                 main_window.set_title(&title).ok();
                 
-                let state_for_main_window = state.clone();
                 main_window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                        println!("Main window close button clicked, preventing default and cleaning up...");
-                        
-                        // Prevent the window from closing immediately
-                        api.prevent_close();
-                        
-                        // Check for instant exit environment variable
-                        if std::env::var("LLAMA_OS_INSTANT_EXIT").is_ok() {
-                            println!("Instant exit enabled, skipping cleanup...");
-                            std::process::exit(0);
+                    match event {
+                        tauri::WindowEvent::CloseRequested { api, .. } => {
+                            println!("Main window close button clicked, hiding to tray...");
+                            
+                            // Prevent the window from closing and hide it instead
+                            api.prevent_close();
+                            
+                            // Hide the window to tray
+                            if let Some(win) = app_handle.get_webview_window("main") {
+                                win.hide().ok();
+                            }
                         }
-                        
-                        println!("Main window close button clicked, performing fast cleanup...");
-                        state_for_main_window.force_cleanup_all_processes();
-                        println!("Fast cleanup completed, exiting...");
-                        std::process::exit(0);
+                        _ => {}
                     }
                 });
             }
-            
-            // For other windows (like terminals), just let them close normally without global cleanup
-            // This is handled by the default behavior - no special handling needed
             
             // Fallback cleanup on app before exit
             let state_for_exit = state.clone();
@@ -1558,7 +1638,9 @@ pub fn run() {
             get_app_version,
             check_file_exists,
             get_system_stats,
-            scan_mmproj_files_command
+            scan_mmproj_files_command,
+            hide_window,
+            show_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
