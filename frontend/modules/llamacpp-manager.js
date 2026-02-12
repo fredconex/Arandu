@@ -202,6 +202,7 @@ class LlamaCppReleasesManager {
         const displayNames = {
             'cpu': 'CPU',
             'cuda': 'CUDA',
+            'rocm': 'ROCm',
             'vulkan': 'Vulkan',
             'opencl': 'OpenCL',
             'metal': 'Metal'
@@ -327,6 +328,8 @@ class LlamaCppReleasesManager {
         
         if (name.includes('cuda') || name.includes('cudart')) {
             return 'cuda';
+        } else if (name.includes('rocm') || name.includes('hip')) {
+            return 'rocm';
         } else if (name.includes('vulkan')) {
             return 'vulkan';
         } else if (name.includes('opencl')) {

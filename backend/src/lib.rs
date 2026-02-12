@@ -32,13 +32,15 @@ fn detect_backend_type(asset_name: &str) -> String {
     
     if name_lower.contains("cuda") || name_lower.contains("cudart") {
         "cuda".to_string()
+    } else if name_lower.contains("rocm") || name_lower.contains("hip") {
+        "rocm".to_string()
     } else if name_lower.contains("vulkan") {
         "vulkan".to_string()
     } else if name_lower.contains("opencl") {
         "opencl".to_string()
     } else if name_lower.contains("metal") {
         "metal".to_string()
-    } else if name_lower.contains("cpu") || (!name_lower.contains("cuda") && !name_lower.contains("vulkan") && !name_lower.contains("opencl") && !name_lower.contains("metal")) {
+    } else if name_lower.contains("cpu") || (!name_lower.contains("cuda") && !name_lower.contains("vulkan") && !name_lower.contains("opencl") && !name_lower.contains("metal") && !name_lower.contains("rocm") && !name_lower.contains("hip")) {
         "cpu".to_string()
     } else {
         "unknown".to_string()
