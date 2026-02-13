@@ -36,6 +36,13 @@ jobs:
         with:
           tagName: arandu-v__VERSION__ 
           releaseName: 'Arandu v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseBody: |
+            ## Download for your platform:
+            - **Windows**: `Arandu_*_x64-setup.exe`
+            - **macOS (Intel)**: `Arandu_*_amd64.dmg`
+            - **macOS (Apple Silicon)**: `Arandu_*_aarch64.dmg`
+            - **Linux (Ubuntu/Debian)**: `Arandu_*_amd64.deb`
+            - **Linux (Fedora/RHEL)**: `Arandu-*-x86_64.rpm`
+            - **Linux (AppImage)**: `Arandu_*_amd64.AppImage`
           releaseDraft: true
           prerelease: false
