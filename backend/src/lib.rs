@@ -176,7 +176,7 @@ impl AppState {
             #[cfg(not(windows))]
             {
                 // On Unix systems, use kill -9
-                for (process_id, handle_arc) in child_processes.iter() {
+                for (_process_id, handle_arc) in child_processes.iter() {
                     if let Ok(handle_guard) = handle_arc.try_lock() {
                         if let Some(pid) = handle_guard.get_child_id() {
                             let _ = std::process::Command::new("kill")

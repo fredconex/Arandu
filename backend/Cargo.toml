@@ -27,6 +27,11 @@ strip = true # Ensures debug symbols are removed.
 [build-dependencies]
 tauri-build = { version = "2.5.5", features = [] }
 
+[features]
+default = ["nvml", "unix"]
+nvml = ["dep:nvml-wrapper"]
+unix = ["dep:nix"]
+
 [dependencies]
 tauri = { version = "2.10.2", features = ["tray-icon", "devtools"] }
 tauri-plugin-opener = "2.5.3"
@@ -51,8 +56,11 @@ md5 = "0.8"
 dirs = "6.0"
 urlencoding = "2.1"
 sysinfo = { version = "0.38.1", features = ["serde"] }
-nvml-wrapper = "0.11.0"
+nvml-wrapper = { version = "0.11.0", optional = true }
+nix = { version = "0.28", features = ["signal"], optional = true }
 zip = "7.4.0"
+tar = "0.4"
+flate2 = "1.1"
 url = "2.5.8"
 axum = "0.8.8"
 tower = "0.5.3"

@@ -54,8 +54,17 @@ class TerminalManager {
                         </div>
                         <div class="server-output" id="server-output-${windowId}"><div class="server-line server-system">Starting ${modelName}...</div><div class="server-line server-system">Process ID: ${processId}</div><div class="server-line server-system">Server will be available at: ${host}:${port}</span></div><div class="server-line server-system">Waiting for server output...</div></div>
                     </div>
-                    <div class="server-tab-panel" id="panel-chat-${windowId}" style="background: white;">
-                        <iframe src="http://${host}:${port}" frameBorder="0" style="width: 100%; height: 100%; border: none;"></iframe>
+                    <div class="server-tab-panel" id="panel-chat-${windowId}" style="background: white; position: relative;">
+                        <div id="iframe-loading-${windowId}" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; z-index: 10;">
+                            <div class="loading-spinner" style="width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <p style="margin-top: 16px; color: #666;">Waiting for server...</p>
+                        </div>
+                        <iframe id="iframe-${windowId}" src="about:blank" data-url="http://${host}:${port}" frameBorder="0" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write"></iframe>
+                        <div id="iframe-error-${windowId}" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #666;">
+                            <p>Unable to load chat interface</p>
+                            <p style="font-size: 12px;">The server may have security restrictions preventing iframe embedding</p>
+                            <a href="http://${host}:${port}" target="_blank" style="color: #007bff; margin-top: 12px;">Open in new tab</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -92,6 +101,48 @@ class TerminalManager {
             // Bring to front
             window.style.zIndex = this.desktop.windowZIndex + 1;
             this.desktop.windowZIndex += 1;
+            
+            // Set up iframe event handlers
+            setTimeout(() => {
+                const iframe = window.querySelector(`#iframe-${windowId}`);
+                const loadingEl = window.querySelector(`#iframe-loading-${windowId}`);
+                const errorEl = window.querySelector(`#iframe-error-${windowId}`);
+                const actualUrl = iframe?.dataset.url;
+                
+                if (iframe && loadingEl && errorEl && actualUrl) {
+                    // Hide loading on successful load
+                    iframe.onload = function() {
+                        loadingEl.style.display = 'none';
+                    };
+                    
+                    // Show error on failure
+                    iframe.onerror = function() {
+                        loadingEl.style.display = 'none';
+                        errorEl.style.display = 'flex';
+                    };
+                    
+                    // Function to check server health and load iframe
+                    const checkAndLoad = () => {
+                        fetch(actualUrl, { method: 'HEAD', mode: 'no-cors' })
+                            .then(() => {
+                                // Server is responding, load the iframe
+                                iframe.src = actualUrl;
+                            })
+                            .catch(() => {
+                                // Server not ready yet, try again in 1 second
+                                setTimeout(checkAndLoad, 1000);
+                            });
+                    };
+                    
+                    // Start checking server health
+                    checkAndLoad();
+                    
+                    // Also hide loading after 30 seconds as fallback
+                    setTimeout(() => {
+                        loadingEl.style.display = 'none';
+                    }, 30000);
+                }
+            }, 100);
 
             console.log('Window after visibility setup:', {
                 id: window.id,
@@ -734,13 +785,64 @@ class TerminalManager {
         // Setup iframe content
         // We use an iframe that takes up the full window content and ensure it has white background
         const content = `
-            <div style="width: 100%; height: 100%; display: flex; flex-direction: column; background: white;">
-                <iframe src="${url}" frameBorder="0" style="flex: 1; border: none; width: 100%; height: 100%;"></iframe>
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column; background: white; position: relative;">
+                <div id="iframe-loading-${windowId}" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; z-index: 10;">
+                    <div class="loading-spinner" style="width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 16px; color: #666;">Waiting for server...</p>
+                </div>
+                <iframe id="iframe-${windowId}" src="about:blank" data-url="${url}" frameBorder="0" style="flex: 1; border: none; width: 100%; height: 100%;" allow="clipboard-read; clipboard-write"></iframe>
+                <div id="iframe-error-${windowId}" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #666;">
+                    <p>Unable to load chat interface</p>
+                    <p style="font-size: 12px;">The server may have security restrictions preventing iframe embedding</p>
+                    <a href="${url}" target="_blank" style="color: #007bff; margin-top: 12px;">Open in new tab</a>
+                </div>
             </div>
         `;
 
         // Create the window with host and port in title
         this.desktop.createWindow(windowId, `Native Chat - ${modelName} (${host}:${port})`, 'browser-window', content);
+
+        // Set up event handlers after window is created
+        setTimeout(() => {
+            const iframe = document.getElementById(`iframe-${windowId}`);
+            const loadingEl = document.getElementById(`iframe-loading-${windowId}`);
+            const errorEl = document.getElementById(`iframe-error-${windowId}`);
+            const actualUrl = iframe.dataset.url;
+            
+            if (iframe && loadingEl && errorEl) {
+                // Hide loading on successful load
+                iframe.onload = function() {
+                    loadingEl.style.display = 'none';
+                };
+                
+                // Show error on failure
+                iframe.onerror = function() {
+                    loadingEl.style.display = 'none';
+                    errorEl.style.display = 'flex';
+                };
+                
+                // Function to check server health and load iframe
+                const checkAndLoad = () => {
+                    fetch(actualUrl, { method: 'HEAD', mode: 'no-cors' })
+                        .then(() => {
+                            // Server is responding, load the iframe
+                            iframe.src = actualUrl;
+                        })
+                        .catch(() => {
+                            // Server not ready yet, try again in 1 second
+                            setTimeout(checkAndLoad, 1000);
+                        });
+                };
+                
+                // Start checking server health
+                checkAndLoad();
+                
+                // Also hide loading after 30 seconds as fallback
+                setTimeout(() => {
+                    loadingEl.style.display = 'none';
+                }, 30000);
+            }
+        }, 100);
 
         // Apply some specific styles if needed (desktop.js handles basic window creation)
         const windowElement = this.desktop.windows.get(windowId);
@@ -1005,8 +1107,17 @@ class TerminalManager {
             ).join('') : '<div class="server-line">No saved output found</div>'}
                         </div>
                     </div>
-                    <div class="server-tab-panel" id="panel-chat-${windowId}" style="background: white;">
-                        <iframe src="http://${terminalData.host}:${terminalData.port}" frameBorder="0" style="width: 100%; height: 100%; border: none;"></iframe>
+                    <div class="server-tab-panel" id="panel-chat-${windowId}" style="background: white; position: relative;">
+                        <div id="iframe-loading-${windowId}" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; z-index: 10;">
+                            <div class="loading-spinner" style="width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <p style="margin-top: 16px; color: #666;">Waiting for server...</p>
+                        </div>
+                        <iframe id="iframe-${windowId}" src="about:blank" data-url="http://${terminalData.host}:${terminalData.port}" frameBorder="0" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write"></iframe>
+                        <div id="iframe-error-${windowId}" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #666;">
+                            <p>Unable to load chat interface</p>
+                            <p style="font-size: 12px;">The server may have security restrictions preventing iframe embedding</p>
+                            <a href="http://${terminalData.host}:${terminalData.port}" target="_blank" style="color: #007bff; margin-top: 12px;">Open in new tab</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1060,6 +1171,48 @@ class TerminalManager {
             const outputDiv = document.getElementById(`server-output-${windowId}`);
             if (outputDiv) {
                 outputDiv.scrollTop = outputDiv.scrollHeight;
+            }
+        }, 100);
+        
+        // Set up iframe event handlers
+        setTimeout(() => {
+            const iframe = window.querySelector(`#iframe-${windowId}`);
+            const loadingEl = window.querySelector(`#iframe-loading-${windowId}`);
+            const errorEl = window.querySelector(`#iframe-error-${windowId}`);
+            const actualUrl = iframe?.dataset.url;
+            
+            if (iframe && loadingEl && errorEl && actualUrl) {
+                // Hide loading on successful load
+                iframe.onload = function() {
+                    loadingEl.style.display = 'none';
+                };
+                
+                // Show error on failure
+                iframe.onerror = function() {
+                    loadingEl.style.display = 'none';
+                    errorEl.style.display = 'flex';
+                };
+                
+                // Function to check server health and load iframe
+                const checkAndLoad = () => {
+                    fetch(actualUrl, { method: 'HEAD', mode: 'no-cors' })
+                        .then(() => {
+                            // Server is responding, load the iframe
+                            iframe.src = actualUrl;
+                        })
+                        .catch(() => {
+                            // Server not ready yet, try again in 1 second
+                            setTimeout(checkAndLoad, 1000);
+                        });
+                };
+                
+                // Start checking server health
+                checkAndLoad();
+                
+                // Also hide loading after 30 seconds as fallback
+                setTimeout(() => {
+                    loadingEl.style.display = 'none';
+                }, 30000);
             }
         }, 100);
 

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Arandu
+Comment=Desktop UI for llama.cpp model management and server launching
+Exec=arandu
+Icon=arandu
+Terminal=false
+Type=Application
+Categories=Utility;AI;MachineLearning;
+Keywords=llama;ai;gpt;model;llm;
+StartupWMClass=arandu

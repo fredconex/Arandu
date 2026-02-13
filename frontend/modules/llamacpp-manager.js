@@ -8,7 +8,13 @@ class LlamaCppReleasesManager {
         this.initTauriAPI();
 
         // UI state
-        this.hideOtherPlatforms = true; // default ON: emphasize Windows assets
+        // Detect current platform and default to it
+        const userAgent = navigator.userAgent.toLowerCase();
+        let defaultPlatform = 'windows';
+        if (userAgent.includes('linux')) defaultPlatform = 'linux';
+        else if (userAgent.includes('mac') || userAgent.includes('darwin')) defaultPlatform = 'macos';
+        else if (userAgent.includes('win')) defaultPlatform = 'windows';
+        this.platformFilter = defaultPlatform;
         this.lastReleases = null; // cache latest fetched releases for re-rendering
     }
     
@@ -618,9 +624,12 @@ class LlamaCppReleasesManager {
         const isMacAsset = (name) => /mac|darwin|osx|apple|macos/i.test(name);
         const isLinuxAsset = (name) => /linux|ubuntu|debian|arch|fedora/i.test(name);
         const shouldShowAsset = (name) => {
-            if (!this.hideOtherPlatforms) return true;
-            // Default to Windows filter for this app
-            return isWindowsAsset(name);
+            if (this.platformFilter === 'all') return true;
+            // Filter by selected platform
+            if (this.platformFilter === 'windows') return isWindowsAsset(name);
+            if (this.platformFilter === 'macos') return isMacAsset(name);
+            if (this.platformFilter === 'linux') return isLinuxAsset(name);
+            return true;
         };
 
         const releasesHTML = releases.map(release => {
@@ -632,11 +641,28 @@ class LlamaCppReleasesManager {
             const installedBadge = isInstalled ? '<span class="badge installed">Installed</span>' : '';
 
             // Preserve expansion state by not altering release-item class outside
-            // Sort assets: preferred platform (Windows) first when filter is on; keep stable otherwise
+            // Sort assets: preferred platform first when filter is on; keep stable otherwise
             const assetsSorted = [...release.assets].sort((a, b) => {
                 const aWin = isWindowsAsset(a.name || '');
                 const bWin = isWindowsAsset(b.name || '');
-                if (this.hideOtherPlatforms && aWin !== bWin) return aWin ? -1 : 1;
+                const aMac = isMacAsset(a.name || '');
+                const bMac = isMacAsset(b.name || '');
+                const aLin = isLinuxAsset(a.name || '');
+                const bLin = isLinuxAsset(b.name || '');
+                
+                // Get matching platform for current filter
+                const getMatchScore = (asset) => {
+                    if (this.platformFilter === 'all') return 0;
+                    if (this.platformFilter === 'windows' && isWindowsAsset(asset)) return 1;
+                    if (this.platformFilter === 'macos' && isMacAsset(asset)) return 1;
+                    if (this.platformFilter === 'linux' && isLinuxAsset(asset)) return 1;
+                    return 0;
+                };
+                
+                const aScore = getMatchScore(a.name || '');
+                const bScore = getMatchScore(b.name || '');
+                if (this.platformFilter !== 'all' && aScore !== bScore) return bScore - aScore;
+                
                 return String(a.name || '').localeCompare(String(b.name || ''));
             });
 
@@ -646,7 +672,13 @@ class LlamaCppReleasesManager {
                     const warnCuda = /cudart/i.test(name);
                     const warningHTML = warnCuda ? '<span class="asset-note" style="margin-left: 8px; color: rgba(255,255,255,0.6);">Required for CUDA</span>' : '';
                     const isWin = isWindowsAsset(name);
-                    const grayClass = this.hideOtherPlatforms && !isWin ? ' dim-asset' : '';
+                    const isMac = isMacAsset(name);
+                    const isLin = isLinuxAsset(name);
+                    const isMatch = (this.platformFilter === 'all') || 
+                        (this.platformFilter === 'windows' && isWin) ||
+                        (this.platformFilter === 'macos' && isMac) ||
+                        (this.platformFilter === 'linux' && isLin);
+                    const grayClass = !isMatch ? ' dim-asset' : '';
                     return `
                         <div class="release-asset${grayClass}">
                             <div class="asset-info">
@@ -716,7 +748,7 @@ class LlamaCppReleasesManager {
             <div class="releases-header">
                 <p>Found ${releases.length} llama.cpp releases</p>
                 <button class="platform-badge" id="llamacpp-platform-badge" onclick="llamacppReleasesManager.togglePlatformFilter()" title="Toggle platform visibility">
-                    ${this.hideOtherPlatforms ? 'Windows only' : 'All platforms'}
+                    ${(this.platformFilter === 'all' ? 'All platforms' : this.platformFilter.charAt(0).toUpperCase() + this.platformFilter.slice(1))}
                 </button>
             </div>
             ${releasesHTML}
@@ -741,14 +773,25 @@ class LlamaCppReleasesManager {
     }
 
     togglePlatformFilter() {
-        this.hideOtherPlatforms = !this.hideOtherPlatforms;
+        // Cycle through platforms: windows -> linux -> macos -> all -> windows
+        const platforms = ['windows', 'linux', 'macos', 'all'];
+        const currentIndex = platforms.indexOf(this.platformFilter);
+        this.platformFilter = platforms[(currentIndex + 1) % platforms.length];
+        
+        const platformLabels = {
+            'windows': 'Windows',
+            'linux': 'Linux', 
+            'macos': 'macOS',
+            'all': 'All platforms'
+        };
+        
         const btn = document.getElementById('llamacpp-platform-toggle-ctrl');
         if (btn) {
-            btn.innerHTML = `<span class="material-icons">layers</span> ${this.hideOtherPlatforms ? 'Windows only' : 'All platforms'}`;
+            btn.innerHTML = `<span class="material-icons">layers</span> ${platformLabels[this.platformFilter]}`;
         }
         const badge = document.getElementById('llamacpp-platform-badge');
         if (badge) {
-            badge.textContent = this.hideOtherPlatforms ? 'Windows only' : 'All platforms';
+            badge.textContent = platformLabels[this.platformFilter];
         }
         if (this.lastReleases) {
             // Re-render with cached releases and newly fetched installed versions

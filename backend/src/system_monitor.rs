@@ -4,6 +4,9 @@ use sysinfo::{System};
 use std::path::Path;
 use std::fs;
 
+#[cfg(feature = "nvml")]
+use nvml_wrapper::Nvml;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemStats {
     pub cpu_usage: f32,
@@ -56,43 +59,52 @@ pub async fn get_system_stats(state: tauri::State<'_, crate::AppState>) -> Resul
 }
 
 fn get_gpu_info() -> (String, f32, f32, f32) {
-    // Try to get NVIDIA GPU info
-    match nvml_wrapper::Nvml::init() {
-        Ok(nvml) => {
-            match nvml.device_count() {
-                Ok(count) if count > 0 => {
-                    match nvml.device_by_index(0) {
-                        Ok(device) => {
-                            let name = device.name().unwrap_or_else(|_| "NVIDIA GPU".to_string());
-                            
-                            // Get GPU utilization
-                            let gpu_usage = match device.utilization_rates() {
-                                Ok(util) => util.gpu as f32,
-                                Err(_) => 0.0,
-                            };
-                            
-                            // Get GPU memory info
-                            let (gpu_memory_total_gb, gpu_memory_used_gb) = match device.memory_info() {
-                                Ok(mem_info) => {
-                                    let total = mem_info.total as f32 / (1024.0 * 1024.0 * 1024.0);
-                                    let used = mem_info.used as f32 / (1024.0 * 1024.0 * 1024.0);
-                                    (total, used)
-                                },
-                                Err(_) => (0.0, 0.0),
-                            };
-                            
-                            (name, gpu_usage, gpu_memory_total_gb, gpu_memory_used_gb)
-                        },
-                        Err(_) => ("NVIDIA GPU (info unavailable)".to_string(), 0.0, 0.0, 0.0)
-                    }
-                },
-                _ => ("No NVIDIA GPU detected".to_string(), 0.0, 0.0, 0.0)
+    #[cfg(feature = "nvml")]
+    {
+        // Try to get NVIDIA GPU info
+        match Nvml::init() {
+            Ok(nvml) => {
+                match nvml.device_count() {
+                    Ok(count) if count > 0 => {
+                        match nvml.device_by_index(0) {
+                            Ok(device) => {
+                                let name = device.name().unwrap_or_else(|_| "NVIDIA GPU".to_string());
+                                
+                                // Get GPU utilization
+                                let gpu_usage = match device.utilization_rates() {
+                                    Ok(util) => util.gpu as f32,
+                                    Err(_) => 0.0,
+                                };
+                                
+                                // Get GPU memory info
+                                let (gpu_memory_total_gb, gpu_memory_used_gb) = match device.memory_info() {
+                                    Ok(mem_info) => {
+                                        let total = mem_info.total as f32 / (1024.0 * 1024.0 * 1024.0);
+                                        let used = mem_info.used as f32 / (1024.0 * 1024.0 * 1024.0);
+                                        (total, used)
+                                    },
+                                    Err(_) => (0.0, 0.0),
+                                };
+                                
+                                return (name, gpu_usage, gpu_memory_total_gb, gpu_memory_used_gb);
+                            },
+                            Err(_) => ("NVIDIA GPU (info unavailable)".to_string(), 0.0, 0.0, 0.0)
+                        }
+                    },
+                    _ => ("No NVIDIA GPU detected".to_string(), 0.0, 0.0, 0.0)
+                }
+            },
+            Err(_) => {
+                // Fallback for non-NVIDIA GPUs or when NVML is not available
+                ("No NVIDIA GPU detected".to_string(), 0.0, 0.0, 0.0)
             }
-        },
-        Err(_) => {
-            // Fallback for non-NVIDIA GPUs or when NVML is not available
-            ("No NVIDIA GPU detected".to_string(), 0.0, 0.0, 0.0)
         }
+    }
+    
+    #[cfg(not(feature = "nvml"))]
+    {
+        // NVML not available, return no GPU
+        ("GPU monitoring not available".to_string(), 0.0, 0.0, 0.0)
     }
 }
 

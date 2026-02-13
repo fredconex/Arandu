@@ -424,8 +424,11 @@ async fn execute_download(
                         }
                     }
                 }
-        // Extract if requested and file is a zip
-        if config.auto_extract && file_name.to_lowercase().ends_with(".zip") {
+        // Extract if requested and file is a zip or tar.gz
+        let is_zip = config.auto_extract && file_name.to_lowercase().ends_with(".zip");
+        let is_tar_gz = config.auto_extract && (file_name.to_lowercase().ends_with(".tar.gz") || file_name.to_lowercase().ends_with(".tgz"));
+        
+        if is_zip || is_tar_gz {
             // Update status to extracting
             {
                 let mut download_manager = state.download_manager.lock().await;
@@ -442,16 +445,23 @@ async fn execute_download(
                 let _ = app_handle.emit("download-progress", status.clone());
             }
             
-            if let Err(e) = extract_zip(&final_path, &destination_folder, &download_id, &app_handle).await {
+            // Extract based on file type
+            let extract_result = if is_tar_gz {
+                extract_tar_gz(&final_path, &destination_folder, &download_id, &app_handle).await
+            } else {
+                extract_zip(&final_path, &destination_folder, &download_id, &app_handle).await
+            };
+            
+            if let Err(e) = extract_result {
                 // Don't fail the download, just log the extraction error
                 let mut download_manager = state.download_manager.lock().await;
                 if let Some(status) = download_manager.downloads.get_mut(&download_id) {
                     status.message = Some(format!("Downloaded but extraction failed: {}", e));
                 }
             } else {
-                // Remove the zip file after successful extraction
+                // Remove the archive file after successful extraction
                 if let Err(e) = tokio::fs::remove_file(&final_path).await {
-                    eprintln!("Warning: Failed to remove zip file after extraction: {}", e);
+                    eprintln!("Warning: Failed to remove archive file after extraction: {}", e);
                 }
             }
         }
@@ -597,6 +607,155 @@ async fn extract_zip(zip_path: &Path, destination: &str, download_id: &str, app_
             "extraction_total_files": total_files,
             "extraction_completed_files": completed_files,
             "current_extracting_file": file.name()
+        }));
+    }
+
+    Ok(())
+}
+
+/// Extract a tar.gz archive
+async fn extract_tar_gz(
+    tar_gz_path: &Path,
+    destination: &str,
+    download_id: &str,
+    app_handle: &tauri::AppHandle,
+) -> Result<(), String> {
+    use std::fs::File;
+    use flate2::read::GzDecoder;
+    use tar::Archive;
+
+    let file = File::open(tar_gz_path).map_err(|e| format!("Failed to open tar.gz file: {}", e))?;
+    let decoder = GzDecoder::new(file);
+    let mut archive = Archive::new(decoder);
+    
+    // Get total number of entries
+    let entries: Vec<_> = archive.entries()
+        .map_err(|e| format!("Failed to read tar entries: {}", e))?
+        .filter_map(|e| e.ok())
+        .collect();
+    let total_files = entries.len();
+    
+    // Re-create archive since we consumed the iterator
+    let file = File::open(tar_gz_path).map_err(|e| format!("Failed to open tar.gz file: {}", e))?;
+    let decoder = GzDecoder::new(file);
+    let mut archive = Archive::new(decoder);
+    
+    let dest_path = Path::new(destination);
+    let mut completed_files = 0usize;
+    
+    // Emit extraction start event with total file count
+    let _ = app_handle.emit("extraction-progress", serde_json::json!({
+        "download_id": download_id,
+        "extraction_progress": 0,
+        "extraction_total_files": total_files,
+        "extraction_completed_files": 0,
+        "current_extracting_file": "Starting extraction..."
+    }));
+    
+    for entry in archive.entries().map_err(|e| format!("Failed to read tar entries: {}", e))? {
+        let mut entry = entry.map_err(|e| format!("Failed to read tar entry: {}", e))?;
+        
+        let entry_path = entry.path()
+            .map_err(|e| format!("Failed to get entry path: {}", e))?
+            .into_owned();
+        
+        // Only extract files (not directories) and skip common Llama.cpp binary names we want to keep
+        let file_name = entry_path.file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("");
+        
+        // Skip the top-level directory in the archive (usually it's the versioned folder name)
+        let relative_path: std::path::PathBuf = if entry_path.components().count() > 1 {
+            entry_path.components().skip(1).collect()
+        } else {
+            entry_path.clone()
+        };
+        
+        let outpath = dest_path.join(&relative_path);
+        
+        // Create parent directories if needed
+        if let Some(parent) = outpath.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("Failed to create directory: {}", e))?;
+            }
+        }
+        
+        // Only extract binary files that are in bin/ or the root, skip test files and other non-essential files
+        let is_binary = file_name.contains("llama") || file_name.contains("server") || file_name.contains("cli");
+        let skip_patterns = ["test", "README", "LICENSE", ".txt", ".md", ".json", ".toml", ".cmake", "CMake"];
+        let should_skip = skip_patterns.iter().any(|p| file_name.contains(p)) && !is_binary;
+        
+        // Handle symlinks
+        #[cfg(unix)]
+        if entry.header().entry_type().is_symlink() {
+            let outpath = dest_path.join(&relative_path);
+            // Get the symlink target from header
+            if let Ok(Some(link_target_path)) = entry.header().link_name() {
+                let link_target = link_target_path.to_string_lossy().to_string();
+                // Remove existing file/symlink if present
+                if outpath.exists() || outpath.is_symlink() {
+                    let _ = std::fs::remove_file(&outpath);
+                }
+                let _ = std::os::unix::fs::symlink(&link_target, &outpath);
+            }
+        }
+        #[cfg(windows)]
+        if entry.header().entry_type().is_symlink() {
+            // Windows symlinks require special handling - skip for now on Windows
+            let outpath = dest_path.join(&relative_path);
+            if let Ok(Some(link_target_path)) = entry.header().link_name() {
+                let _link_target = link_target_path.to_string_lossy().to_string();
+                // On Windows, try to create a file symlink or skip
+                if outpath.exists() || outpath.is_symlink() {
+                    let _ = std::fs::remove_file(&outpath);
+                }
+                // Try using std::os::windows::fs::symlink_metadata if target exists
+                // For now, we'll skip symlink creation on Windows
+            }
+        } else if entry.header().entry_type().is_file() && !should_skip {
+            // Ensure the destination file doesn't exist before extraction
+            if outpath.exists() {
+                std::fs::remove_file(&outpath)
+                    .map_err(|e| format!("Failed to remove existing file: {}", e))?;
+            }
+            
+            entry.unpack(&outpath)
+                .map_err(|e| format!("Failed to extract file: {}", e))?;
+            
+            // Make executable if it's a llama binary
+            #[cfg(unix)]
+            if is_binary {
+                use std::os::unix::fs::PermissionsExt;
+                if let Ok(metadata) = std::fs::metadata(&outpath) {
+                    let mut perms = metadata.permissions();
+                    perms.set_mode(0o755);
+                    let _ = std::fs::set_permissions(&outpath, perms);
+                }
+            }
+            
+            // Create symlinks for shared libraries (e.g., libmtmd.so.0.0.8012 -> libmtmd.so.0)
+            #[cfg(unix)]
+            if file_name.ends_with(".so") && file_name.contains(".so.") {
+                if let Some(dot_pos) = file_name.rfind(".so.") {
+                    let base_name = &file_name[..dot_pos + 3]; // e.g., libmtmd.so.0
+                    let symlink_path = dest_path.join(base_name);
+                    if !symlink_path.exists() {
+                        let _ = std::os::unix::fs::symlink(&outpath, &symlink_path);
+                    }
+                }
+            }
+        }
+        
+        completed_files += 1;
+        let progress = ((completed_files as f64 / total_files as f64) * 100.0) as u8;
+        
+        let _ = app_handle.emit("extraction-progress", serde_json::json!({
+            "download_id": download_id,
+            "extraction_progress": progress,
+            "extraction_total_files": total_files,
+            "extraction_completed_files": completed_files,
+            "current_extracting_file": file_name
         }));
     }
 
