@@ -682,68 +682,78 @@ async fn extract_tar_gz(
         }
         
         // Only extract binary files that are in bin/ or the root, skip test files and other non-essential files
-        let is_binary = file_name.contains("llama") || file_name.contains("server") || file_name.contains("cli");
-        let skip_patterns = ["test", "README", "LICENSE", ".txt", ".md", ".json", ".toml", ".cmake", "CMake"];
-        let should_skip = skip_patterns.iter().any(|p| file_name.contains(p)) && !is_binary;
-        
-        // Handle symlinks
         #[cfg(unix)]
-        if entry.header().entry_type().is_symlink() {
-            let outpath = dest_path.join(&relative_path);
-            // Get the symlink target from header
-            if let Ok(Some(link_target_path)) = entry.header().link_name() {
-                let link_target = link_target_path.to_string_lossy().to_string();
-                // Remove existing file/symlink if present
-                if outpath.exists() || outpath.is_symlink() {
-                    let _ = std::fs::remove_file(&outpath);
-                }
-                let _ = std::os::unix::fs::symlink(&link_target, &outpath);
-            }
-        }
-        #[cfg(windows)]
-        if entry.header().entry_type().is_symlink() {
-            // Windows symlinks require special handling - skip for now on Windows
-            let outpath = dest_path.join(&relative_path);
-            if let Ok(Some(link_target_path)) = entry.header().link_name() {
-                let _link_target = link_target_path.to_string_lossy().to_string();
-                // On Windows, try to create a file symlink or skip
-                if outpath.exists() || outpath.is_symlink() {
-                    let _ = std::fs::remove_file(&outpath);
-                }
-                // Try using std::os::windows::fs::symlink_metadata if target exists
-                // For now, we'll skip symlink creation on Windows
-            }
-        } else if entry.header().entry_type().is_file() && !should_skip {
-            // Ensure the destination file doesn't exist before extraction
-            if outpath.exists() {
-                std::fs::remove_file(&outpath)
-                    .map_err(|e| format!("Failed to remove existing file: {}", e))?;
-            }
+        {
+            let is_binary = file_name.contains("llama") || file_name.contains("server") || file_name.contains("cli");
+            let skip_patterns = ["test", "README", "LICENSE", ".txt", ".md", ".json", ".toml", ".cmake", "CMake"];
+            let should_skip = skip_patterns.iter().any(|p| file_name.contains(p)) && !is_binary;
             
-            entry.unpack(&outpath)
-                .map_err(|e| format!("Failed to extract file: {}", e))?;
-            
-            // Make executable if it's a llama binary
+            // Handle symlinks
             #[cfg(unix)]
-            if is_binary {
-                use std::os::unix::fs::PermissionsExt;
-                if let Ok(metadata) = std::fs::metadata(&outpath) {
-                    let mut perms = metadata.permissions();
-                    perms.set_mode(0o755);
-                    let _ = std::fs::set_permissions(&outpath, perms);
+            if entry.header().entry_type().is_symlink() {
+                let outpath = dest_path.join(&relative_path);
+                // Get the symlink target from header
+                if let Ok(Some(link_target_path)) = entry.header().link_name() {
+                    let link_target = link_target_path.to_string_lossy().to_string();
+                    // Remove existing file/symlink if present
+                    if outpath.exists() || outpath.is_symlink() {
+                        let _ = std::fs::remove_file(&outpath);
+                    }
+                    let _ = std::os::unix::fs::symlink(&link_target, &outpath);
                 }
-            }
-            
-            // Create symlinks for shared libraries (e.g., libmtmd.so.0.0.8012 -> libmtmd.so.0)
-            #[cfg(unix)]
-            if file_name.ends_with(".so") && file_name.contains(".so.") {
-                if let Some(dot_pos) = file_name.rfind(".so.") {
-                    let base_name = &file_name[..dot_pos + 3]; // e.g., libmtmd.so.0
-                    let symlink_path = dest_path.join(base_name);
-                    if !symlink_path.exists() {
-                        let _ = std::os::unix::fs::symlink(&outpath, &symlink_path);
+            } else if entry.header().entry_type().is_file() && !should_skip {
+                // Ensure the destination file doesn't exist before extraction
+                if outpath.exists() {
+                    std::fs::remove_file(&outpath)
+                        .map_err(|e| format!("Failed to remove existing file: {}", e))?;
+                }
+                
+                entry.unpack(&outpath)
+                    .map_err(|e| format!("Failed to extract file: {}", e))?;
+                
+                // Make executable if it's a llama binary
+                if is_binary {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Ok(metadata) = std::fs::metadata(&outpath) {
+                        let mut perms = metadata.permissions();
+                        perms.set_mode(0o755);
+                        let _ = std::fs::set_permissions(&outpath, perms);
                     }
                 }
+                
+                // Create symlinks for shared libraries (e.g., libmtmd.so.0.0.8012 -> libmtmd.so.0)
+                if file_name.ends_with(".so") && file_name.contains(".so.") {
+                    if let Some(dot_pos) = file_name.rfind(".so.") {
+                        let base_name = &file_name[..dot_pos + 3]; // e.g., libmtmd.so.0
+                        let symlink_path = dest_path.join(base_name);
+                        if !symlink_path.exists() {
+                            let _ = std::os::unix::fs::symlink(&outpath, &symlink_path);
+                        }
+                    }
+                }
+            }
+        }
+        
+        #[cfg(windows)]
+        {
+            // Handle symlinks on Windows - skip for now
+            if entry.header().entry_type().is_symlink() {
+                let outpath = dest_path.join(&relative_path);
+                if let Ok(Some(link_target_path)) = entry.header().link_name() {
+                    let _link_target = link_target_path.to_string_lossy().to_string();
+                    if outpath.exists() || outpath.is_symlink() {
+                        let _ = std::fs::remove_file(&outpath);
+                    }
+                }
+            } else if entry.header().entry_type().is_file() {
+                // Extract files on Windows (no filtering)
+                if outpath.exists() {
+                    std::fs::remove_file(&outpath)
+                        .map_err(|e| format!("Failed to remove existing file: {}", e))?;
+                }
+                
+                entry.unpack(&outpath)
+                    .map_err(|e| format!("Failed to extract file: {}", e))?;
             }
         }
         
