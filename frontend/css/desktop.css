@@ -900,7 +900,7 @@ body.has-maximized-window .dock.visible {
 	border: 1px solid var(--theme-border);
 	border-radius: 6px;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-	z-index: 10000;
+	z-index: 10001;
 	min-width: 180px;
 	padding: 4px 0;
 	backdrop-filter: blur(10px);
@@ -1029,13 +1029,43 @@ body.has-maximized-window .dock.visible {
 	border-radius: 8px;
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 	z-index: 1500;
-	min-width: 320px;
-	max-width: 400px;
+	width: 420px;
 	max-height: 500px;
 	backdrop-filter: blur(10px);
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
+}
+
+.architecture-models-list::before {
+	content: '';
+	position: absolute;
+	left: -10px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 10px;
+	height: 2px;
+	background: var(--theme-primary);
+	box-shadow: 0 0 8px var(--theme-glow);
+}
+
+.desktop-icon.architecture-icon.list-active {
+	background: var(--theme-bg-strong);
+	border: 1px solid var(--theme-primary);
+	box-shadow: 0 0 10px var(--theme-glow);
+	position: relative;
+}
+
+.desktop-icon.architecture-icon.list-active::after {
+	content: '';
+	position: absolute;
+	right: -10px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 10px;
+	height: 2px;
+	background: var(--theme-primary);
+	box-shadow: 0 0 8px var(--theme-glow);
 }
 
 .arch-list-header {
@@ -1151,6 +1181,25 @@ body.has-maximized-window .dock.visible {
 	justify-content: center;
 	flex-shrink: 0;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	position: relative;
+}
+
+.custom-args-indicator-small {
+	position: absolute;
+	bottom: 0;
+	right: 0;
+	width: 0;
+	height: 0;
+	border-left: 10px solid transparent;
+	border-bottom: 10px solid white;
+	opacity: 0.8;
+	z-index: 10;
+	transition: opacity 0.2s ease;
+	border-bottom-right-radius: 6px;
+}
+
+.arch-model-item:hover .custom-args-indicator-small {
+	opacity: 1;
 }
 
 .model-icon-small {

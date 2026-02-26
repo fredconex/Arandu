@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/fonts.css">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/search-history.css">
+    <link rel="stylesheet" href="css/search-folder.css">
     <!-- Dock Trigger Zone (for handling iframes) -->
     <div id="dock-trigger"></div>
 
@@ -277,6 +278,35 @@
                         </a>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results Folder View -->
+    <div class="search-folder-view hidden" id="search-folder-view">
+        <div class="search-folder-overlay"></div>
+        <div class="search-folder-content">
+            <div class="search-folder-header">
+                <button class="search-folder-back" id="search-folder-back">
+                    <span class="material-icons">arrow_back</span>
+                    <span>Back</span>
+                </button>
+                <div class="search-folder-info">
+                    <div class="search-folder-title-row">
+                        <h2 class="search-folder-title" id="search-folder-title">Search Results</h2>
+                        <p class="search-folder-stats" id="search-folder-stats">0 models • 0 GB</p>
+                    </div>
+                    <div class="search-folder-filter">
+                        <input type="text" class="search-folder-input" id="search-folder-input" placeholder="Filter models..." autocomplete="off">
+                        <span class="material-icons search-folder-icon">search</span>
+                        <button class="search-folder-clear" id="search-folder-clear" title="Clear filter">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="search-folder-grid" id="search-folder-grid">
+                <!-- Model cards will be populated here -->
             </div>
         </div>
     </div>

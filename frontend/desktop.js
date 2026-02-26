@@ -388,7 +388,7 @@ class DesktopManager {
     handleGlobalClickInteraction() {
         this.hideContextMenu();
         this.hideDockContextMenu();
-        this.hideArchitectureModels();
+        // Don't hide folder view here - it should only close via back button or overlay click
 
         // Collapse memory monitor
         const memoryMonitor = document.getElementById('desktop-memory-monitor');
@@ -445,6 +445,20 @@ class DesktopManager {
         }
         // Global clicks
         document.addEventListener('click', (e) => {
+            // Don't hide folder view if clicking inside it
+            const folderView = document.getElementById('search-folder-view');
+            const folderContent = folderView?.querySelector('.search-folder-content');
+            if (folderView && !folderView.classList.contains('hidden') && folderContent && folderContent.contains(e.target)) {
+                // Clicking inside folder view content - don't close anything
+                return;
+            }
+
+            // Close folder view if clicking on the overlay
+            if (folderView && !folderView.classList.contains('hidden') && e.target.classList.contains('search-folder-overlay')) {
+                this.hideSearchFolderView();
+                return;
+            }
+
             // Don't hide architecture list if clicking inside it or on an architecture icon
             const archList = document.getElementById('architecture-models-list');
             const clickedArchIcon = e.target.closest('.desktop-icon.architecture-icon');
@@ -456,7 +470,7 @@ class DesktopManager {
 
             this.hideContextMenu();
             this.hideDockContextMenu();
-            this.hideArchitectureModels();
+            // Don't hide folder view here - it should only close via back button or overlay click
 
             // Collapse memory monitor when clicking outside
             const memoryMonitor = document.getElementById('desktop-memory-monitor');
@@ -523,12 +537,9 @@ class DesktopManager {
         if (iconsContainer) {
             iconsContainer.addEventListener('click', (e) => {
                 const icon = e.target.closest('.desktop-icon');
-                console.log('Icon clicked:', icon);
                 if (icon) {
-                    console.log('Icon has architecture-icon class:', icon.classList.contains('architecture-icon'));
                     if (icon.classList.contains('architecture-icon')) {
                         // Toggle architecture list
-                        console.log('Calling toggleArchitectureModels');
                         this.toggleArchitectureModels(icon);
                     } else {
                         this.selectIcon(icon);
@@ -847,6 +858,38 @@ class DesktopManager {
             });
         }
 
+        // Search folder back button
+        const searchFolderBack = document.getElementById('search-folder-back');
+        if (searchFolderBack) {
+            searchFolderBack.addEventListener('click', () => {
+                this.hideSearchFolderView();
+                // Clear the search input
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+            });
+        }
+
+        // Search folder filter input
+        const searchFolderInput = document.getElementById('search-folder-input');
+        if (searchFolderInput) {
+            searchFolderInput.addEventListener('input', (e) => {
+                this.filterFolderViewModels(e.target.value);
+            });
+        }
+
+        // Search folder clear button
+        const searchFolderClear = document.getElementById('search-folder-clear');
+        if (searchFolderClear) {
+            searchFolderClear.addEventListener('click', () => {
+                if (searchFolderInput) {
+                    searchFolderInput.value = '';
+                    this.filterFolderViewModels('');
+                    searchFolderInput.focus();
+                }
+            });
+        }
+
         // Search Hugging Face button
         const searchHf = document.getElementById('search-hf');
         if (searchHf) {
@@ -960,15 +1003,8 @@ class DesktopManager {
                 <div class="context-menu-item" data-action="refresh"><span class="material-icons">refresh</span> Refresh Desktop</div>
             `;
         } else if (type === 'architecture') {
-            // Context menu for architecture icons
-            menuItems = `
-                <div class="context-menu-item" data-action="expand-architecture">
-                    <div class="menu-item-content">
-                        <span class="material-icons">unfold_more</span>
-                        <span>Show All Models</span>
-                    </div>
-                </div>
-            `;
+            // Context menu for architecture icons - removed since we now use folder view
+            menuItems = ``;
         } else { // 'icon'
             // Get presets for this model
             let presetsHTML = '';
@@ -1023,6 +1059,12 @@ class DesktopManager {
                 </div>
             `;
         }
+        
+        // Don't show menu if there are no items
+        if (!menuItems || menuItems.trim() === '') {
+            return;
+        }
+        
         contextMenu.innerHTML = menuItems;
 
         // Show the menu temporarily to get its dimensions
@@ -1288,200 +1330,132 @@ class DesktopManager {
     }
 
     toggleArchitectureModels(icon) {
-        console.log('toggleArchitectureModels called with icon:', icon);
-        const listView = document.getElementById('architecture-models-list');
-        console.log('listView element:', listView);
-        if (!listView) {
-            console.error('architecture-models-list element not found!');
-            return;
-        }
-
-        // If clicking the same icon that's already open, close it
-        if (this.currentArchIcon === icon && !listView.classList.contains('hidden')) {
-            console.log('Closing list (same icon clicked)');
-            this.hideArchitectureModels();
-            return;
-        }
-
-        // Otherwise, show the list for this icon
-        console.log('Opening list for new icon');
-        this.currentArchIcon = icon;
-        this.showArchitectureModels(icon);
+        const arch = icon.dataset.architecture;
+        if (!arch) return;
+        
+        // Show the folder view for this architecture
+        this.showArchitectureFolderView(arch);
     }
 
-    showArchitectureModels(icon) {
-        console.log('showArchitectureModels called');
-        const arch = icon.dataset.architecture;
-        console.log('Architecture:', arch);
-        let models = [...(this.modelsByArchitecture[arch] || [])]; // Create a copy to avoid mutating original
-        console.log('Models for this architecture:', models);
+    async showArchitectureFolderView(arch) {
+        const folderView = document.getElementById('search-folder-view');
+        const folderGrid = document.getElementById('search-folder-grid');
+        const folderTitle = document.getElementById('search-folder-title');
+        const folderStats = document.getElementById('search-folder-stats');
+        const searchFolderInput = document.getElementById('search-folder-input');
         
-        // Sort models using the current sort type and direction
-        if (this.sortType) {
-            models.sort((a, b) => {
-                let aValue, bValue;
-                let comparison = 0;
+        if (!folderView || !folderGrid) return;
 
-                switch (this.sortType) {
-                    case 'date':
-                        aValue = a.date;
-                        bValue = b.date;
-                        comparison = parseFloat(aValue) - parseFloat(bValue);
-                        break;
-                    case 'size':
-                        aValue = a.size_gb;
-                        bValue = b.size_gb;
-                        comparison = parseFloat(aValue) - parseFloat(bValue);
-                        break;
-                    case 'quantization':
-                        const getQuantValue = (s) => {
-                            if (s === 'Unknown') return -1;
-                            const match = s.match(/(\d+)/);
-                            return match ? parseInt(match[0], 10) : -1;
-                        };
-                        comparison = getQuantValue(a.quantization) - getQuantValue(b.quantization);
-                        break;
-                    case 'name':
-                    case 'architecture':
-                    default:
-                        aValue = a.name;
-                        bValue = b.name;
-                        comparison = aValue.localeCompare(bValue, undefined, { numeric: true });
-                        break;
-                }
-                return this.sortDirection === 'asc' ? comparison : -comparison;
-            });
-        } else {
-            // Default to name sorting if no sort type is set
-            models.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-        }
-        
-        const listView = document.getElementById('architecture-models-list');
-        if (!listView) {
-            console.error('listView not found in showArchitectureModels');
-            return;
+        // Clear the filter input
+        if (searchFolderInput) {
+            searchFolderInput.value = '';
         }
 
+        // Get models for this architecture
+        const models = this.modelsByArchitecture[arch] || [];
         const modelCount = models.length;
         let totalSize = 0;
         models.forEach(m => totalSize += parseFloat(m.size_gb) || 0);
 
-        let modelsHTML = models.map(model => {
-            const sizeGB = parseFloat(model.size_gb).toFixed(2);
-            return `
-                <div class="arch-model-item" data-path="${model.path}" data-name="${model.name.toLowerCase()}">
-                    <div class="arch-model-icon">
-                        <img src="./assets/gguf.png" class="model-icon-small">
-                    </div>
-                    <div class="arch-model-info">
-                        <div class="arch-model-name">${model.name.replace('.gguf', '')}</div>
-                        <div class="arch-model-details">
-                            <span class="arch-model-quant">${model.quantization}</span>
-                            <span class="arch-model-size">${sizeGB} GB</span>
+        // Update header
+        folderTitle.textContent = arch;
+        folderStats.textContent = `${modelCount} model${modelCount !== 1 ? 's' : ''} • ${totalSize.toFixed(2)} GB`;
+
+        // Build model cards
+        const buildCardsHTML = async () => {
+            const cardsHTMLPromises = models.map(async (model) => {
+                const sizeGB = parseFloat(model.size_gb).toFixed(2);
+                let hasCustomArgs = false;
+                try {
+                    hasCustomArgs = await this.hasCustomArguments(model.path);
+                } catch (error) {
+                    console.error(`Error checking custom args for ${model.name}:`, error);
+                }
+                const customArgsIndicator = hasCustomArgs ? '<div class="model-card-custom-indicator"></div>' : '';
+                
+                return `
+                    <div class="model-card" data-path="${model.path}" data-name="${model.name}" 
+                         data-size="${model.size_gb}" data-architecture="${model.architecture}" 
+                         data-quantization="${model.quantization}" data-date="${model.date}">
+                        <div class="model-card-icon">
+                            <img src="./assets/gguf.png">
+                            ${customArgsIndicator}
+                        </div>
+                        <div class="model-card-info">
+                            <h3 class="model-card-name">${model.name.replace('.gguf', '')}</h3>
+                            <div class="model-card-details">
+                                <span class="model-card-detail-item">
+                                    <span class="model-card-detail-label">Quant:</span>
+                                    <span class="model-card-detail-value">${model.quantization}</span>
+                                </span>
+                                <span class="model-card-detail-separator">•</span>
+                                <span class="model-card-detail-item">
+                                    <span class="model-card-detail-value">${sizeGB} GB</span>
+                                </span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-        }).join('');
-
-        console.log('Setting innerHTML');
-        listView.innerHTML = `
-            <div class="arch-list-header">
-                <strong>${arch}</strong>
-                <span class="arch-list-stats">${modelCount} models • ${totalSize.toFixed(2)} GB</span>
-            </div>
-            <div class="arch-list-divider"></div>
-            <div class="arch-search-container">
-                <input type="text" class="arch-search-input" placeholder="Filter models..." autocomplete="off">
-                <span class="material-icons arch-search-icon">search</span>
-            </div>
-            <div class="arch-models-container">
-                ${modelsHTML}
-            </div>
-        `;
-
-        const rect = icon.getBoundingClientRect();
-        listView.style.left = `${rect.right + 10}px`;
-        listView.style.top = `${rect.top}px`;
-        console.log('Removing hidden class');
-        listView.classList.remove('hidden');
-        console.log('List view classes after remove:', listView.className);
-        console.log('List view display:', window.getComputedStyle(listView).display);
-
-        // Setup search filter
-        const searchInput = listView.querySelector('.arch-search-input');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                const filterText = e.target.value.toLowerCase().trim();
-                const items = listView.querySelectorAll('.arch-model-item');
-                
-                items.forEach(item => {
-                    const modelName = item.dataset.name;
-                    if (filterText === '' || modelName.includes(filterText)) {
-                        item.style.display = 'flex';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
+                `;
             });
+            
+            const cardsHTMLArray = await Promise.all(cardsHTMLPromises);
+            return cardsHTMLArray.join('');
+        };
 
-            // Prevent search input from closing the list
-            searchInput.addEventListener('click', (e) => {
+        // Build and set the HTML
+        const cardsHTML = await buildCardsHTML();
+        folderGrid.innerHTML = cardsHTML || '<div style="grid-column: 1/-1; padding: 60px; text-align: center; color: rgba(255,255,255,0.5); font-size: 18px;">No models found</div>';
+
+        // Add click handlers for model cards
+        folderGrid.querySelectorAll('.model-card').forEach(card => {
+            card.addEventListener('click', async (e) => {
                 e.stopPropagation();
-            });
-        }
-
-        // Add click handlers for model items
-        listView.querySelectorAll('.arch-model-item').forEach(item => {
-            item.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                const modelPath = item.dataset.path;
-                const model = models.find(m => m.path === modelPath);
-                if (model) {
-                    // Create a temporary icon element for launching
-                    const tempIcon = document.createElement('div');
-                    tempIcon.dataset.path = model.path;
-                    tempIcon.dataset.name = model.name;
-                    await this.launchModel(tempIcon);
-                    this.hideArchitectureModels();
-                }
+                const tempIcon = document.createElement('div');
+                tempIcon.dataset.path = card.dataset.path;
+                tempIcon.dataset.name = card.dataset.name;
+                await this.launchModel(tempIcon);
             });
 
-            // Add right-click context menu for model items
-            item.addEventListener('contextmenu', async (e) => {
+            // Add right-click context menu
+            card.addEventListener('contextmenu', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const modelPath = item.dataset.path;
-                const model = models.find(m => m.path === modelPath);
-                if (model) {
-                    // Create a temporary icon element for context menu
-                    const tempIcon = document.createElement('div');
-                    tempIcon.dataset.path = model.path;
-                    tempIcon.dataset.name = model.name;
-                    tempIcon.dataset.size = model.size_gb;
-                    tempIcon.dataset.architecture = model.architecture;
-                    tempIcon.dataset.quantization = model.quantization;
-                    tempIcon.dataset.date = model.date;
-                    
-                    this.selectedIcon = tempIcon;
-                    await this.showContextMenu(e.clientX, e.clientY, 'icon');
-                }
+                const tempIcon = document.createElement('div');
+                tempIcon.dataset.path = card.dataset.path;
+                tempIcon.dataset.name = card.dataset.name;
+                tempIcon.dataset.size = card.dataset.size;
+                tempIcon.dataset.architecture = card.dataset.architecture;
+                tempIcon.dataset.quantization = card.dataset.quantization;
+                tempIcon.dataset.date = card.dataset.date;
+                
+                this.selectedIcon = tempIcon;
+                await this.showContextMenu(e.clientX, e.clientY, 'icon');
             });
         });
+
+        // Show the folder view
+        folderView.classList.remove('hidden');
+
+        // Focus the filter input
+        if (searchFolderInput) {
+            setTimeout(() => searchFolderInput.focus(), 300);
+        }
+
+        console.log(`Architecture folder view: ${modelCount} models in ${arch}`);
+    }
+
+    showArchitectureModels(icon) {
+        // Deprecated - now using showArchitectureFolderView
+        const arch = icon.dataset.architecture;
+        if (arch) {
+            this.showArchitectureFolderView(arch);
+        }
     }
 
     hideArchitectureModels() {
-        if (this.hintTimer) {
-            clearTimeout(this.hintTimer);
-        }
-        if (this.hideArchTimer) {
-            clearTimeout(this.hideArchTimer);
-        }
-        this.currentArchIcon = null;
-        const listView = document.getElementById('architecture-models-list');
-        if (listView) {
-            listView.classList.add('hidden');
-        }
+        // Deprecated - this used to hide the old popup list view
+        // Now we don't automatically hide the folder view since it's a full-screen experience
+        // The folder view should only be closed by the back button or clicking the overlay
     }
 
     toggleStartMenu() {
@@ -1584,26 +1558,202 @@ class DesktopManager {
     }
 
     filterDesktopIcons(searchTerm) {
-        const desktopIcons = document.getElementById('desktop-icons');
-        if (!desktopIcons) return;
-
-        const icons = desktopIcons.querySelectorAll('.desktop-icon');
         const term = searchTerm.toLowerCase().trim();
-
-        // Extract only alphanumeric characters from the search term
         const cleanTerm = term.replace(/[^a-z0-9]/g, '');
 
-        icons.forEach(icon => {
-            const iconName = icon.dataset.name.toLowerCase();
-            // Extract only alphanumeric characters from the icon name
-            const cleanIconName = iconName.replace(/[^a-z0-9]/g, '');
+        if (cleanTerm === '') {
+            // No search term - hide search folder view and show desktop
+            this.hideSearchFolderView();
+        } else {
+            // Search term present - show search folder view
+            this.showSearchFolderView(cleanTerm);
+        }
+    }
+
+    async showSearchFolderView(cleanTerm) {
+        const folderView = document.getElementById('search-folder-view');
+        const folderGrid = document.getElementById('search-folder-grid');
+        const folderTitle = document.getElementById('search-folder-title');
+        const folderStats = document.getElementById('search-folder-stats');
+        const searchFolderInput = document.getElementById('search-folder-input');
+        
+        if (!folderView || !folderGrid) return;
+
+        // Clear the filter input
+        if (searchFolderInput) {
+            searchFolderInput.value = '';
+        }
+
+        // Collect all matching models
+        const matchingModels = [];
+        Object.keys(this.modelsByArchitecture).forEach(arch => {
+            const archModels = this.modelsByArchitecture[arch];
+            archModels.forEach(model => {
+                const modelName = (model.name || '').toLowerCase();
+                const cleanModelName = modelName.replace(/[^a-z0-9]/g, '');
+                if (cleanModelName.includes(cleanTerm)) {
+                    matchingModels.push(model);
+                }
+            });
+        });
+
+        const modelCount = matchingModels.length;
+        let totalSize = 0;
+        matchingModels.forEach(m => totalSize += parseFloat(m.size_gb) || 0);
+
+        // Update header
+        folderTitle.textContent = 'Search Results';
+        folderStats.textContent = `${modelCount} model${modelCount !== 1 ? 's' : ''} • ${totalSize.toFixed(2)} GB`;
+
+        // Build model cards
+        const buildCardsHTML = async () => {
+            const cardsHTMLPromises = matchingModels.map(async (model) => {
+                const sizeGB = parseFloat(model.size_gb).toFixed(2);
+                let hasCustomArgs = false;
+                try {
+                    hasCustomArgs = await this.hasCustomArguments(model.path);
+                } catch (error) {
+                    console.error(`Error checking custom args for ${model.name}:`, error);
+                }
+                const customArgsIndicator = hasCustomArgs ? '<div class="model-card-custom-indicator"></div>' : '';
+                
+                return `
+                    <div class="model-card" data-path="${model.path}" data-name="${model.name}" 
+                         data-size="${model.size_gb}" data-architecture="${model.architecture}" 
+                         data-quantization="${model.quantization}" data-date="${model.date}">
+                        <div class="model-card-icon">
+                            <img src="./assets/gguf.png">
+                            ${customArgsIndicator}
+                        </div>
+                        <div class="model-card-info">
+                            <h3 class="model-card-name">${model.name.replace('.gguf', '')}</h3>
+                            <div class="model-card-details">
+                                <span class="model-card-detail-item">
+                                    <span class="model-card-detail-label">Quant:</span>
+                                    <span class="model-card-detail-value">${model.quantization}</span>
+                                </span>
+                                <span class="model-card-detail-separator">•</span>
+                                <span class="model-card-detail-item">
+                                    <span class="model-card-detail-value">${sizeGB} GB</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
             
-            if (cleanTerm === '' || cleanIconName.includes(cleanTerm)) {
-                icon.style.display = 'flex';
+            const cardsHTMLArray = await Promise.all(cardsHTMLPromises);
+            return cardsHTMLArray.join('');
+        };
+
+        // Build and set the HTML
+        const cardsHTML = await buildCardsHTML();
+        folderGrid.innerHTML = cardsHTML || '<div style="padding: 60px; text-align: center; color: rgba(255,255,255,0.5); font-size: 18px;">No models found</div>';
+
+        // Add click handlers for model cards
+        folderGrid.querySelectorAll('.model-card').forEach(card => {
+            card.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const tempIcon = document.createElement('div');
+                tempIcon.dataset.path = card.dataset.path;
+                tempIcon.dataset.name = card.dataset.name;
+                await this.launchModel(tempIcon);
+            });
+
+            // Add right-click context menu
+            card.addEventListener('contextmenu', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const tempIcon = document.createElement('div');
+                tempIcon.dataset.path = card.dataset.path;
+                tempIcon.dataset.name = card.dataset.name;
+                tempIcon.dataset.size = card.dataset.size;
+                tempIcon.dataset.architecture = card.dataset.architecture;
+                tempIcon.dataset.quantization = card.dataset.quantization;
+                tempIcon.dataset.date = card.dataset.date;
+                
+                this.selectedIcon = tempIcon;
+                await this.showContextMenu(e.clientX, e.clientY, 'icon');
+            });
+        });
+
+        // Show the folder view
+        folderView.classList.remove('hidden');
+
+        // Focus the filter input
+        if (searchFolderInput) {
+            setTimeout(() => searchFolderInput.focus(), 300);
+        }
+
+        console.log(`Search folder view: ${modelCount} models found`);
+    }
+
+    hideSearchFolderView() {
+        const folderView = document.getElementById('search-folder-view');
+        const searchFolderInput = document.getElementById('search-folder-input');
+        
+        if (folderView) {
+            folderView.classList.add('hidden');
+        }
+        
+        // Clear the filter input
+        if (searchFolderInput) {
+            searchFolderInput.value = '';
+        }
+    }
+
+    filterFolderViewModels(filterTerm) {
+        const folderGrid = document.getElementById('search-folder-grid');
+        if (!folderGrid) return;
+
+        const cards = folderGrid.querySelectorAll('.model-card');
+        const term = filterTerm.toLowerCase().trim();
+        const cleanTerm = term.replace(/[^a-z0-9]/g, '');
+
+        cards.forEach(card => {
+            const modelName = (card.dataset.name || '').toLowerCase();
+            const cleanModelName = modelName.replace(/[^a-z0-9]/g, '');
+            
+            if (cleanTerm === '' || cleanModelName.includes(cleanTerm)) {
+                card.style.display = 'flex';
             } else {
-                icon.style.display = 'none';
+                card.style.display = 'none';
             }
         });
+    }
+
+    displayArchitectureFolders() {
+        const desktopIcons = document.getElementById('desktop-icons');
+        if (!desktopIcons || !this.modelsByArchitecture) return;
+
+        // Create architecture folder icons
+        Object.keys(this.modelsByArchitecture).sort().forEach(arch => {
+            const archModels = this.modelsByArchitecture[arch];
+            const archElement = document.createElement('div');
+            archElement.className = 'desktop-icon architecture-icon';
+            archElement.setAttribute('data-architecture', arch);
+            archElement.setAttribute('data-model-count', archModels.length);
+            archElement.setAttribute('data-name', arch);
+
+            archElement.innerHTML = `
+                <div class="icon-image">
+                    <span class="material-icons">folder</span>
+                    <div class="architecture-label">${arch.substring(0, 7)}</div>
+                    <div class="model-count-badge">${archModels.length}</div>
+                </div>
+                <div class="icon-label">${arch}</div>
+            `;
+
+            desktopIcons.appendChild(archElement);
+        });
+
+        // Re-setup event listeners
+        this.setupIconDragging();
+    }
+
+    displaySearchResults(cleanTerm) {
+        // Deprecated - now using showSearchFolderView
+        console.log('displaySearchResults is deprecated, use showSearchFolderView instead');
     }
 
     hideStartMenu() {
@@ -3773,28 +3923,11 @@ class DesktopManager {
             modelsByArch[arch].push(model);
         });
 
-        // Create architecture icons
-        Object.keys(modelsByArch).sort().forEach(arch => {
-            const archModels = modelsByArch[arch];
-            const archElement = document.createElement('div');
-            archElement.className = 'desktop-icon architecture-icon';
-            archElement.setAttribute('data-architecture', arch);
-            archElement.setAttribute('data-model-count', archModels.length);
-
-            archElement.innerHTML = `
-                <div class="icon-image">
-                    <span class="material-icons">folder</span>
-                    <div class="architecture-label">${arch.substring(0, 7)}</div>
-                    <div class="model-count-badge">${archModels.length}</div>
-                </div>
-                <div class="icon-label">${arch}</div>
-            `;
-
-            desktopIcons.appendChild(archElement);
-        });
-
-        // Store models data for hover functionality
+        // Store models data for search functionality
         this.modelsByArchitecture = modelsByArch;
+
+        // Display architecture folders
+        this.displayArchitectureFolders();
 
         // Add fade-in animation to all new icons simultaneously if requested
         if (useAnimation) {
@@ -3811,9 +3944,6 @@ class DesktopManager {
                 icon.classList.add('fade-in');
             });
         }
-
-        // Re-setup event listeners for new icons
-        this.setupIconDragging();
 
         // Apply saved sort if any
         console.log('Checking saved sort state:', { sortType: this.sortType, sortDirection: this.sortDirection });
@@ -3857,16 +3987,17 @@ class DesktopManager {
     async hasCustomArguments(modelPath) {
         try {
             const config = await invoke('get_model_settings', { modelPath: modelPath });
-            return config && config.custom_args && config.custom_args.trim() !== '';
+            const result = !!(config && config.custom_args && config.custom_args.trim() !== '');
+            return result;
         } catch (error) {
-            console.error('Error checking custom arguments:', error);
+            console.error('Error checking custom arguments for', modelPath, ':', error);
             return false;
         }
     }
 
     // Update custom arguments indicators for all icons
     async updateCustomArgsIndicators() {
-        const icons = document.querySelectorAll('.desktop-icon');
+        const icons = document.querySelectorAll('.desktop-icon:not(.architecture-icon)');
         for (const icon of icons) {
             const modelPath = icon.dataset.path;
             if (modelPath) {
@@ -3879,6 +4010,12 @@ class DesktopManager {
     async updateSingleIconIndicator(icon, modelPath) {
         const hasCustomArgs = await this.hasCustomArguments(modelPath);
         const iconImage = icon.querySelector('.icon-image');
+        
+        if (!iconImage) {
+            console.warn('No icon-image found for icon:', icon);
+            return;
+        }
+        
         const existingIndicator = iconImage.querySelector('.custom-args-indicator');
 
         if (hasCustomArgs && !existingIndicator) {
