@@ -989,3 +989,209 @@ body.has-maximized-window .dock.visible {
 	width: 90px;
 	display: inline-block;
 }
+
+/* Architecture Icon Styles */
+.desktop-icon.architecture-icon .icon-image {
+	background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-accent) 100%);
+}
+
+.desktop-icon.architecture-icon .icon-image .material-icons {
+	font-size: 36px;
+	color: white;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	margin-top: -8px;
+}
+
+.model-count-badge {
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	background: rgba(255, 255, 255, 0.95);
+	color: var(--theme-primary);
+	font-size: 10px;
+	font-weight: bold;
+	padding: 2px 6px;
+	border-radius: 10px;
+	min-width: 18px;
+	text-align: center;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+	z-index: 10;
+}
+
+/* Architecture Models List */
+.architecture-models-list {
+	position: fixed;
+	background: var(--theme-surface);
+	border: 1px solid var(--theme-border);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+	z-index: 1500;
+	min-width: 320px;
+	max-width: 400px;
+	max-height: 500px;
+	backdrop-filter: blur(10px);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.arch-list-header {
+	padding: 12px 16px;
+	background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-accent) 100%);
+	color: white;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.arch-list-header strong {
+	font-size: 16px;
+	font-weight: 600;
+}
+
+.arch-list-stats {
+	font-size: 11px;
+	opacity: 0.9;
+}
+
+.arch-list-divider {
+	height: 1px;
+	background: var(--theme-border);
+}
+
+.arch-search-container {
+	padding: 8px 12px;
+	background: var(--theme-bg-light);
+	border-bottom: 1px solid var(--theme-border);
+	position: relative;
+}
+
+.arch-search-input {
+	width: 100%;
+	padding: 8px 32px 8px 12px;
+	background: var(--theme-surface);
+	border: 1px solid var(--theme-border);
+	border-radius: 6px;
+	color: var(--theme-text);
+	font-size: 12px;
+	outline: none;
+	transition: border-color 0.2s ease;
+}
+
+.arch-search-input:focus {
+	border-color: var(--theme-primary);
+	box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.1);
+}
+
+.arch-search-input::placeholder {
+	color: var(--theme-text-muted);
+}
+
+.arch-search-icon {
+	position: absolute;
+	right: 20px;
+	top: 50%;
+	transform: translateY(-50%);
+	font-size: 18px;
+	color: var(--theme-text-muted);
+	pointer-events: none;
+}
+
+.arch-models-container {
+	overflow-y: auto;
+	max-height: 420px;
+	padding: 8px;
+}
+
+.arch-models-container::-webkit-scrollbar {
+	width: 8px;
+}
+
+.arch-models-container::-webkit-scrollbar-track {
+	background: var(--theme-bg-light);
+	border-radius: 4px;
+}
+
+.arch-models-container::-webkit-scrollbar-thumb {
+	background: var(--theme-primary);
+	border-radius: 4px;
+}
+
+.arch-models-container::-webkit-scrollbar-thumb:hover {
+	background: var(--theme-accent);
+}
+
+.arch-model-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	border: 1px solid transparent;
+}
+
+.arch-model-item:hover {
+	background: var(--theme-hover);
+	border-color: var(--theme-primary);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.arch-model-icon {
+	width: 36px;
+	height: 36px;
+	background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-light) 100%);
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.model-icon-small {
+	width: 24px;
+	height: 24px;
+	object-fit: contain;
+}
+
+.arch-model-info {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.arch-model-name {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--theme-text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.arch-model-details {
+	display: flex;
+	gap: 8px;
+	font-size: 11px;
+	color: var(--theme-text-muted);
+}
+
+.arch-model-quant {
+	padding: 2px 6px;
+	background: var(--theme-bg-medium);
+	border-radius: 4px;
+	font-weight: 500;
+}
+
+.arch-model-size {
+	padding: 2px 6px;
+	background: var(--theme-bg-light);
+	border-radius: 4px;
+}

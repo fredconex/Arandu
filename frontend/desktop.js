@@ -8,12 +8,15 @@ class DesktopManager {
         this.windowZIndex = 1000;
         this.iconPositions = new Map(); // Store custom icon positions
         this.hintTimer = null; // Timer for model hint
+        this.hideArchTimer = null; // Timer for hiding architecture list
+        this.currentArchIcon = null; // Track which architecture icon has the list open
         this.sortType = null;
         this.sortDirection = 'asc';
         this.sessionSyncTimer = null;
         this.isLoaded = false;
         this.sessionData = null; // Store session data for deferred restoration
         this.restorationInProgress = false; // Flag to prevent duplicate restoration
+        this.modelsByArchitecture = {}; // Store models grouped by architecture
 
         this.init();
     }
@@ -385,6 +388,7 @@ class DesktopManager {
     handleGlobalClickInteraction() {
         this.hideContextMenu();
         this.hideDockContextMenu();
+        this.hideArchitectureModels();
 
         // Collapse memory monitor
         const memoryMonitor = document.getElementById('desktop-memory-monitor');
@@ -441,8 +445,18 @@ class DesktopManager {
         }
         // Global clicks
         document.addEventListener('click', (e) => {
+            // Don't hide architecture list if clicking inside it or on an architecture icon
+            const archList = document.getElementById('architecture-models-list');
+            const clickedArchIcon = e.target.closest('.desktop-icon.architecture-icon');
+            
+            if ((archList && archList.contains(e.target)) || clickedArchIcon) {
+                // Don't hide anything if clicking on arch list or arch icon
+                return;
+            }
+
             this.hideContextMenu();
             this.hideDockContextMenu();
+            this.hideArchitectureModels();
 
             // Collapse memory monitor when clicking outside
             const memoryMonitor = document.getElementById('desktop-memory-monitor');
@@ -492,7 +506,12 @@ class DesktopManager {
 
             if (icon) {
                 this.selectIcon(icon);
-                this.showContextMenu(e.clientX, e.clientY, 'icon');
+                // Check if it's an architecture icon
+                if (icon.classList.contains('architecture-icon')) {
+                    this.showContextMenu(e.clientX, e.clientY, 'architecture');
+                } else {
+                    this.showContextMenu(e.clientX, e.clientY, 'icon');
+                }
             } else if (e.target.closest('.desktop') && !taskbar) {
                 // Only show desktop context menu if not clicking on taskbar
                 this.showContextMenu(e.clientX, e.clientY, 'desktop');
@@ -504,12 +523,28 @@ class DesktopManager {
         if (iconsContainer) {
             iconsContainer.addEventListener('click', (e) => {
                 const icon = e.target.closest('.desktop-icon');
-                if (icon) this.selectIcon(icon);
+                console.log('Icon clicked:', icon);
+                if (icon) {
+                    console.log('Icon has architecture-icon class:', icon.classList.contains('architecture-icon'));
+                    if (icon.classList.contains('architecture-icon')) {
+                        // Toggle architecture list
+                        console.log('Calling toggleArchitectureModels');
+                        this.toggleArchitectureModels(icon);
+                    } else {
+                        this.selectIcon(icon);
+                    }
+                }
             });
 
             iconsContainer.addEventListener('dblclick', async (e) => {
                 const icon = e.target.closest('.desktop-icon');
                 if (icon) {
+                    // Check if it's an architecture icon
+                    if (icon.classList.contains('architecture-icon')) {
+                        // For architecture icons, just show the list (already shown on hover)
+                        return;
+                    }
+
                     // Check if we have presets and use default/single preset
                     const modelPath = icon.dataset.path;
                     try {
@@ -535,17 +570,17 @@ class DesktopManager {
             this.setupIconDragging();
         }
 
-        // Hint functionality
+        // Hint functionality - only for regular model icons
         iconsContainer.addEventListener('mouseover', (e) => {
             const icon = e.target.closest('.desktop-icon');
-            if (icon) {
+            if (icon && !icon.classList.contains('architecture-icon')) {
                 this.showModelHint(icon);
             }
         });
 
         iconsContainer.addEventListener('mouseout', (e) => {
             const icon = e.target.closest('.desktop-icon');
-            if (icon) {
+            if (icon && !icon.classList.contains('architecture-icon')) {
                 this.hideModelHint();
             }
         });
@@ -562,7 +597,10 @@ class DesktopManager {
                     const hasSubmenu = actionElement?.classList.contains('has-submenu');
                     const isSubmenuItem = actionElement?.closest('.context-menu-submenu');
                     
-                    if (action === 'open' && this.selectedIcon) {
+                    if (action === 'expand-architecture' && this.selectedIcon) {
+                        // Show the architecture models list
+                        this.showArchitectureModels(this.selectedIcon);
+                    } else if (action === 'open' && this.selectedIcon) {
                         if (!hasSubmenu || isSubmenuItem) {
                             // Check if we have exactly one preset and should use it
                             const modelPath = this.selectedIcon.dataset.path;
@@ -921,6 +959,16 @@ class DesktopManager {
                 <div class="context-menu-separator"></div>
                 <div class="context-menu-item" data-action="refresh"><span class="material-icons">refresh</span> Refresh Desktop</div>
             `;
+        } else if (type === 'architecture') {
+            // Context menu for architecture icons
+            menuItems = `
+                <div class="context-menu-item" data-action="expand-architecture">
+                    <div class="menu-item-content">
+                        <span class="material-icons">unfold_more</span>
+                        <span>Show All Models</span>
+                    </div>
+                </div>
+            `;
         } else { // 'icon'
             // Get presets for this model
             let presetsHTML = '';
@@ -1236,6 +1284,203 @@ class DesktopManager {
         const hint = document.getElementById('model-hint');
         if (hint) {
             hint.classList.add('hidden');
+        }
+    }
+
+    toggleArchitectureModels(icon) {
+        console.log('toggleArchitectureModels called with icon:', icon);
+        const listView = document.getElementById('architecture-models-list');
+        console.log('listView element:', listView);
+        if (!listView) {
+            console.error('architecture-models-list element not found!');
+            return;
+        }
+
+        // If clicking the same icon that's already open, close it
+        if (this.currentArchIcon === icon && !listView.classList.contains('hidden')) {
+            console.log('Closing list (same icon clicked)');
+            this.hideArchitectureModels();
+            return;
+        }
+
+        // Otherwise, show the list for this icon
+        console.log('Opening list for new icon');
+        this.currentArchIcon = icon;
+        this.showArchitectureModels(icon);
+    }
+
+    showArchitectureModels(icon) {
+        console.log('showArchitectureModels called');
+        const arch = icon.dataset.architecture;
+        console.log('Architecture:', arch);
+        let models = [...(this.modelsByArchitecture[arch] || [])]; // Create a copy to avoid mutating original
+        console.log('Models for this architecture:', models);
+        
+        // Sort models using the current sort type and direction
+        if (this.sortType) {
+            models.sort((a, b) => {
+                let aValue, bValue;
+                let comparison = 0;
+
+                switch (this.sortType) {
+                    case 'date':
+                        aValue = a.date;
+                        bValue = b.date;
+                        comparison = parseFloat(aValue) - parseFloat(bValue);
+                        break;
+                    case 'size':
+                        aValue = a.size_gb;
+                        bValue = b.size_gb;
+                        comparison = parseFloat(aValue) - parseFloat(bValue);
+                        break;
+                    case 'quantization':
+                        const getQuantValue = (s) => {
+                            if (s === 'Unknown') return -1;
+                            const match = s.match(/(\d+)/);
+                            return match ? parseInt(match[0], 10) : -1;
+                        };
+                        comparison = getQuantValue(a.quantization) - getQuantValue(b.quantization);
+                        break;
+                    case 'name':
+                    case 'architecture':
+                    default:
+                        aValue = a.name;
+                        bValue = b.name;
+                        comparison = aValue.localeCompare(bValue, undefined, { numeric: true });
+                        break;
+                }
+                return this.sortDirection === 'asc' ? comparison : -comparison;
+            });
+        } else {
+            // Default to name sorting if no sort type is set
+            models.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        }
+        
+        const listView = document.getElementById('architecture-models-list');
+        if (!listView) {
+            console.error('listView not found in showArchitectureModels');
+            return;
+        }
+
+        const modelCount = models.length;
+        let totalSize = 0;
+        models.forEach(m => totalSize += parseFloat(m.size_gb) || 0);
+
+        let modelsHTML = models.map(model => {
+            const sizeGB = parseFloat(model.size_gb).toFixed(2);
+            return `
+                <div class="arch-model-item" data-path="${model.path}" data-name="${model.name.toLowerCase()}">
+                    <div class="arch-model-icon">
+                        <img src="./assets/gguf.png" class="model-icon-small">
+                    </div>
+                    <div class="arch-model-info">
+                        <div class="arch-model-name">${model.name.replace('.gguf', '')}</div>
+                        <div class="arch-model-details">
+                            <span class="arch-model-quant">${model.quantization}</span>
+                            <span class="arch-model-size">${sizeGB} GB</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        console.log('Setting innerHTML');
+        listView.innerHTML = `
+            <div class="arch-list-header">
+                <strong>${arch}</strong>
+                <span class="arch-list-stats">${modelCount} models • ${totalSize.toFixed(2)} GB</span>
+            </div>
+            <div class="arch-list-divider"></div>
+            <div class="arch-search-container">
+                <input type="text" class="arch-search-input" placeholder="Filter models..." autocomplete="off">
+                <span class="material-icons arch-search-icon">search</span>
+            </div>
+            <div class="arch-models-container">
+                ${modelsHTML}
+            </div>
+        `;
+
+        const rect = icon.getBoundingClientRect();
+        listView.style.left = `${rect.right + 10}px`;
+        listView.style.top = `${rect.top}px`;
+        console.log('Removing hidden class');
+        listView.classList.remove('hidden');
+        console.log('List view classes after remove:', listView.className);
+        console.log('List view display:', window.getComputedStyle(listView).display);
+
+        // Setup search filter
+        const searchInput = listView.querySelector('.arch-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const filterText = e.target.value.toLowerCase().trim();
+                const items = listView.querySelectorAll('.arch-model-item');
+                
+                items.forEach(item => {
+                    const modelName = item.dataset.name;
+                    if (filterText === '' || modelName.includes(filterText)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+
+            // Prevent search input from closing the list
+            searchInput.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
+
+        // Add click handlers for model items
+        listView.querySelectorAll('.arch-model-item').forEach(item => {
+            item.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const modelPath = item.dataset.path;
+                const model = models.find(m => m.path === modelPath);
+                if (model) {
+                    // Create a temporary icon element for launching
+                    const tempIcon = document.createElement('div');
+                    tempIcon.dataset.path = model.path;
+                    tempIcon.dataset.name = model.name;
+                    await this.launchModel(tempIcon);
+                    this.hideArchitectureModels();
+                }
+            });
+
+            // Add right-click context menu for model items
+            item.addEventListener('contextmenu', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const modelPath = item.dataset.path;
+                const model = models.find(m => m.path === modelPath);
+                if (model) {
+                    // Create a temporary icon element for context menu
+                    const tempIcon = document.createElement('div');
+                    tempIcon.dataset.path = model.path;
+                    tempIcon.dataset.name = model.name;
+                    tempIcon.dataset.size = model.size_gb;
+                    tempIcon.dataset.architecture = model.architecture;
+                    tempIcon.dataset.quantization = model.quantization;
+                    tempIcon.dataset.date = model.date;
+                    
+                    this.selectedIcon = tempIcon;
+                    await this.showContextMenu(e.clientX, e.clientY, 'icon');
+                }
+            });
+        });
+    }
+
+    hideArchitectureModels() {
+        if (this.hintTimer) {
+            clearTimeout(this.hintTimer);
+        }
+        if (this.hideArchTimer) {
+            clearTimeout(this.hideArchTimer);
+        }
+        this.currentArchIcon = null;
+        const listView = document.getElementById('architecture-models-list');
+        if (listView) {
+            listView.classList.add('hidden');
         }
     }
 
@@ -1783,8 +2028,22 @@ class DesktopManager {
         console.log('Sorting icons by:', sortType, 'direction:', this.sortDirection);
 
         icons.sort((a, b) => {
+            // Handle architecture icons - they should always come first
+            const aIsArch = a.classList.contains('architecture-icon');
+            const bIsArch = b.classList.contains('architecture-icon');
+            
+            if (aIsArch && !bIsArch) return -1;
+            if (!aIsArch && bIsArch) return 1;
+            
+            // Both are architecture icons or both are regular icons
             let aValue = a.dataset[sortType];
             let bValue = b.dataset[sortType];
+            
+            // Handle undefined values
+            if (!aValue && !bValue) return 0;
+            if (!aValue) return 1;
+            if (!bValue) return -1;
+            
             let comparison = 0;
 
             switch (sortType) {
@@ -3504,27 +3763,38 @@ class DesktopManager {
         // Clear existing icons
         desktopIcons.innerHTML = '';
 
-        // Create new icons from models data
-        models.forEach((model, index) => {
-            const iconElement = document.createElement('div');
-            iconElement.className = 'desktop-icon';
-            iconElement.setAttribute('data-path', model.path);
-            iconElement.setAttribute('data-name', model.name);
-            iconElement.setAttribute('data-size', model.size_gb);
-            iconElement.setAttribute('data-architecture', model.architecture);
-            iconElement.setAttribute('data-quantization', model.quantization);
-            iconElement.setAttribute('data-date', model.date);
+        // Group models by architecture
+        const modelsByArch = {};
+        models.forEach(model => {
+            const arch = model.architecture || 'Unknown';
+            if (!modelsByArch[arch]) {
+                modelsByArch[arch] = [];
+            }
+            modelsByArch[arch].push(model);
+        });
 
-            iconElement.innerHTML = `
+        // Create architecture icons
+        Object.keys(modelsByArch).sort().forEach(arch => {
+            const archModels = modelsByArch[arch];
+            const archElement = document.createElement('div');
+            archElement.className = 'desktop-icon architecture-icon';
+            archElement.setAttribute('data-architecture', arch);
+            archElement.setAttribute('data-model-count', archModels.length);
+
+            archElement.innerHTML = `
                 <div class="icon-image">
-                    <img src="./assets/gguf.png" class="model-icon">
-                    <div class="architecture-label">${model.architecture.substring(0, 7)}</div>
+                    <span class="material-icons">folder</span>
+                    <div class="architecture-label">${arch.substring(0, 7)}</div>
+                    <div class="model-count-badge">${archModels.length}</div>
                 </div>
-                <div class="icon-label">${model.name.replace('.gguf', '')}</div>
+                <div class="icon-label">${arch}</div>
             `;
 
-            desktopIcons.appendChild(iconElement);
+            desktopIcons.appendChild(archElement);
         });
+
+        // Store models data for hover functionality
+        this.modelsByArchitecture = modelsByArch;
 
         // Add fade-in animation to all new icons simultaneously if requested
         if (useAnimation) {
