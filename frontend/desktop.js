@@ -1421,6 +1421,9 @@ class DesktopManager {
         // Show the folder view
         folderView.classList.remove('hidden');
 
+        // Ensure folder view is always on top of all windows
+        folderView.style.zIndex = ++this.windowZIndex;
+
         // Focus the filter input
         if (searchFolderInput) {
             setTimeout(() => {
@@ -1880,6 +1883,9 @@ class DesktopManager {
 
         // Show the folder view
         folderView.classList.remove('hidden');
+        
+        // Ensure search folder view is always on top of all windows
+        folderView.style.zIndex = ++this.windowZIndex;
 
         // Focus the filter input
         if (searchFolderInput) {
@@ -2676,6 +2682,9 @@ class DesktopManager {
     }
 
     async launchModel(icon) {
+        // Close search folder view if open
+        this.hideSearchFolderView();
+
         const modelPath = icon.dataset.path;
         const modelName = icon.dataset.name;
 
