@@ -10,14 +10,25 @@
 	background-size: 50px 50px, cover;
 }
 
+.desktop-icons {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, 80px);
+	grid-auto-rows: 100px;
+	gap: 12px;
+	/* Tightened gap */
+	padding: 10px 10px 10px 65px;
+	/* Closer to top and sidebar */
+	width: 100%;
+	height: 100%;
+	overflow-y: auto;
+}
+
 #dock-trigger {
 	position: fixed;
-	bottom: 0;
 	left: 0;
-	right: 0;
-	margin: 0 auto;
-	width: 20%;
-	height: 15px;
+	top: 20%;
+	width: 15px;
+	height: 60%;
 	z-index: 99999;
 	display: none;
 }
@@ -162,66 +173,62 @@ body.has-maximized-window #dock-trigger {
 /* macOS-style Dock */
 .dock {
 	position: fixed;
-	bottom: 12px;
-	left: 50%;
-	transform: translateX(-50%) translateY(0);
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 60px;
 	display: flex;
-	align-items: flex-end;
-	gap: 8px;
-	padding: 8px 16px;
-	background: color-mix(in srgb, var(--theme-surface), transparent 30%);
-	backdrop-filter: blur(2px) saturate(180%);
-	/* Enhanced blur and saturation */
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	/* Subtle light border */
-	border-radius: 20px;
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+	flex-direction: column;
+	align-items: center;
+	gap: 24px;
+	padding: 30px 0;
+	background: #090909;
+	/* Solid dark sidebar */
+	border-right: 1px solid rgba(255, 255, 255, 0.05);
 	z-index: 9998;
 	user-select: none;
-	transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+	transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-body.has-maximized-window .dock {
-	transform: translateX(-50%) translateY(calc(100% + 4px));
-	transition-delay: 2s;
+.dock .material-icons {
+	color: rgba(255, 255, 255, 0.7);
+	transition: color 0.2s ease;
 }
 
-body.has-maximized-window .dock.visible {
-	transform: translateX(-50%) translateY(0);
-	transition-delay: 0s;
+.dock-item:hover .material-icons {
+	color: #ffffff;
 }
+
+/* Removed maximized window autohide - Dock is now persistent */
 
 .dock-separator {
-	width: 1px;
-	height: 36px;
-	background: var(--theme-border);
-	margin: 0 4px;
+	width: 30px;
+	height: 1px;
+	background: rgba(255, 255, 255, 0.1);
+	margin: 8px 0;
 	flex-shrink: 0;
 }
 
 .dock-item,
 .taskbar-item {
-	width: 36px;
-	height: 36px;
+	width: 100%;
+	height: 48px;
 	padding: 0;
-	background: var(--theme-bg-light);
+	background: transparent;
 	border: none;
-	border-radius: 10px;
-	color: var(--theme-text);
+	color: rgba(255, 255, 255, 0.4);
 	cursor: pointer;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	font-size: 20px;
-	transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-	backdrop-filter: blur(5px);
+	transition: all 0.2s ease;
 	position: relative;
 	flex-shrink: 0;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .dock-item.permanent {
-	background: var(--theme-bg-medium);
+	background: transparent;
 }
 
 .taskbar-item {
@@ -242,30 +249,26 @@ body.has-maximized-window .dock.visible {
 
 .dock-item:hover,
 .taskbar-item:hover {
-	transform: translateY(-8px) scale(1.1);
-	background: var(--theme-bg-strong);
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+	transform: scale(1.1);
+	background: var(--theme-hover);
+	color: var(--theme-primary);
 }
 
 .dock-item.active::after,
 .taskbar-item.active::after {
 	content: '';
 	position: absolute;
-	bottom: -6px;
-	left: 50%;
-	transform: translateX(-50%);
-	width: 4px;
-	height: 4px;
+	left: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 3px;
+	height: 14px;
 	background: var(--theme-primary);
-	border-radius: 50%;
-	box-shadow: 0 0 8px var(--theme-glow);
-	transition: width 0.2s ease;
+	border-radius: 0 2px 2px 0;
+	box-shadow: 0 0 10px var(--theme-glow);
+	transition: height 0.2s ease;
 }
 
-.dock-item.active.focused::after,
-.taskbar-item.active.focused::after {
-	width: 8px;
-}
 
 .dock-item .material-icons,
 .taskbar-item .material-icons {
@@ -300,13 +303,20 @@ body.has-maximized-window .dock.visible {
 }
 
 /* Dock tooltip */
+.dock-item:hover::before,
+.taskbar-item:hover::before {
+	opacity: 1;
+	transform: translateY(-50%) translateX(12px);
+}
+
+/* Tooltip on the right for left-dock */
 .dock-item::before,
 .taskbar-item::before {
 	content: attr(title);
 	position: absolute;
-	bottom: 100%;
-	left: 50%;
-	transform: translateX(-50%) translateY(-8px);
+	top: 50%;
+	left: 100%;
+	transform: translateY(-50%) translateX(8px);
 	background: var(--theme-surface);
 	color: var(--theme-text);
 	padding: 6px 12px;
@@ -319,12 +329,6 @@ body.has-maximized-window .dock.visible {
 	border: 1px solid var(--theme-border);
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 	z-index: 10001;
-}
-
-.dock-item:hover::before,
-.taskbar-item:hover::before {
-	opacity: 1;
-	transform: translateX(-50%) translateY(-12px);
 }
 
 /* Hide tooltip for search dock icon */
@@ -616,16 +620,30 @@ body.has-maximized-window .dock.visible {
 /* Search Balloon */
 .search-balloon {
 	position: fixed;
-	bottom: 80px;
-	left: 50%;
-	transform: translateX(-50%);
-	background: var(--theme-surface);
-	border: 1px solid var(--theme-border);
+	top: 30px;
+	/* Aligned with the top search icon in dock */
+	left: 70px;
+	/* Next to the sidebar */
+	background: #0d0d0d;
+	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-radius: 8px;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
 	z-index: 10000;
-	min-width: 250px;
+	min-width: 300px;
 	backdrop-filter: blur(10px);
+	animation: searchSlideIn 0.2s cubic-bezier(0.2, 0, 0.2, 1) both;
+}
+
+@keyframes searchSlideIn {
+	from {
+		transform: translateX(-10px);
+		opacity: 0;
+	}
+
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
 }
 
 .search-balloon-content {
@@ -778,8 +796,8 @@ body.has-maximized-window .dock.visible {
 /* Desktop Icons */
 .desktop-icons {
 	position: absolute;
-	top: 20px;
-	left: 20px;
+	top: 0;
+	left: 0;
 	display: flex;
 	flex-direction: column;
 	flex-wrap: wrap;

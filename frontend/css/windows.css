@@ -90,8 +90,8 @@
 
 .window.maximized {
 	top: 0 !important;
-	left: 0 !important;
-	width: 100% !important;
+	left: 60px !important;
+	width: calc(100% - 60px) !important;
 	height: 100% !important;
 	border-radius: 0 !important;
 	border: none !important;

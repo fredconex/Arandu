@@ -299,90 +299,7 @@ class DesktopManager {
     }
 
     setupDockBehavior() {
-        const dock = document.querySelector('.dock');
-        if (!dock) return;
-
-        let isDockHovered = false;
-        let hideTimeout = null;
-
-        // Dock Trigger Zone Logic (for handling iframes)
-        const dockTrigger = document.getElementById('dock-trigger');
-        if (dockTrigger) {
-            dockTrigger.addEventListener('mouseenter', () => {
-                if (document.body.classList.contains('has-maximized-window')) {
-                    if (hideTimeout) {
-                        clearTimeout(hideTimeout);
-                        hideTimeout = null;
-                    }
-                    dock.classList.add('visible');
-                }
-            });
-        }
-
-        dock.addEventListener('mouseenter', () => {
-            isDockHovered = true;
-            if (hideTimeout) {
-                clearTimeout(hideTimeout);
-                hideTimeout = null;
-            }
-            dock.classList.add('visible');
-        });
-
-        dock.addEventListener('mouseleave', () => {
-            isDockHovered = false;
-            // If we leave the dock, start the hide timer if appropriate
-            if (document.body.classList.contains('has-maximized-window')) {
-                if (hideTimeout) clearTimeout(hideTimeout);
-                hideTimeout = setTimeout(() => {
-                    if (!isDockHovered && document.body.classList.contains('has-maximized-window')) {
-                        dock.classList.remove('visible');
-                    }
-                    hideTimeout = null;
-                }, 200);
-            }
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            // If NO maximized window, dock is always visible (handled by CSS default + class absence)
-            // We only need to manage auto-hide when 'has-maximized-window' is present.
-            if (!document.body.classList.contains('has-maximized-window')) {
-                if (hideTimeout) {
-                    clearTimeout(hideTimeout);
-                    hideTimeout = null;
-                }
-                return;
-            }
-
-            const h = window.innerHeight;
-            const w = window.innerWidth;
-
-            // Trigger: Bottom 15px, Center 60%
-            const inTriggerZone = (e.clientY >= h) && (e.clientX >= w * 0.2 && e.clientX <= w * 0.8);
-
-            // Keep Visible: Bottom 100px or hovered
-            const inKeepAliveZone = (e.clientY >= h - 100);
-
-            if (inTriggerZone) {
-                if (hideTimeout) {
-                    clearTimeout(hideTimeout);
-                    hideTimeout = null;
-                }
-                dock.classList.add('visible');
-            } else if (dock.classList.contains('visible') && !inKeepAliveZone && !isDockHovered) {
-                if (!hideTimeout) {
-                    hideTimeout = setTimeout(() => {
-                        if (!isDockHovered && document.body.classList.contains('has-maximized-window')) {
-                            dock.classList.remove('visible');
-                        }
-                        hideTimeout = null;
-                    }, 200);
-                }
-            } else if (inKeepAliveZone && hideTimeout) {
-                // If we moved back into keep alive zone, cancel hiding
-                clearTimeout(hideTimeout);
-                hideTimeout = null;
-            }
-        });
+        // Dock is now a persistent sidebar, autohide behavior removed.
     }
 
     handleGlobalClickInteraction() {
@@ -535,6 +452,9 @@ class DesktopManager {
             }
         });
 
+        // setupSearchFolderListeners is called here to handle the new integrated search in models view
+        this.setupSearchFolderListeners();
+
         // Icon interactions
         const iconsContainer = document.getElementById('desktop-icons');
         if (iconsContainer) {
@@ -682,7 +602,8 @@ class DesktopManager {
         if (searchDockIcon) {
             searchDockIcon.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.toggleSearchBalloon();
+                // Pass true to openWithSearchHistory so it immediately shows recent searches
+                this.showArchitectureFolderView('All', true);
             });
         }
 
@@ -1340,7 +1261,7 @@ class DesktopManager {
         this.showArchitectureFolderView(arch);
     }
 
-    async showArchitectureFolderView(arch) {
+    async showArchitectureFolderView(arch, openWithSearchHistory = false) {
         const folderView = document.getElementById('search-folder-view');
         const folderGrid = document.getElementById('search-folder-grid');
         const folderTitle = document.getElementById('search-folder-title');
@@ -1398,14 +1319,11 @@ class DesktopManager {
                         <div class="model-card-info">
                             <h3 class="model-card-name">${model.name.replace('.gguf', '')}</h3>
                             <div class="model-card-details">
-                                <span class="model-card-detail-item">
-                                    <span class="model-card-detail-label">Quant:</span>
-                                    <span class="model-card-detail-value">${model.quantization}</span>
-                                </span>
+                                <span class="model-card-detail-value">${model.architecture}</span>
                                 <span class="model-card-detail-separator">•</span>
-                                <span class="model-card-detail-item">
-                                    <span class="model-card-detail-value">${sizeGB} GB</span>
-                                </span>
+                                <span class="model-card-detail-value">${model.quantization}</span>
+                                <span class="model-card-detail-separator">•</span>
+                                <span class="model-card-detail-value">${sizeGB} GB</span>
                             </div>
                         </div>
                     </div>
@@ -1452,10 +1370,188 @@ class DesktopManager {
 
         // Focus the filter input
         if (searchFolderInput) {
-            setTimeout(() => searchFolderInput.focus(), 300);
+            setTimeout(() => {
+                searchFolderInput.focus();
+                // Show history automatically only if explicitly requested (e.g. from dock search)
+                if (openWithSearchHistory && searchHistory.hasHistory()) {
+                    const dropdown = document.getElementById('search-folder-history-dropdown');
+                    if (dropdown) {
+                        this.updateSearchHistoryDropdown(null, 'search-folder-history-list');
+                        dropdown.classList.add('show');
+                    }
+                }
+            }, 300);
         }
 
         console.log(`Architecture folder view: ${modelCount} models in ${arch}`);
+    }
+
+    setupSearchFolderListeners() {
+        const searchInput = document.getElementById('search-folder-input');
+        const dropdown = document.getElementById('search-folder-history-dropdown');
+        const historyList = document.getElementById('search-folder-history-list');
+        const clearAllBtn = document.getElementById('search-folder-history-clear-all');
+        const hfBtn = document.getElementById('search-folder-hf');
+        const clearBtn = document.getElementById('search-folder-clear');
+        const backBtn = document.getElementById('search-folder-back');
+        const overlay = document.querySelector('.search-folder-overlay');
+
+        if (searchInput) {
+            searchInput.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (dropdown) {
+                    this.updateSearchHistoryDropdown(searchInput.value, 'search-folder-history-list');
+                    if (dropdown.classList.contains('show')) {
+                        dropdown.classList.remove('show');
+                    } else if (searchHistory.hasHistory()) {
+                        dropdown.classList.add('show');
+                    }
+                }
+            });
+
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value;
+                this.filterFolderModels(term);
+                if (dropdown) {
+                    this.updateSearchHistoryDropdown(term, 'search-folder-history-list');
+                    if (term.trim() !== '' && searchHistory.hasHistory()) {
+                        dropdown.classList.add('show');
+                    } else {
+                        dropdown.classList.remove('show');
+                    }
+                }
+            });
+
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const term = searchInput.value.trim();
+                    if (term) {
+                        searchHistory.addSearch(term);
+                        this.updateSearchHistoryDropdown(null, 'search-folder-history-list');
+                        if (dropdown) dropdown.classList.remove('show');
+                    }
+                }
+            });
+        }
+
+        if (historyList) {
+            historyList.addEventListener('click', (e) => {
+                const item = e.target.closest('.search-history-item');
+                if (item) {
+                    const deleteBtn = e.target.closest('.search-history-delete');
+                    if (deleteBtn) {
+                        const term = deleteBtn.dataset.term;
+                        searchHistory.removeSearch(term);
+                        this.updateSearchHistoryDropdown(searchInput.value, 'search-folder-history-list');
+                    } else {
+                        const term = item.dataset.term;
+                        if (searchInput) {
+                            searchInput.value = term;
+                            this.filterFolderModels(term);
+                            if (dropdown) dropdown.classList.remove('show');
+                        }
+                    }
+                }
+            });
+        }
+
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', async () => {
+                const confirmed = await ModalDialog.showConfirmation({
+                    title: 'Clear Search History',
+                    message: 'Are you sure you want to clear your entire search history?',
+                    confirmLabel: 'Clear All',
+                    cancelLabel: 'Cancel',
+                    type: 'warning'
+                });
+                if (confirmed) {
+                    searchHistory.clearHistory();
+                    this.updateSearchHistoryDropdown(null, 'search-folder-history-list');
+                    if (dropdown) dropdown.classList.remove('show');
+                }
+            });
+        }
+
+        if (hfBtn) {
+            hfBtn.addEventListener('click', async () => {
+                const term = searchInput ? searchInput.value.trim() : '';
+                if (typeof huggingFaceApp !== 'undefined' && huggingFaceApp) {
+                    try {
+                        // Close search folder view if needed
+                        this.hideSearchFolderView();
+
+                        await huggingFaceApp.openHuggingFaceSearch();
+                        if (term) {
+                            setTimeout(() => {
+                                const hfWindow = this.windows.get('huggingface-search');
+                                if (hfWindow) {
+                                    const hfInput = hfWindow.querySelector('#hf-search-input');
+                                    if (hfInput) {
+                                        hfInput.value = term;
+                                        huggingFaceApp.performHuggingFaceSearch();
+                                    }
+                                }
+                            }, 200);
+                        }
+                    } catch (error) {
+                        console.error('Error opening HuggingFace search:', error);
+                        this.showNotification('Error opening HuggingFace app', 'error');
+                    }
+                } else {
+                    const url = term ? `https://huggingface.co/models?search=${encodeURIComponent(term)}` : 'https://huggingface.co';
+                    invoke('open_external_link', { url });
+                }
+            });
+        }
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                if (searchInput) {
+                    searchInput.value = '';
+                    this.filterFolderModels('');
+                    if (dropdown) dropdown.classList.remove('show');
+                }
+            });
+        }
+
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                const folderView = document.getElementById('search-folder-view');
+                if (folderView) folderView.classList.add('hidden');
+            });
+        }
+
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                const folderView = document.getElementById('search-folder-view');
+                if (folderView) folderView.classList.add('hidden');
+            });
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (dropdown && !dropdown.contains(e.target) && searchInput && !searchInput.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+    }
+
+    filterFolderModels(term) {
+        const grid = document.getElementById('search-folder-grid');
+        if (!grid) return;
+
+        const lowerTerm = term.toLowerCase().trim();
+        const cards = grid.querySelectorAll('.model-card');
+
+        cards.forEach(card => {
+            const name = card.dataset.name.toLowerCase();
+            const arch = card.dataset.architecture.toLowerCase();
+            if (name.includes(lowerTerm) || arch.includes(lowerTerm)) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
     }
 
     showArchitectureModels(icon) {
@@ -1533,8 +1629,8 @@ class DesktopManager {
         }
     }
 
-    updateSearchHistoryDropdown(filterTerm = null) {
-        const historyList = document.getElementById('search-history-list');
+    updateSearchHistoryDropdown(filterTerm = null, listId = 'search-history-list') {
+        const historyList = document.getElementById(listId);
         if (!historyList) return;
 
         let history = searchHistory.getHistory(30); // Show up to 30 items
@@ -3657,7 +3753,7 @@ class DesktopManager {
             if (id === 'settings-window') {
                 const settingsDockIcon = document.getElementById('settings-dock-icon');
                 if (settingsDockIcon) settingsDockIcon.classList.remove('active');
-            } else if (id === 'huggingface-search-window') {
+            } else if (id === 'huggingface-search-window' || id === 'huggingface-search') {
                 const huggingfaceDockIcon = document.getElementById('huggingface-dock-icon');
                 if (huggingfaceDockIcon) huggingfaceDockIcon.classList.remove('active');
             } else if (id === 'llamacpp-manager-window') {

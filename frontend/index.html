@@ -114,7 +114,8 @@
             <button class="dock-item permanent" id="settings-dock-icon" title="Settings" data-app="settings">
                 <span class="material-icons">settings</span>
             </button>
-            <button class="dock-item permanent" id="huggingface-dock-icon" title="Hugging Face Models" data-app="huggingface">
+            <button class="dock-item permanent" id="huggingface-dock-icon" title="Hugging Face Models"
+                data-app="huggingface">
                 <span class="material-icons">cloud_download</span>
             </button>
             <button class="dock-item permanent" id="llamacpp-dock-icon" title="Llama.cpp Releases" data-app="llamacpp">
@@ -171,30 +172,7 @@
         <!-- This will be dynamically populated for dock items -->
     </div>
 
-    <!-- Search Balloon -->
-    <div class="search-balloon hidden" id="search-balloon">
-        <div class="search-balloon-content">
-            <div class="search-input-wrapper">
-                <input type="text" class="search-input" id="search-input" placeholder="Search desktop icons..."
-                    autocomplete="off">
-            </div>
-            <button class="search-hf" id="search-hf" title="Search on Hugging Face">
-                HF
-            </button>
-            <button class="search-clear" id="search-clear" title="Clear search">
-                <span class="material-icons">close</span>
-            </button>
-            <div class="search-history-dropdown" id="search-history-dropdown">
-                <div class="search-history-header">
-                    <span class="search-history-title">Recent Searches</span>
-                    <button class="search-history-clear" id="search-history-clear-all">Clear All</button>
-                </div>
-                <ul class="search-history-list" id="search-history-list">
-                    <!-- History items will be populated here -->
-                </ul>
-            </div>
-        </div>
-    </div>
+    <!-- Search Balloon removed - Integrated into Models View -->
 
     <!-- Settings Window -->
     <div class="window settings-window hidden" id="settings-window">
@@ -216,7 +194,8 @@
                         <button class="browse-btn" onclick="desktop.browseFolder('models-directory')"
                             title="Browse for folder"><span class="material-icons">folder_open</span></button>
                     </div>
-                    <small style="color: var(--ubuntu-text-muted); font-size: 11px;">Directory where your .gguf model files
+                    <small style="color: var(--ubuntu-text-muted); font-size: 11px;">Directory where your .gguf model
+                        files
                         are stored</small>
                 </div>
                 <div class="property-group">
@@ -239,41 +218,52 @@
                         </button>
                         <select class="property-input" id="background-color"></select>
                     </div>
-                    <small style="color: var(--ubuntu-text-muted); font-size: 11px;">Change the interface colors. Left is
+                    <small style="color: var(--ubuntu-text-muted); font-size: 11px;">Change the interface colors. Left
+                        is
                         for UI, right for background.</small>
                 </div>
                 <button class="settings-window-save" id="save-config"><span class="material-icons">save</span> Save
                     Settings & Scan Models</button>
             </div>
             <div class="settings-right" style="flex: 0 0 280px; display: flex; flex-direction: column;">
-                <div class="about-section" style="background: linear-gradient(135deg, var(--theme-surface) 0%, var(--theme-surface-light) 50%, var(--theme-surface) 100%); border-radius: 8px; padding: 20px; border: 1px solid var(--theme-border); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                <div class="about-section"
+                    style="background: linear-gradient(135deg, var(--theme-surface) 0%, var(--theme-surface-light) 50%, var(--theme-surface) 100%); border-radius: 8px; padding: 20px; border: 1px solid var(--theme-border); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
                     <div style="text-align: center; margin-bottom: 15px;">
                         <img src="assets/logo.png" alt="Arandu" style="width: 120px; height: 120px;">
                     </div>
-                    <h3 style="margin: 0 0 10px 0; font-size: 18px; text-align: center; color: var(--theme-text);">Arandu</h3>
+                    <h3 style="margin: 0 0 10px 0; font-size: 18px; text-align: center; color: var(--theme-text);">
+                        Arandu</h3>
                     <div style="text-align: center; margin-bottom: 20px;">
-                        <span id="app-version-badge" style="display: inline-block; padding: 4px 12px; background: var(--theme-primary); color: white; border-radius: 12px; font-size: 11px; font-weight: 500;">Loading...</span>
+                        <span id="app-version-badge"
+                            style="display: inline-block; padding: 4px 12px; background: var(--theme-primary); color: white; border-radius: 12px; font-size: 11px; font-weight: 500;">Loading...</span>
                     </div>
-                    <div style="border-top: 1px solid var(--theme-border); padding-top: 15px; display: flex; flex-direction: column; gap: 8px;">
-                        <a href="#" onclick="desktop.openExternalLink('https://github.com/fredconex/Arandu'); return false;" 
-                           style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; text-decoration: none; color: var(--theme-text); transition: background 0.2s;"
-                           onmouseover="this.style.background='var(--theme-hover)'" 
-                           onmouseout="this.style.background='transparent'">
-                            <span class="material-icons" style="font-size: 18px; color: var(--theme-primary);">code</span>
+                    <div
+                        style="border-top: 1px solid var(--theme-border); padding-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+                        <a href="#"
+                            onclick="desktop.openExternalLink('https://github.com/fredconex/Arandu'); return false;"
+                            style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; text-decoration: none; color: var(--theme-text); transition: background 0.2s;"
+                            onmouseover="this.style.background='var(--theme-hover)'"
+                            onmouseout="this.style.background='transparent'">
+                            <span class="material-icons"
+                                style="font-size: 18px; color: var(--theme-primary);">code</span>
                             <span style="font-size: 12px;">GitHub Repository</span>
                         </a>
-                        <a href="#" onclick="desktop.openExternalLink('https://github.com/fredconex/Arandu/releases'); return false;" 
-                           style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; text-decoration: none; color: var(--theme-text); transition: background 0.2s;"
-                           onmouseover="this.style.background='var(--theme-hover)'" 
-                           onmouseout="this.style.background='transparent'">
-                            <span class="material-icons" style="font-size: 18px; color: var(--theme-primary);">download</span>
+                        <a href="#"
+                            onclick="desktop.openExternalLink('https://github.com/fredconex/Arandu/releases'); return false;"
+                            style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; text-decoration: none; color: var(--theme-text); transition: background 0.2s;"
+                            onmouseover="this.style.background='var(--theme-hover)'"
+                            onmouseout="this.style.background='transparent'">
+                            <span class="material-icons"
+                                style="font-size: 18px; color: var(--theme-primary);">download</span>
                             <span style="font-size: 12px;">Download Releases</span>
                         </a>
-                        <a href="#" onclick="desktop.openExternalLink('https://www.paypal.com/donate/?hosted_button_id=24CJHH95X3AQS'); return false;" 
-                           style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; text-decoration: none; color: var(--theme-text); transition: background 0.2s;"
-                           onmouseover="this.style.background='var(--theme-hover)'" 
-                           onmouseout="this.style.background='transparent'">
-                            <span class="material-icons" style="font-size: 18px; color: var(--theme-primary);">favorite</span>
+                        <a href="#"
+                            onclick="desktop.openExternalLink('https://www.paypal.com/donate/?hosted_button_id=24CJHH95X3AQS'); return false;"
+                            style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; text-decoration: none; color: var(--theme-text); transition: background 0.2s;"
+                            onmouseover="this.style.background='var(--theme-hover)'"
+                            onmouseout="this.style.background='transparent'">
+                            <span class="material-icons"
+                                style="font-size: 18px; color: var(--theme-primary);">favorite</span>
                             <span style="font-size: 12px;">Support Development</span>
                         </a>
                     </div>
@@ -287,24 +277,40 @@
         <div class="search-folder-overlay"></div>
         <div class="search-folder-content">
             <div class="search-folder-header">
-                <button class="search-folder-back" id="search-folder-back">
-                    <span class="material-icons">arrow_back</span>
-                    <span>Back</span>
-                </button>
-                <div class="search-folder-info">
-                    <div class="search-folder-title-row">
-                        <h2 class="search-folder-title" id="search-folder-title">Search Results</h2>
-                        <p class="search-folder-stats" id="search-folder-stats">0 models • 0 GB</p>
-                    </div>
-                    <div class="search-folder-filter">
-                        <input type="text" class="search-folder-input" id="search-folder-input" placeholder="Filter models..." autocomplete="off">
-                        <span class="material-icons search-folder-icon">search</span>
+                <div class="search-folder-top-row">
+                    <button class="search-folder-back" id="search-folder-back">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <h2 class="search-folder-title" id="search-folder-title">Search Results</h2>
+                </div>
+                <p class="search-folder-stats" id="search-folder-stats">0 models • 0 GB</p>
+            </div>
+
+            <div class="search-folder-filter">
+                <div class="search-input-group">
+                    <input type="text" class="search-folder-input" id="search-folder-input"
+                        placeholder="Filter models..." autocomplete="off">
+                    <span class="material-icons search-folder-icon">search</span>
+                    <div class="search-folder-actions">
+                        <button class="search-folder-hf" id="search-folder-hf"
+                            title="Search on Hugging Face">HF</button>
                         <button class="search-folder-clear" id="search-folder-clear" title="Clear filter">
                             <span class="material-icons">close</span>
                         </button>
                     </div>
+                    <!-- Search history dropdown for models view -->
+                    <div class="search-history-dropdown" id="search-folder-history-dropdown">
+                        <div class="search-history-header">
+                            <span class="search-history-title">Recent Searches</span>
+                            <button class="search-history-clear" id="search-folder-history-clear-all">Clear All</button>
+                        </div>
+                        <ul class="search-history-list" id="search-folder-history-list">
+                            <!-- History items will be populated here -->
+                        </ul>
+                    </div>
                 </div>
             </div>
+
             <div class="search-folder-grid" id="search-folder-grid">
                 <!-- Model cards will be populated here -->
             </div>
