@@ -453,8 +453,11 @@ class DesktopManager {
                 return;
             }
 
-            // Close folder view if clicking on the overlay
-            if (folderView && !folderView.classList.contains('hidden') && e.target.classList.contains('search-folder-overlay')) {
+            // Close folder view if clicking on the background (overlay, content container, or grid)
+            if (folderView && !folderView.classList.contains('hidden') &&
+                (e.target.classList.contains('search-folder-overlay') ||
+                    e.target.classList.contains('search-folder-content') ||
+                    e.target.id === 'search-folder-grid')) {
                 this.hideSearchFolderView();
                 return;
             }
