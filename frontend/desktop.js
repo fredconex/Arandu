@@ -1756,7 +1756,6 @@ class DesktopManager {
             archElement.innerHTML = `
                 <div class="icon-image">
                     <span class="material-icons">folder</span>
-                    <div class="architecture-label">${arch.substring(0, 7)}</div>
                     <div class="model-count-badge">${archModels.length}</div>
                 </div>
                 <div class="icon-label">${arch}</div>
