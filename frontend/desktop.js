@@ -584,6 +584,8 @@ class DesktopManager {
                     } else if (action === 'launch-preset-external' && this.selectedIcon) {
                         const presetId = e.target.closest('[data-preset-id]')?.dataset.presetId;
                         await this.launchModelWithPresetExternal(this.selectedIcon, presetId);
+                    } else if (action === 'open-folder' && this.selectedIcon) {
+                        this.openModelFolder(this.selectedIcon);
                     } else if (action === 'properties' && this.selectedIcon) {
                         this.showProperties(this.selectedIcon);
                     } else if (action === 'refresh') {
@@ -975,6 +977,12 @@ class DesktopManager {
                 </div>
                 ${presetsHTMLExternal}
                 <div class="context-menu-separator"></div>
+                <div class="context-menu-item" data-action="open-folder">
+                    <div class="menu-item-content">
+                        <span class="material-icons">folder_open</span>
+                        <span>Open Model Folder</span>
+                    </div>
+                </div>
                 <div class="context-menu-item" data-action="properties">
                     <div class="menu-item-content">
                         <span class="material-icons">settings</span>
@@ -1028,6 +1036,13 @@ class DesktopManager {
         contextMenu.style.left = left + 'px';
         contextMenu.style.top = top + 'px';
         contextMenu.classList.remove('hidden');
+
+        // Close menu when mouse leaves it
+        const hideMenuOnLeave = () => {
+            this.hideContextMenu();
+            contextMenu.removeEventListener('mouseleave', hideMenuOnLeave);
+        };
+        contextMenu.addEventListener('mouseleave', hideMenuOnLeave);
 
         // Setup submenu hover behavior for Launch Model
         const launchItem = contextMenu.querySelector('[data-action="open"]');
@@ -1326,6 +1341,9 @@ class DesktopManager {
                                 <span class="model-card-detail-value">${sizeGB} GB</span>
                             </div>
                         </div>
+                        <button class="model-card-menu-btn" data-action="menu" title="More options">
+                            <span class="material-icons">more_vert</span>
+                        </button>
                     </div>
                 `;
             });
@@ -1342,16 +1360,51 @@ class DesktopManager {
         folderGrid.querySelectorAll('.model-card').forEach(card => {
             card.addEventListener('click', async (e) => {
                 e.stopPropagation();
+                // Don't launch if clicking on the menu button
+                if (e.target.closest('.model-card-menu-btn')) return;
+                
                 const tempIcon = document.createElement('div');
                 tempIcon.dataset.path = card.dataset.path;
                 tempIcon.dataset.name = card.dataset.name;
                 await this.launchModel(tempIcon);
             });
 
+            // Add click handler for menu button (more_vert)
+            const menuBtn = card.querySelector('.model-card-menu-btn');
+            if (menuBtn) {
+                menuBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    
+                    // Remove selected class from all cards in this grid
+                    folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+                    // Add selected class to this card
+                    card.classList.add('selected');
+                    
+                    const tempIcon = document.createElement('div');
+                    tempIcon.dataset.path = card.dataset.path;
+                    tempIcon.dataset.name = card.dataset.name;
+                    tempIcon.dataset.size = card.dataset.size;
+                    tempIcon.dataset.architecture = card.dataset.architecture;
+                    tempIcon.dataset.quantization = card.dataset.quantization;
+                    tempIcon.dataset.date = card.dataset.date;
+
+                    this.selectedIcon = tempIcon;
+                    // Position the context menu at the button's location
+                    const rect = menuBtn.getBoundingClientRect();
+                    await this.showContextMenu(rect.left, rect.top + rect.height, 'icon');
+                });
+            }
+
             // Add right-click context menu
             card.addEventListener('contextmenu', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                
+                // Remove selected class from all cards in this grid
+                folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+                // Add selected class to this card
+                card.classList.add('selected');
+                
                 const tempIcon = document.createElement('div');
                 tempIcon.dataset.path = card.dataset.path;
                 tempIcon.dataset.name = card.dataset.name;
@@ -1748,6 +1801,9 @@ class DesktopManager {
                                 </span>
                             </div>
                         </div>
+                        <button class="model-card-menu-btn" data-action="menu" title="More options">
+                            <span class="material-icons">more_vert</span>
+                        </button>
                     </div>
                 `;
             });
@@ -1764,16 +1820,51 @@ class DesktopManager {
         folderGrid.querySelectorAll('.model-card').forEach(card => {
             card.addEventListener('click', async (e) => {
                 e.stopPropagation();
+                // Don't launch if clicking on the menu button
+                if (e.target.closest('.model-card-menu-btn')) return;
+                
                 const tempIcon = document.createElement('div');
                 tempIcon.dataset.path = card.dataset.path;
                 tempIcon.dataset.name = card.dataset.name;
                 await this.launchModel(tempIcon);
             });
 
+            // Add click handler for menu button (more_vert)
+            const menuBtn = card.querySelector('.model-card-menu-btn');
+            if (menuBtn) {
+                menuBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    
+                    // Remove selected class from all cards in this grid
+                    folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+                    // Add selected class to this card
+                    card.classList.add('selected');
+                    
+                    const tempIcon = document.createElement('div');
+                    tempIcon.dataset.path = card.dataset.path;
+                    tempIcon.dataset.name = card.dataset.name;
+                    tempIcon.dataset.size = card.dataset.size;
+                    tempIcon.dataset.architecture = card.dataset.architecture;
+                    tempIcon.dataset.quantization = card.dataset.quantization;
+                    tempIcon.dataset.date = card.dataset.date;
+
+                    this.selectedIcon = tempIcon;
+                    // Position the context menu at the button's location
+                    const rect = menuBtn.getBoundingClientRect();
+                    await this.showContextMenu(rect.left, rect.top + rect.height, 'icon');
+                });
+            }
+
             // Add right-click context menu
             card.addEventListener('contextmenu', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                
+                // Remove selected class from all cards in this grid
+                folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+                // Add selected class to this card
+                card.classList.add('selected');
+                
                 const tempIcon = document.createElement('div');
                 tempIcon.dataset.path = card.dataset.path;
                 tempIcon.dataset.name = card.dataset.name;
@@ -2893,6 +2984,21 @@ class DesktopManager {
             propertiesManager.showProperties(icon);
         } else {
             console.error('Properties manager not initialized');
+        }
+    }
+
+    async openModelFolder(icon) {
+        const modelPath = icon.dataset.path;
+        if (!modelPath) {
+            console.error('No model path available');
+            return;
+        }
+
+        try {
+            await invoke('open_model_folder', { modelPath: modelPath });
+        } catch (error) {
+            console.error('Error opening model folder:', error);
+            this.showNotification('Failed to open model folder', 'error');
         }
     }
 
