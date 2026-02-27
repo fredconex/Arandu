@@ -1355,13 +1355,24 @@ class DesktopManager {
         }
 
         // Get models for this architecture
-        const models = this.modelsByArchitecture[arch] || [];
+        let models;
+        if (arch === 'All') {
+            models = [];
+            Object.values(this.modelsByArchitecture).forEach(m => {
+                // Avoid duplicates if 'All' was already in modelsByArchitecture 
+                // (though we expect to filter it out or not have it)
+                models.push(...m);
+            });
+        } else {
+            models = this.modelsByArchitecture[arch] || [];
+        }
+
         const modelCount = models.length;
         let totalSize = 0;
         models.forEach(m => totalSize += parseFloat(m.size_gb) || 0);
 
         // Update header
-        folderTitle.textContent = arch;
+        folderTitle.textContent = arch === 'All' ? 'All Models' : arch;
         folderStats.textContent = `${modelCount} model${modelCount !== 1 ? 's' : ''} • ${totalSize.toFixed(2)} GB`;
 
         // Build model cards
@@ -1728,6 +1739,40 @@ class DesktopManager {
     displayArchitectureFolders() {
         const desktopIcons = document.getElementById('desktop-icons');
         if (!desktopIcons || !this.modelsByArchitecture) return;
+
+        // Get all models for the "All Models" folder
+        const allModels = [];
+        Object.values(this.modelsByArchitecture).forEach(m => allModels.push(...m));
+
+        if (allModels.length > 0) {
+            // Calculate folder stats for sorting
+            let totalSize = 0;
+            let latestDate = 0;
+
+            allModels.forEach(m => {
+                const s = parseFloat(m.size_gb) || 0;
+                totalSize += s;
+                const d = parseFloat(m.date) || 0;
+                if (d > latestDate) latestDate = d;
+            });
+
+            const allElement = document.createElement('div');
+            allElement.className = 'desktop-icon architecture-icon';
+            allElement.setAttribute('data-architecture', 'All');
+            allElement.setAttribute('data-model-count', allModels.length);
+            allElement.setAttribute('data-name', 'All Models');
+            allElement.setAttribute('data-size', totalSize);
+            allElement.setAttribute('data-date', latestDate);
+
+            allElement.innerHTML = `
+                <div class="icon-image">
+                    <span class="material-icons">folder_copy</span>
+                    <div class="model-count-badge">${allModels.length}</div>
+                </div>
+                <div class="icon-label">All Models</div>
+            `;
+            desktopIcons.appendChild(allElement);
+        }
 
         // Create architecture folder icons
         Object.keys(this.modelsByArchitecture).sort().forEach(arch => {
@@ -2202,7 +2247,14 @@ class DesktopManager {
             if (aIsArch && !bIsArch) return -1;
             if (!aIsArch && bIsArch) return 1;
 
-            // Both are architecture icons or both are regular icons
+            if (aIsArch && bIsArch) {
+                const aIsAll = a.dataset.architecture === 'All';
+                const bIsAll = b.dataset.architecture === 'All';
+                if (aIsAll && !bIsAll) return -1;
+                if (!aIsAll && bIsAll) return 1;
+            }
+
+            // Both are architecture icons (but not 'All') or both are regular icons
             let aValue = a.dataset[sortType];
             let bValue = b.dataset[sortType];
 
