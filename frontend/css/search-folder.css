@@ -303,17 +303,17 @@
 
 .model-card-custom-indicator {
     position: absolute;
-    bottom: 0;
+    top: 0;
+    left: 0;
     right: 0;
-    width: 0;
-    height: 0;
-    border-left: 12px solid transparent;
-    border-bottom: 12px solid white;
+    bottom: 0;
+    border-bottom: 3px solid white;
+    border-radius: 10px;
+    /* Matches .model-card-icon border-radius */
     opacity: 0.8;
     z-index: 10;
     transition: opacity 0.2s ease;
-    border-bottom-right-radius: 10px;
-    /* Matches .model-card-icon border-radius */
+    pointer-events: none;
 }
 
 .model-card-info {
