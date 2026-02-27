@@ -4011,10 +4011,30 @@ class DesktopManager {
     }
 
     async hasCustomArguments(modelPath) {
+        if (!modelPath) return false;
+
         try {
-            const config = await invoke('get_model_settings', { modelPath: modelPath });
-            const result = !!(config && config.custom_args && config.custom_args.trim() !== '');
-            return result;
+            // Normalize path for consistent lookup (Windows backslashes)
+            const normalizedPath = modelPath.replace(/\//g, '\\');
+            const config = await invoke('get_model_settings', { modelPath: normalizedPath });
+            if (!config) return false;
+
+            // 1. Check main custom_args
+            if (config.custom_args && config.custom_args.trim() !== '') return true;
+
+            // 2. Check if ANY preset has non-empty custom arguments
+            // This is more robust as it catches models with saved presets that aren't marked as default
+            if (config.presets && Array.isArray(config.presets)) {
+                if (config.presets.some(p => p.custom_args && p.custom_args.trim() !== '')) {
+                    return true;
+                }
+            }
+
+            // 3. Check for specific customized fields
+            if (config.server_port && config.server_port !== 8080) return true;
+            if (config.server_host && config.server_host !== '127.0.0.1') return true;
+
+            return false;
         } catch (error) {
             console.error('Error checking custom arguments for', modelPath, ':', error);
             return false;
@@ -4023,13 +4043,36 @@ class DesktopManager {
 
     // Update custom arguments indicators for all icons
     async updateCustomArgsIndicators() {
+        // Desktop icons
         const icons = document.querySelectorAll('.desktop-icon:not(.architecture-icon)');
-        for (const icon of icons) {
+        const iconPromises = Array.from(icons).map(async (icon) => {
             const modelPath = icon.dataset.path;
             if (modelPath) {
                 await this.updateSingleIconIndicator(icon, modelPath);
             }
-        }
+        });
+
+        // Folder view cards
+        const cards = document.querySelectorAll('.model-card');
+        const cardPromises = Array.from(cards).map(async (card) => {
+            const modelPath = card.dataset.path;
+            if (modelPath) {
+                const hasCustomArgs = await this.hasCustomArguments(modelPath);
+                const iconContainer = card.querySelector('.model-card-icon');
+                if (iconContainer) {
+                    const existingIndicator = iconContainer.querySelector('.model-card-custom-indicator');
+                    if (hasCustomArgs && !existingIndicator) {
+                        const indicator = document.createElement('div');
+                        indicator.className = 'model-card-custom-indicator';
+                        iconContainer.appendChild(indicator);
+                    } else if (!hasCustomArgs && existingIndicator) {
+                        existingIndicator.remove();
+                    }
+                }
+            }
+        });
+
+        await Promise.all([...iconPromises, ...cardPromises]);
     }
 
     // Update custom arguments indicator for a single icon
