@@ -1374,7 +1374,11 @@ class PropertiesManager {
                 throw new Error(result.error || 'Unknown error occurred');
             }
 
-            // The file-deleted event will handle updating the desktop icons without animations
+            // Refresh the desktop to update the view
+            await this.desktop.loadModels(false);
+            
+            // Also refresh folder view if it's open
+            this.desktop.refreshFolderViewIfOpen();
 
             // Close the properties window
             this.closePropertiesWindow();

@@ -53,6 +53,8 @@ class DownloadManager {
         this.desktopRefreshTimeout = setTimeout(() => {
             console.log('Refreshing desktop models after download completion');
             this.desktop.loadModels(false); // Don't use animations for automatic refreshes
+            // Also refresh folder view if it's open
+            this.desktop.refreshFolderViewIfOpen();
             // Also update the download manager icon
             this.updateDownloadManagerIcon();
             this.desktopRefreshTimeout = null;

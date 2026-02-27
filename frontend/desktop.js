@@ -588,6 +588,8 @@ class DesktopManager {
                         this.openModelFolder(this.selectedIcon);
                     } else if (action === 'properties' && this.selectedIcon) {
                         this.showProperties(this.selectedIcon);
+                    } else if (action === 'delete' && this.selectedIcon) {
+                        this.deleteModelFile(this.selectedIcon);
                     } else if (action === 'refresh') {
                         this.refreshDesktop();
                     } else if (action.startsWith('sort-')) {
@@ -977,6 +979,12 @@ class DesktopManager {
                 </div>
                 ${presetsHTMLExternal}
                 <div class="context-menu-separator"></div>
+                <div class="context-menu-item" data-action="delete">
+                    <div class="menu-item-content">
+                        <span class="material-icons" style="color: #e74c3c;">delete</span>
+                        <span style="color: #e74c3c;">Delete</span>
+                    </div>
+                </div>
                 <div class="context-menu-item" data-action="open-folder">
                     <div class="menu-item-content">
                         <span class="material-icons">folder_open</span>
@@ -3041,6 +3049,12 @@ class DesktopManager {
 
             // If we get here, the deletion was successful
             this.showNotification(`Successfully deleted "${filename}"`, 'success');
+            
+            // Refresh the desktop to update the view
+            await this.loadModels(false);
+            
+            // Also refresh folder view if it's open
+            this.refreshFolderViewIfOpen();
 
         } catch (error) {
             console.error('Error deleting file:', error);
@@ -4263,12 +4277,42 @@ class DesktopManager {
 
             if (result.success && result.models) {
                 this.refreshDesktopIcons(result.models, true); // Use animations for manual refresh
+                
+                // If folder view is open, refresh it too
+                this.refreshFolderViewIfOpen();
             } else {
                 throw new Error(result.error || 'Failed to scan models');
             }
         } catch (error) {
             console.error('Error refreshing desktop:', error);
             this.showNotification('Error refreshing desktop: ' + error.message, 'error');
+        }
+    }
+    
+    refreshFolderViewIfOpen() {
+        const folderView = document.getElementById('search-folder-view');
+        if (!folderView || folderView.classList.contains('hidden')) {
+            return;
+        }
+        
+        // Get the current folder title to know which view to refresh
+        const folderTitle = document.getElementById('search-folder-title');
+        if (!folderTitle) return;
+        
+        const title = folderTitle.textContent;
+        
+        if (title === 'Search Results') {
+            // Re-run the search with current filter
+            const searchInput = document.getElementById('search-folder-input');
+            if (searchInput && searchInput.value.trim()) {
+                this.filterFolderViewModels(searchInput.value);
+            }
+        } else if (title === 'All Models' || title.endsWith(' Models')) {
+            // Refresh All Models view
+            this.showArchitectureFolderView('All');
+        } else {
+            // Refresh architecture-specific view
+            this.showArchitectureFolderView(title);
         }
     }
 

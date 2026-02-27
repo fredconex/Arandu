@@ -293,9 +293,7 @@
 	z-index: 10001;
 }
 
-#search-dock-icon::before {
-	display: none;
-}
+
 
 .system-section {
 	margin-bottom: 16px;

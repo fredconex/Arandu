@@ -377,11 +377,23 @@
 }
 
 /* Custom Scrollbar */
-.search-folder-grid::-webkit-scrollbar {
-    width: 4px;
+.search-folder-grid::-webkit-scrollbar,
+#search-folder-history-dropdown::-webkit-scrollbar {
+    width: 6px;
 }
 
-.search-folder-grid::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
+.search-folder-grid::-webkit-scrollbar-track,
+#search-folder-history-dropdown::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.search-folder-grid::-webkit-scrollbar-thumb,
+#search-folder-history-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+.search-folder-grid::-webkit-scrollbar-thumb:hover,
+#search-folder-history-dropdown::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
 }
