@@ -1,20 +1,7 @@
 /* Search History Dropdown Styles */
 
 /* Taskbar search history - appears ABOVE the input */
-#search-history-dropdown {
-    position: absolute;
-    bottom: calc(100% + 4px);
-    left: 0;
-    right: 0;
-    background: var(--theme-surface);
-    border: 1px solid var(--theme-border);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 1000;
-    display: none;
-}
+
 
 #search-history-dropdown.show {
     display: block;
@@ -163,53 +150,21 @@
 }
 
 /* Add position relative to search balloon content */
-.search-balloon-content {
-    position: relative;
-}
 
-.search-input-wrapper {
-    position: relative;
-    flex: 1;
-    display: flex;
-    align-items: center;
-}
+
+
 
 /* Search history button inside the input field */
-.search-history-btn {
-    position: absolute;
-    right: 8px;
-    /* Move to right */
-    top: 50%;
-    transform: translateY(-50%);
-    background: transparent;
-    border: none;
-    color: var(--theme-text-muted);
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    z-index: 10;
-}
 
-.search-history-btn:hover {
-    background: var(--theme-surface-light);
-    color: var(--theme-primary);
-}
+
+
 
 .search-history-btn .material-icons {
     font-size: 20px;
 }
 
 /* For HuggingFace search - button inside the wrapper */
-#hf-search-history-btn {
-    position: absolute;
-    /* Changed to absolute to sit over input */
-    right: 8px;
-    margin-right: 0;
-}
+
 
 /* Adjust input padding to make room for history button (taskbar search) */
 .search-balloon-content .search-input {
@@ -238,6 +193,3 @@
 }
 
 /* Add position relative to search balloon content */
-.search-balloon-content {
-    position: relative;
-}

@@ -1,11 +1,9 @@
-/* Desktop, Taskbar, and Start Menu Styles */
-
 .desktop {
 	width: 100vw;
 	height: 100vh;
 	position: relative;
 	background:
-		url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="1" fill="%2364b5f6" opacity="0.1"/></svg>') repeat,
+		url("data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"1\" fill=\"%2364b5f6\" opacity=\"0.1\"/></svg>") repeat,
 		linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-middle) 50%, var(--theme-gradient-end) 100%);
 	background-size: 50px 50px, cover;
 }
@@ -33,11 +31,6 @@
 	display: none;
 }
 
-body.has-maximized-window #dock-trigger {
-	display: block;
-}
-
-/* Desktop Memory Monitor */
 .desktop-memory-monitor {
 	position: fixed;
 	bottom: 12px;
@@ -150,13 +143,6 @@ body.has-maximized-window #dock-trigger {
 	margin-left: 2px;
 }
 
-.info-cell .sub-value {
-	font-size: 10px;
-	color: var(--theme-text-muted);
-	opacity: 0.7;
-	margin-top: 2px;
-}
-
 .gpu-name {
 	font-size: 12px;
 	color: var(--theme-text);
@@ -170,7 +156,6 @@ body.has-maximized-window #dock-trigger {
 	font-weight: 500;
 }
 
-/* macOS-style Dock */
 .dock {
 	position: fixed;
 	left: 0;
@@ -199,8 +184,6 @@ body.has-maximized-window #dock-trigger {
 	color: #ffffff;
 }
 
-/* Removed maximized window autohide - Dock is now persistent */
-
 .dock-separator {
 	width: 30px;
 	height: 1px;
@@ -209,8 +192,7 @@ body.has-maximized-window #dock-trigger {
 	flex-shrink: 0;
 }
 
-.dock-item,
-.taskbar-item {
+.dock-item, .taskbar-item {
 	width: 100%;
 	height: 48px;
 	padding: 0;
@@ -235,28 +217,14 @@ body.has-maximized-window #dock-trigger {
 	animation: dockItemAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes dockItemAppear {
-	0% {
-		opacity: 0;
-		transform: scale(0.3) translateY(20px);
-	}
-
-	100% {
-		opacity: 1;
-		transform: scale(1) translateY(0);
-	}
-}
-
-.dock-item:hover,
-.taskbar-item:hover {
+.dock-item:hover, .taskbar-item:hover {
 	transform: scale(1.1);
 	background: var(--theme-hover);
 	color: var(--theme-primary);
 }
 
-.dock-item.active::after,
-.taskbar-item.active::after {
-	content: '';
+.dock-item.active::after, .taskbar-item.active::after {
+	content: "";
 	position: absolute;
 	left: 0;
 	top: 50%;
@@ -270,12 +238,10 @@ body.has-maximized-window #dock-trigger {
 }
 
 
-.dock-item .material-icons,
-.taskbar-item .material-icons {
+.dock-item .material-icons, .taskbar-item .material-icons {
 	font-size: 20px;
 }
 
-/* Dock Item Progress Bar */
 .dock-progress-container {
 	position: absolute;
 	bottom: 4px;
@@ -302,16 +268,12 @@ body.has-maximized-window #dock-trigger {
 	box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
 }
 
-/* Dock tooltip */
-.dock-item:hover::before,
-.taskbar-item:hover::before {
+.dock-item:hover::before, .taskbar-item:hover::before {
 	opacity: 1;
 	transform: translateY(-50%) translateX(12px);
 }
 
-/* Tooltip on the right for left-dock */
-.dock-item::before,
-.taskbar-item::before {
+.dock-item::before, .taskbar-item::before {
 	content: attr(title);
 	position: absolute;
 	top: 50%;
@@ -331,60 +293,10 @@ body.has-maximized-window #dock-trigger {
 	z-index: 10001;
 }
 
-/* Hide tooltip for search dock icon */
 #search-dock-icon::before {
 	display: none;
 }
 
-.taskbar-right {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	font-size: 12px;
-	color: var(--theme-text-muted);
-	height: 100%;
-	user-select: none;
-}
-
-.taskbar-separator {
-	width: 1px;
-	height: 24px;
-	background: var(--theme-border);
-	margin: 0 4px;
-}
-
-
-
-
-.system-info-popup:not(.hidden) {
-	opacity: 1;
-}
-
-.system-info-popup.hidden {
-	display: none;
-}
-
-.system-info-content {
-	padding: 16px;
-}
-
-.system-info-header {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-bottom: 16px;
-	padding-bottom: 8px;
-	border-bottom: 1px solid var(--theme-border);
-}
-
-.system-info-header h3 {
-	margin: 0;
-	font-size: 14px;
-	color: var(--theme-text);
-	font-weight: 600;
-}
-
-/* New System Monitor Styles */
 .system-section {
 	margin-bottom: 16px;
 	background: rgba(0, 0, 0, 0.2);
@@ -446,13 +358,6 @@ body.has-maximized-window #dock-trigger {
 	margin-left: 2px;
 }
 
-.info-cell .sub-value {
-	font-size: 10px;
-	color: var(--theme-text-muted);
-	opacity: 0.7;
-	margin-top: 2px;
-}
-
 .gpu-name {
 	font-size: 12px;
 	color: var(--theme-text);
@@ -464,59 +369,6 @@ body.has-maximized-window #dock-trigger {
 	padding-bottom: 10px;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 	font-weight: 500;
-}
-
-.download-history-icon {
-	width: 32px;
-	height: 32px;
-	background: transparent;
-	border: none;
-	border-radius: 6px;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--theme-text);
-	font-size: 14px;
-	transition: all 0.2s ease;
-	backdrop-filter: blur(5px);
-	flex-shrink: 0;
-}
-
-.download-history-icon:hover {
-	background: var(--theme-bg-medium);
-	transform: scale(1.05);
-}
-
-.download-history-icon:active {
-	background: var(--theme-primary);
-}
-
-.download-history-icon.active {
-	background: var(--theme-surface-light);
-}
-
-/* Memory Monitor Styles */
-.memory-monitor {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 3px;
-	height: 32px;
-	padding: 0 8px;
-	border-radius: 6px;
-	cursor: pointer;
-	transition: all 0.2s ease;
-}
-
-.memory-monitor:hover {
-	background: var(--theme-bg-medium);
-}
-
-.memory-monitor.active {
-	background: var(--theme-surface-light);
-	box-shadow: 0 0 8px var(--theme-glow);
 }
 
 .memory-bar-container {
@@ -566,10 +418,7 @@ body.has-maximized-window #dock-trigger {
 }
 
 
-/* Default theme-based fill for both RAM and VRAM */
-
-.memory-bar-ram .memory-fill,
-.memory-bar-vram .memory-fill {
+.memory-bar-ram .memory-fill, .memory-bar-vram .memory-fill {
 	background: var(--theme-primary);
 	transition: width 0.3s ease, background 0.3s linear;
 }
@@ -587,70 +436,6 @@ body.has-maximized-window #dock-trigger {
 	transform: translate(-50%, -50%);
 	pointer-events: none;
 	z-index: 2;
-}
-
-
-/* Search Button */
-.search-button {
-	width: 32px;
-	height: 32px;
-	background: transparent;
-	border: none;
-	border-radius: 6px;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--theme-text);
-	font-size: 14px;
-	backdrop-filter: blur(5px);
-	flex-shrink: 0;
-}
-
-.search-button:hover {
-	background: var(--theme-bg-medium);
-	transform: scale(1.05);
-}
-
-.search-button.active {
-	background: var(--theme-surface-light);
-	box-shadow: 0 0 8px var(--theme-glow);
-}
-
-/* Search Balloon */
-.search-balloon {
-	position: fixed;
-	top: 30px;
-	/* Aligned with the top search icon in dock */
-	left: 70px;
-	/* Next to the sidebar */
-	background: #0d0d0d;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 8px;
-	box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
-	z-index: 10000;
-	min-width: 300px;
-	backdrop-filter: blur(10px);
-	animation: searchSlideIn 0.2s cubic-bezier(0.2, 0, 0.2, 1) both;
-}
-
-@keyframes searchSlideIn {
-	from {
-		transform: translateX(-10px);
-		opacity: 0;
-	}
-
-	to {
-		transform: translateX(0);
-		opacity: 1;
-	}
-}
-
-.search-balloon-content {
-	display: flex;
-	align-items: center;
-	padding: 8px;
-	gap: 8px;
 }
 
 .search-input {
@@ -686,46 +471,7 @@ body.has-maximized-window #dock-trigger {
 	font-size: 16px;
 }
 
-.search-clear:hover {
-	background: var(--theme-bg-medium);
-	color: var(--theme-text);
-}
-
-.search-hf {
-	width: 32px;
-	height: 28px;
-	background: transparent;
-	border: 1px solid var(--theme-border);
-	border-radius: 4px;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--theme-text);
-	font-size: 12px;
-	font-weight: 600;
-	padding: 0 6px;
-}
-
-.search-hf:hover {
-	background: var(--theme-bg-medium);
-	color: var(--theme-text);
-	border-color: var(--theme-primary);
-}
-
-/* Moving gradient animation for active downloads - only on the icon */
-@keyframes movingGradient {
-	0% {
-		background-position: 0% 200%;
-	}
-
-	100% {
-		background-position: 0% 0%;
-	}
-}
-
-.download-history-icon.pulse .material-icons,
-#downloads-dock-icon.pulse .material-icons {
+.download-history-icon.pulse .material-icons, #downloads-dock-icon.pulse .material-icons {
 	animation: movingGradient 2s linear infinite;
 	background: linear-gradient(180deg,
 			rgba(255, 255, 255, 0.1) 0%,
@@ -736,7 +482,6 @@ body.has-maximized-window #dock-trigger {
 	color: transparent;
 }
 
-/* Start Menu Styles */
 .start-menu {
 	position: fixed;
 	top: 48px;
@@ -752,48 +497,6 @@ body.has-maximized-window #dock-trigger {
 	overflow: hidden;
 }
 
-.start-menu-header {
-	padding: 16px;
-	background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-light) 100%);
-	color: white;
-	font-weight: 500;
-}
-
-.start-menu-header h3 {
-	margin: 0;
-	font-size: 16px;
-}
-
-.start-menu-items {
-	padding: 8px 0;
-}
-
-.start-menu-item {
-	display: flex;
-	align-items: center;
-	padding: 12px 16px;
-	cursor: pointer;
-	color: var(--theme-text);
-	transition: background-color 0.15s ease;
-	gap: 12px;
-}
-
-.start-menu-item:hover {
-	background: var(--theme-hover);
-}
-
-.start-menu-text {
-	font-size: 14px;
-	font-weight: 400;
-}
-
-.start-menu-separator {
-	height: 1px;
-	background: var(--theme-border);
-	margin: 4px 0;
-}
-
-/* Desktop Icons */
 .desktop-icons {
 	position: absolute;
 	top: 0;
@@ -832,19 +535,6 @@ body.has-maximized-window #dock-trigger {
 	box-shadow: 0 0 10px var(--theme-glow);
 }
 
-.desktop-icon.dragging {
-	opacity: 0.7;
-	transform: scale(1.05);
-	z-index: 1000;
-	pointer-events: none;
-	box-shadow: 0 0 15px var(--theme-glow-strong);
-}
-
-.desktop-icon.drag-over {
-	background: var(--theme-bg-medium);
-	border: 2px dashed var(--theme-primary);
-}
-
 .icon-image {
 	width: 48px;
 	height: 48px;
@@ -861,27 +551,6 @@ body.has-maximized-window #dock-trigger {
 	flex-direction: column;
 	border: 1px solid rgba(255, 255, 255, 0.1);
 }
-
-.custom-args-indicator {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	border-bottom: 3px solid white;
-	border-radius: 8px;
-	/* Matches .icon-image border-radius */
-	opacity: 0.8;
-	z-index: 10;
-	transition: opacity 0.2s ease;
-	pointer-events: none;
-}
-
-.desktop-icon:hover .custom-args-indicator {
-	opacity: 1;
-}
-
-
 
 .icon-label {
 	font-size: 11px;
@@ -900,7 +569,6 @@ body.has-maximized-window #dock-trigger {
 	hyphens: auto;
 }
 
-/* Context Menu */
 .context-menu {
 	position: fixed;
 	background: var(--theme-surface);
@@ -929,17 +597,6 @@ body.has-maximized-window #dock-trigger {
 	align-items: center;
 	gap: 8px;
 	flex: 1;
-}
-
-.context-menu-item .sort-arrow {
-	font-size: 16px;
-	font-weight: bold;
-	color: rgba(255, 255, 255, 0.8);
-	margin-left: auto;
-	min-width: 20px;
-	text-align: center;
-	text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
-	opacity: 1;
 }
 
 .context-menu-item:not([data-action*="sort"]) {
@@ -977,27 +634,6 @@ body.has-maximized-window #dock-trigger {
 	color: var(--theme-text-muted);
 }
 
-.model-hint strong {
-	color: var(--theme-text);
-	font-weight: 500;
-	font-size: 13px;
-}
-
-.model-hint hr {
-	border: none;
-	height: 1px;
-	background: var(--theme-border);
-	margin: 6px 0;
-}
-
-.model-hint span {
-	color: var(--theme-text);
-	font-weight: 500;
-	width: 90px;
-	display: inline-block;
-}
-
-/* Architecture Icon Styles */
 .desktop-icon.architecture-icon .icon-image {
 	background: transparent;
 	border: none;
@@ -1050,7 +686,6 @@ body.has-maximized-window #dock-trigger {
 	box-shadow: 0 0 10px var(--theme-glow);
 }
 
-/* Architecture Models List */
 .architecture-models-list {
 	position: fixed;
 	background: var(--theme-surface);
@@ -1064,213 +699,4 @@ body.has-maximized-window #dock-trigger {
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
-}
-
-.architecture-models-list::before {
-	content: '';
-	position: absolute;
-	left: -10px;
-	top: 50%;
-	transform: translateY(-50%);
-	width: 10px;
-	height: 2px;
-	background: var(--theme-primary);
-	box-shadow: 0 0 8px var(--theme-glow);
-}
-
-.desktop-icon.architecture-icon.list-active {
-	background: var(--theme-bg-strong);
-	border: 1px solid var(--theme-primary);
-	box-shadow: 0 0 10px var(--theme-glow);
-	position: relative;
-}
-
-.desktop-icon.architecture-icon.list-active::after {
-	content: '';
-	position: absolute;
-	right: -10px;
-	top: 50%;
-	transform: translateY(-50%);
-	width: 10px;
-	height: 2px;
-	background: var(--theme-primary);
-	box-shadow: 0 0 8px var(--theme-glow);
-}
-
-.arch-list-header {
-	padding: 12px 16px;
-	background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-accent) 100%);
-	color: white;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-.arch-list-header strong {
-	font-size: 16px;
-	font-weight: 600;
-}
-
-.arch-list-stats {
-	font-size: 11px;
-	opacity: 0.9;
-}
-
-.arch-list-divider {
-	height: 1px;
-	background: var(--theme-border);
-}
-
-.arch-search-container {
-	padding: 8px 12px;
-	background: var(--theme-bg-light);
-	border-bottom: 1px solid var(--theme-border);
-	position: relative;
-}
-
-.arch-search-input {
-	width: 100%;
-	padding: 8px 32px 8px 12px;
-	background: var(--theme-surface);
-	border: 1px solid var(--theme-border);
-	border-radius: 6px;
-	color: var(--theme-text);
-	font-size: 12px;
-	outline: none;
-	transition: border-color 0.2s ease;
-}
-
-.arch-search-input:focus {
-	border-color: var(--theme-primary);
-	box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.1);
-}
-
-.arch-search-input::placeholder {
-	color: var(--theme-text-muted);
-}
-
-.arch-search-icon {
-	position: absolute;
-	right: 20px;
-	top: 50%;
-	transform: translateY(-50%);
-	font-size: 18px;
-	color: var(--theme-text-muted);
-	pointer-events: none;
-}
-
-.arch-models-container {
-	overflow-y: auto;
-	max-height: 420px;
-	padding: 8px;
-}
-
-.arch-models-container::-webkit-scrollbar {
-	width: 8px;
-}
-
-.arch-models-container::-webkit-scrollbar-track {
-	background: var(--theme-bg-light);
-	border-radius: 4px;
-}
-
-.arch-models-container::-webkit-scrollbar-thumb {
-	background: var(--theme-primary);
-	border-radius: 4px;
-}
-
-.arch-models-container::-webkit-scrollbar-thumb:hover {
-	background: var(--theme-accent);
-}
-
-.arch-model-item {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	padding: 10px;
-	border-radius: 6px;
-	cursor: pointer;
-	transition: all 0.2s ease;
-	border: 1px solid transparent;
-}
-
-.arch-model-item:hover {
-	background: var(--theme-hover);
-	border-color: var(--theme-primary);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.arch-model-icon {
-	width: 36px;
-	height: 36px;
-	background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-light) 100%);
-	border-radius: 6px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-	position: relative;
-}
-
-.custom-args-indicator-small {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	border-bottom: 2px solid white;
-	border-radius: 6px;
-	/* Matches .arch-model-icon-container border-radius */
-	opacity: 0.8;
-	z-index: 10;
-	transition: opacity 0.2s ease;
-	pointer-events: none;
-}
-
-.arch-model-item:hover .custom-args-indicator-small {
-	opacity: 1;
-}
-
-.model-icon-small {
-	width: 24px;
-	height: 24px;
-	object-fit: contain;
-}
-
-.arch-model-info {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-.arch-model-name {
-	font-size: 13px;
-	font-weight: 500;
-	color: var(--theme-text);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.arch-model-details {
-	display: flex;
-	gap: 8px;
-	font-size: 11px;
-	color: var(--theme-text-muted);
-}
-
-.arch-model-quant {
-	padding: 2px 6px;
-	background: var(--theme-bg-medium);
-	border-radius: 4px;
-	font-weight: 500;
-}
-
-.arch-model-size {
-	padding: 2px 6px;
-	background: var(--theme-bg-light);
-	border-radius: 4px;
 }

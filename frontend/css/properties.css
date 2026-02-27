@@ -70,7 +70,7 @@ select.property-input {
 	border-radius: 4px;
 	color: var(--theme-text);
 	font-size: 12px;
-	font-family: 'Courier New', monospace;
+	font-family: "Courier New", monospace;
 	resize: vertical;
 }
 
@@ -95,8 +95,7 @@ select.property-input {
 	box-shadow: 0 0 0 2px rgba(41, 182, 246, 0.2);
 }
 
-.property-input:disabled,
-.property-select:disabled {
+.property-input:disabled, .property-select:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 	background: var(--theme-surface-light);
@@ -415,8 +414,7 @@ select.property-input {
 	gap: 8px;
 }
 
-.copy-args-btn,
-.paste-args-btn {
+.copy-args-btn, .paste-args-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -430,15 +428,13 @@ select.property-input {
 	transition: all 0.2s ease;
 }
 
-.copy-args-btn:hover,
-.paste-args-btn:hover {
+.copy-args-btn:hover, .paste-args-btn:hover {
 	background: var(--theme-hover);
 	border-color: var(--theme-border);
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.copy-args-btn .material-icons,
-.paste-args-btn .material-icons {
+.copy-args-btn .material-icons, .paste-args-btn .material-icons {
 	font-size: 18px;
 }
 
@@ -573,34 +569,11 @@ select.property-input {
 
 
 /* Properties Modal Overlay */
-.properties-modal-overlay {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: rgba(0, 0, 0, 0.6);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	z-index: 20;
-	backdrop-filter: blur(2px);
-}
 
-.properties-confirmation-modal {
-	background: var(--theme-surface);
-	border-radius: 12px;
-	max-width: 400px;
-	width: 90%;
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-	border: 1px solid var(--theme-border);
-	animation: modalSlideIn 0.2s ease;
-}
 
-.properties-confirmation-modal .modal-header {
-	padding: 20px 24px 16px;
-	border-bottom: 1px solid var(--theme-border);
-}
+
+
+
 
 .properties-confirmation-modal .modal-header h3 {
 	color: var(--theme-text);
@@ -609,9 +582,7 @@ select.property-input {
 	margin: 0;
 }
 
-.properties-confirmation-modal .modal-body {
-	padding: 20px 24px;
-}
+
 
 .properties-confirmation-modal .modal-body p {
 	color: var(--theme-text);
@@ -620,12 +591,7 @@ select.property-input {
 	margin: 0;
 }
 
-.properties-confirmation-modal .modal-footer {
-	padding: 16px 24px 20px;
-	display: flex;
-	justify-content: flex-end;
-	gap: 12px;
-}
+
 
 .properties-confirmation-modal .btn {
 	padding: 8px 16px;
@@ -939,9 +905,7 @@ select.property-input {
 	margin-bottom: 10px;
 }
 
-.hidden-textarea {
-	display: none;
-}
+
 
 /* Add Button */
 .add-arg-btn {
@@ -958,70 +922,23 @@ select.property-input {
 }
 
 /* Add Setting Menu */
-.add-setting-menu {
-	width: 300px;
-	max-height: 400px;
-	overflow-y: hidden; /* Changed to hidden to manage scroll in content */
-	padding: 0;
-	display: flex;
-	flex-direction: column;
-}
 
-.menu-search-container {
-	padding: 8px;
-	border-bottom: 1px solid var(--theme-border);
-	background: var(--theme-surface);
-	flex-shrink: 0;
-}
 
-.menu-search-input {
-	width: 100%;
-	padding: 6px 8px 6px 30px; /* Space for icon if we add one */
-	background: var(--theme-surface-light);
-	border: 1px solid var(--theme-border);
-	border-radius: 4px;
-	color: var(--theme-text);
-	font-size: 13px;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
-	background-repeat: no-repeat;
-	background-position: 8px center;
-}
 
-.menu-search-input:focus {
-	outline: none;
-	border-color: var(--theme-accent);
-}
 
-.add-menu-content {
-	padding: 0;
-	overflow-y: auto;
-	flex: 1;
-}
 
-.menu-category {
-	border-bottom: 1px solid var(--theme-border);
-}
 
-.menu-category:last-child {
-	border-bottom: none;
-}
 
-.menu-category-header {
-	padding: 8px 12px;
-	font-size: 12px;
-	font-weight: 600;
-	color: var(--theme-text);
-	background: var(--theme-surface-light);
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	user-select: none;
-	transition: background 0.1s;
-}
 
-.menu-category-header:hover {
-	background: var(--theme-hover);
-}
+
+
+
+
+
+
+
+
+
 
 .menu-category-header .arrow-icon {
 	font-size: 16px;
@@ -1041,30 +958,15 @@ select.property-input {
 	font-weight: normal;
 }
 
-.menu-category-items {
-	padding: 4px 0;
-	background: var(--theme-surface);
-}
+
 
 .menu-category.collapsed .menu-category-items {
 	display: none;
 }
 
-.menu-item {
-	padding: 6px 16px 6px 34px; /* Indent to align with text in header */
-	font-size: 13px;
-	color: var(--theme-text);
-	cursor: pointer;
-	transition: background 0.1s;
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
 
-.menu-item:hover {
-	background: var(--theme-primary);
-	color: white;
-}
+
+
 
 .menu-item.disabled {
 	color: var(--theme-text-muted);
@@ -1076,21 +978,14 @@ select.property-input {
 	color: var(--theme-text-muted);
 }
 
-.menu-item.auto-selected {
-	background: var(--theme-surface-light);
-	color: var(--theme-text);
-}
+
 
 .menu-item.auto-selected.disabled {
 	background: var(--theme-surface-light);
 	color: var(--theme-text-muted);
 }
 
-.menu-item-status {
-	font-size: 11px;
-	color: var(--theme-success);
-	font-weight: 500;
-}
+
 
 .custom-arg-item {
 	font-weight: 500;
@@ -1106,11 +1001,7 @@ select.property-input {
 	color: white;
 }
 
-.menu-separator {
-	height: 1px;
-	background: var(--theme-border);
-	margin: 8px 16px;
-}
+
 
 .custom-arg-input {
 	border: 1px solid var(--theme-border);
@@ -1166,13 +1057,7 @@ select.property-input {
 	cursor: pointer;
 }
 
-.menu-empty {
-	padding: 20px;
-	text-align: center;
-	color: var(--theme-text-muted);
-	font-style: italic;
-	font-size: 13px;
-}
+
 
 /* Preset Management Styles */
 .properties-container {
@@ -1443,17 +1328,7 @@ select.property-input {
 	font-weight: 600;
 }
 
-.preset-info {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 8px 12px;
-	background: var(--theme-surface);
-	border-bottom: 1px solid var(--theme-border);
-	font-size: 11px;
-	color: var(--theme-text-muted);
-	min-height: 32px;
-}
+
 
 #current-preset-label {
 	flex: 1;
@@ -1463,25 +1338,9 @@ select.property-input {
 	font-weight: 500;
 }
 
-.preset-clear-btn {
-	width: 20px;
-	height: 20px;
-	background: transparent;
-	border: none;
-	color: var(--theme-text-muted);
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 3px;
-	transition: all 0.2s ease;
-	padding: 0;
-}
 
-.preset-clear-btn:hover {
-	background: var(--theme-surface-light);
-	color: var(--theme-error);
-}
+
+
 
 .preset-clear-btn.hidden {
 	display: none;

@@ -150,9 +150,7 @@
 	display: none;
 }
 
-.loading-installed,
-.error-installed,
-.no-installed {
+.loading-installed, .error-installed, .no-installed {
 	text-align: center;
 	padding: 40px;
 	color: var(--theme-text-muted);
@@ -163,22 +161,13 @@
 
 .installed-list { display: flex; flex-direction: column; gap: 12px; }
 
-.installed-item {
-	display: grid;
-	grid-template-columns: 1fr auto auto;
-	gap: 12px;
-	align-items: center;
-	padding: 12px;
-	background: var(--theme-surface);
-	border: 1px solid var(--theme-border);
-	border-radius: 8px;
-}
 
-.installed-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.installed-name { font-size: 14px; font-weight: 600; color: var(--theme-text); }
-.installed-path { font-size: 12px; color: var(--theme-text-muted); word-break: break-all; }
 
-.installed-status { justify-self: end; }
+
+
+
+
+
 .badge { 
     display: inline-flex;
     align-items: center;
@@ -228,7 +217,7 @@
     color: var(--theme-text);
 }
 
-.installed-actions { display: flex; gap: 8px; }
+
 .installed-actions button {
 	display: inline-flex;
 	align-items: center;
@@ -248,36 +237,15 @@
 	color: var(--theme-primary);
 }
 
-.installed-actions .installed-activate {
-	background: var(--theme-surface-elevated);
-	border-color: var(--theme-border);
-	color: var(--theme-text-muted);
-	filter: brightness(0.9);
-}
 
-.installed-actions .installed-activate.is-current {
-	background: var(--theme-primary);
-	border-color: var(--theme-primary);
-	color: #fff;
-	filter: none;
-}
 
-.installed-actions .installed-activate[disabled] {
-	opacity: 0.6;
-	cursor: not-allowed;
-}
 
-.installed-actions .installed-activate.is-current[disabled] {
-	opacity: 1;
-	cursor: default;
-}
 
-.installed-actions .installed-activate:hover:not([disabled]) {
-	background: var(--theme-surface);
-	border-color: var(--theme-primary);
-	color: var(--theme-primary);
-	filter: brightness(1);
-}
+
+
+
+
+
 
 .installed-actions .installed-activate.disabled {
 	   background: var(--theme-surface-elevated);
@@ -301,9 +269,7 @@
 	background: var(--theme-surface-elevated);
 }
 
-.loading-releases,
-.error-releases,
-.no-releases {
+.loading-releases, .error-releases, .no-releases {
 	text-align: center;
 	padding: 40px;
 	color: var(--theme-text-muted);

@@ -35,11 +35,10 @@
 	box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
 	height: 100%;
 	overflow: hidden;
-	font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+	font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 	background: linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-middle) 50%, var(--theme-gradient-end) 100%);
 	color: var(--theme-text);
 }
@@ -48,10 +47,7 @@ body {
 	display: none !important;
 }
 
-.blur {
-	filter: blur(2px);
-	pointer-events: none;
-}
+
 
 /* Global Scrollbar Styles */
 ::-webkit-scrollbar {
@@ -192,7 +188,7 @@ body {
 
 /* Material Icons */
 .material-icons {
-	font-family: 'Material Icons';
+	font-family: "Material Icons";
 	font-weight: normal;
 	font-style: normal;
 	font-size: inherit;
@@ -203,7 +199,7 @@ body {
 	white-space: nowrap;
 	word-wrap: normal;
 	direction: ltr;
-	-webkit-font-feature-settings: 'liga';
+	-webkit-font-feature-settings: "liga";
 	-webkit-font-smoothing: antialiased;
 }
 

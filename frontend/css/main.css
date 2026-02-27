@@ -1,28 +1,28 @@
 /* Main CSS File - Imports all modular CSS files */
 
 /* Theme and Base Styles */
-@import url('./theme.css');
+@import url("./theme.css");
 
 /* Loading Screen */
-@import url('./loading.css');
+@import url("./loading.css");
 
 /* Desktop, Taskbar, and Start Menu */
-@import url('./desktop.css');
+@import url("./desktop.css");
 
 /* Window Management */
-@import url('./windows.css');
+@import url("./windows.css");
 
 /* Huggingface Search */
-@import url('./huggingface.css');
+@import url("./huggingface.css");
 
 /* Properties and Settings */
-@import url('./properties.css');
+@import url("./properties.css");
 
 /* Download Manager */
-@import url('./download.css');
+@import url("./download.css");
 
 /* Llama Manager */
-@import url('./llama-manager.css');
+@import url("./llama-manager.css");
 
 /* Modals and Notifications */
-@import url('./modals.css');
+@import url("./modals.css");

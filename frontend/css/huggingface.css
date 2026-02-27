@@ -72,7 +72,7 @@
 	appearance: none;
 	-webkit-appearance: none;
 	-moz-appearance: none;
-	background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path fill="%23ffffff" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+	background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 4 5\"><path fill=\"%23ffffff\" d=\"M2 0L0 2h4zm0 5L0 3h4z\"/></svg>");
 	background-repeat: no-repeat;
 	background-position: right 6px center;
 	background-size: 8px;
@@ -85,9 +85,7 @@
 	border: none;
 }
 
-.limit-select option:checked,
-.limit-select option:hover,
-.limit-select option:focus {
+.limit-select option:checked, .limit-select option:hover, .limit-select option:focus {
 	background: var(--theme-primary) !important;
 	color: white !important;
 	outline: none;
@@ -103,16 +101,12 @@
 	border-color: var(--theme-primary);
 }
 
-.limit-select:focus option,
-.limit-select:active option {
+.limit-select:focus option, .limit-select:active option {
 	background: var(--theme-surface) !important;
 	color: var(--theme-text) !important;
 }
 
-.limit-select:focus option:checked,
-.limit-select:focus option:hover,
-.limit-select:active option:checked,
-.limit-select:active option:hover {
+.limit-select:focus option:checked, .limit-select:focus option:hover, .limit-select:active option:checked, .limit-select:active option:hover {
 	background: var(--theme-primary) !important;
 	color: white !important;
 }
@@ -152,7 +146,7 @@
 	appearance: none;
 	-webkit-appearance: none;
 	-moz-appearance: none;
-	background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path fill="%23ffffff" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+	background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 4 5\"><path fill=\"%23ffffff\" d=\"M2 0L0 2h4zm0 5L0 3h4z\"/></svg>");
 	background-repeat: no-repeat;
 	background-position: right 6px center;
 	background-size: 8px;
@@ -165,9 +159,7 @@
 	border: none;
 }
 
-.sort-select option:checked,
-.sort-select option:hover,
-.sort-select option:focus {
+.sort-select option:checked, .sort-select option:hover, .sort-select option:focus {
 	background: var(--theme-primary) !important;
 	color: white !important;
 	outline: none;
@@ -183,16 +175,12 @@
 	border-color: var(--theme-primary);
 }
 
-.sort-select:focus option,
-.sort-select:active option {
+.sort-select:focus option, .sort-select:active option {
 	background: var(--theme-surface) !important;
 	color: var(--theme-text) !important;
 }
 
-.sort-select:focus option:checked,
-.sort-select:focus option:hover,
-.sort-select:active option:checked,
-.sort-select:active option:hover {
+.sort-select:focus option:checked, .sort-select:focus option:hover, .sort-select:active option:checked, .sort-select:active option:hover {
 	background: var(--theme-primary) !important;
 	color: white !important;
 }
@@ -248,10 +236,7 @@
 	flex-direction: column;
 }
 
-.search-placeholder,
-.search-loading,
-.search-error,
-.search-no-results {
+.search-placeholder, .search-loading, .search-error, .search-no-results {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -312,9 +297,7 @@
 	transform: translateY(-1px);
 	}
 
-.search-placeholder-icon,
-.no-results-icon,
-.error-icon {
+.search-placeholder-icon, .no-results-icon, .error-icon {
 	font-size: 48px;
 	margin-bottom: 16px;
 	opacity: 0.7;
@@ -399,8 +382,7 @@
 	color: white;
 }
 
-.model-list-item.selected .model-list-author,
-.model-list-item.selected .model-list-stats {
+.model-list-item.selected .model-list-author, .model-list-item.selected .model-list-stats {
 	color: rgba(255, 255, 255, 0.8);
 }
 
@@ -432,9 +414,7 @@
 	gap: 2px;
 }
 
-.stat-downloads,
-.stat-likes,
-.stat-updated {
+.stat-downloads, .stat-likes, .stat-updated {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -742,8 +722,7 @@
 	transform: translateY(-1px);
 }
 
-.quant-download-btn[data-status="downloaded"],
-.quant-download-btn.downloaded {
+.quant-download-btn[data-status="downloaded"], .quant-download-btn.downloaded {
 	background: #4caf50;
 	color: white;
 	cursor: default;
@@ -773,17 +752,7 @@
 	transform: none;
 }
 
-.model-icon {
-	font-size: 24px;
-	width: 42px;
-	height: 42px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--theme-bg-light);
-	border-radius: 6px;
-	flex-shrink: 0;
-}
+
 
 .download-controls {
 	display: flex;

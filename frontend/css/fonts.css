@@ -3,48 +3,48 @@
 
 /* Ubuntu Font Face Definitions */
 @font-face {
-  font-family: 'Ubuntu';
+  font-family: "Ubuntu";
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: url('../fonts/Ubuntu-Light.ttf') format('truetype');
+  src: url("../fonts/Ubuntu-Light.ttf") format("truetype");
 }
 
 @font-face {
-  font-family: 'Ubuntu';
+  font-family: "Ubuntu";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../fonts/Ubuntu-Regular.ttf') format('truetype');
+  src: url("../fonts/Ubuntu-Regular.ttf") format("truetype");
 }
 
 @font-face {
-  font-family: 'Ubuntu';
+  font-family: "Ubuntu";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('../fonts/Ubuntu-Medium.ttf') format('truetype');
+  src: url("../fonts/Ubuntu-Medium.ttf") format("truetype");
 }
 
 @font-face {
-  font-family: 'Ubuntu';
+  font-family: "Ubuntu";
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('../fonts/Ubuntu-Bold.ttf') format('truetype');
+  src: url("../fonts/Ubuntu-Bold.ttf") format("truetype");
 }
 
 /* Material Icons Font Face Definition */
 @font-face {
-  font-family: 'Material Icons';
+  font-family: "Material Icons";
   font-style: normal;
   font-weight: 400;
-  src: url('../fonts/MaterialIcons-Regular.ttf') format('truetype');
+  src: url("../fonts/MaterialIcons-Regular.ttf") format("truetype");
 }
 
 /* Material Icons CSS class */
 .material-icons {
-  font-family: 'Material Icons';
+  font-family: "Material Icons";
   font-weight: normal;
   font-style: normal;
   font-size: 24px;

@@ -188,8 +188,7 @@
 	text-align: right;
 }
 
-.download-size,
-.download-speed {
+.download-size, .download-speed {
 	white-space: nowrap;
 	font-size: 10px;
 }
@@ -215,8 +214,7 @@
 	color: var(--theme-error);
 }
 
-.download-pause,
-.download-resume {
+.download-pause, .download-resume {
 	background: none;
 	border: none;
 	color: var(--theme-text-muted);
