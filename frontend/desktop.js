@@ -17,6 +17,7 @@ class DesktopManager {
         this.sessionData = null; // Store session data for deferred restoration
         this.restorationInProgress = false; // Flag to prevent duplicate restoration
         this.modelsByArchitecture = {}; // Store models grouped by architecture
+        this.favorites = this.loadFavorites(); // Load favorites from localStorage
 
         this.init();
     }
@@ -606,6 +607,14 @@ class DesktopManager {
         if (searchDockIcon) {
             searchDockIcon.addEventListener('click', (e) => {
                 e.stopPropagation();
+                
+                // Toggle folder view - if already open, close it
+                const folderView = document.getElementById('search-folder-view');
+                if (folderView && !folderView.classList.contains('hidden')) {
+                    this.hideSearchFolderView();
+                    return;
+                }
+                
                 // Don't auto-display recent searches when opening All Models
                 this.showArchitectureFolderView('All', false);
             });
@@ -1349,6 +1358,9 @@ class DesktopManager {
                                 <span class="model-card-detail-value">${sizeGB} GB</span>
                             </div>
                         </div>
+                        <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
+                            <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
+                        </button>
                         <button class="model-card-menu-btn" data-action="menu" title="More options">
                             <span class="material-icons">more_vert</span>
                         </button>
@@ -1370,12 +1382,22 @@ class DesktopManager {
                 e.stopPropagation();
                 // Don't launch if clicking on the menu button
                 if (e.target.closest('.model-card-menu-btn')) return;
+                // Don't launch if clicking on the favorite button
+                if (e.target.closest('.model-card-favorite-btn')) return;
                 
                 const tempIcon = document.createElement('div');
                 tempIcon.dataset.path = card.dataset.path;
                 tempIcon.dataset.name = card.dataset.name;
                 await this.launchModel(tempIcon);
             });
+
+            // Add click handler for favorite button
+            const favBtn = card.querySelector('.model-card-favorite-btn');
+            if (favBtn) {
+                favBtn.addEventListener('click', (e) => {
+                    this.toggleFavorite(card.dataset.path, e);
+                });
+            }
 
             // Add click handler for menu button (more_vert)
             const menuBtn = card.querySelector('.model-card-menu-btn');
@@ -1434,6 +1456,9 @@ class DesktopManager {
 
         // Update model indicators (both running status and custom args)
         await this.updateCustomArgsIndicators();
+
+        // Sort by favorites (favorites at top)
+        this.sortFolderViewByFavorites();
 
         // Focus the filter input
         if (searchFolderInput) {
@@ -1815,6 +1840,9 @@ class DesktopManager {
                                 </span>
                             </div>
                         </div>
+                        <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
+                            <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
+                        </button>
                         <button class="model-card-menu-btn" data-action="menu" title="More options">
                             <span class="material-icons">more_vert</span>
                         </button>
@@ -1836,12 +1864,22 @@ class DesktopManager {
                 e.stopPropagation();
                 // Don't launch if clicking on the menu button
                 if (e.target.closest('.model-card-menu-btn')) return;
+                // Don't launch if clicking on the favorite button
+                if (e.target.closest('.model-card-favorite-btn')) return;
                 
                 const tempIcon = document.createElement('div');
                 tempIcon.dataset.path = card.dataset.path;
                 tempIcon.dataset.name = card.dataset.name;
                 await this.launchModel(tempIcon);
             });
+
+            // Add click handler for favorite button
+            const favBtn = card.querySelector('.model-card-favorite-btn');
+            if (favBtn) {
+                favBtn.addEventListener('click', (e) => {
+                    this.toggleFavorite(card.dataset.path, e);
+                });
+            }
 
             // Add click handler for menu button (more_vert)
             const menuBtn = card.querySelector('.model-card-menu-btn');
@@ -1907,6 +1945,9 @@ class DesktopManager {
 
         // Update model indicators (both running status and custom args)
         await this.updateCustomArgsIndicators();
+
+        // Sort by favorites (favorites at top)
+        this.sortFolderViewByFavorites();
     }
 
     hideSearchFolderView() {
@@ -2324,6 +2365,80 @@ class DesktopManager {
         if (bytes === 0) return '0 B';
         const i = Math.floor(Math.log(bytes) / Math.log(1024));
         return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    // Favorites management
+    loadFavorites() {
+        try {
+            const saved = localStorage.getItem('Arandu-favorites');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Error loading favorites:', error);
+            return [];
+        }
+    }
+
+    saveFavorites() {
+        try {
+            localStorage.setItem('Arandu-favorites', JSON.stringify(this.favorites));
+        } catch (error) {
+            console.error('Error saving favorites:', error);
+        }
+    }
+
+    isFavorite(modelPath) {
+        return this.favorites.includes(modelPath);
+    }
+
+    toggleFavorite(modelPath, event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        
+        const index = this.favorites.indexOf(modelPath);
+        if (index === -1) {
+            this.favorites.push(modelPath);
+        } else {
+            this.favorites.splice(index, 1);
+        }
+        this.saveFavorites();
+        
+        // Update the UI
+        const card = document.querySelector(`.model-card[data-path="${CSS.escape(modelPath)}"]`);
+        if (card) {
+            const favBtn = card.querySelector('.model-card-favorite-btn');
+            const isFav = this.isFavorite(modelPath);
+            
+            if (favBtn) {
+                favBtn.classList.toggle('active', isFav);
+                favBtn.innerHTML = isFav ? '<span class="material-icons">star</span>' : '<span class="material-icons">star_border</span>';
+            }
+        }
+        
+        // Re-sort the folder view to put favorites at top
+        this.sortFolderViewByFavorites();
+    }
+
+    sortFolderViewByFavorites() {
+        const folderGrid = document.getElementById('search-folder-grid');
+        if (!folderGrid) return;
+
+        const cards = Array.from(folderGrid.querySelectorAll('.model-card'));
+        
+        cards.sort((a, b) => {
+            const aPath = a.dataset.path;
+            const bPath = b.dataset.path;
+            const aFav = this.isFavorite(aPath);
+            const bFav = this.isFavorite(bPath);
+            
+            // Favorites first
+            if (aFav && !bFav) return -1;
+            if (!aFav && bFav) return 1;
+            return 0;
+        });
+
+        // Re-append in sorted order
+        cards.forEach(card => folderGrid.appendChild(card));
     }
 
     formatNumber(num) {
