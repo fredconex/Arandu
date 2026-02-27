@@ -288,13 +288,13 @@ class DesktopManager {
             // If we just entered maximized mode, hide the dock immediately unless hovered
             const dock = document.querySelector('.dock');
             if (dock && !dock.matches(':hover')) {
-                 dock.classList.remove('visible');
+                dock.classList.remove('visible');
             }
         } else {
             document.body.classList.remove('has-maximized-window');
             // If leaving maximized mode, ensure dock is visible
-             const dock = document.querySelector('.dock');
-             if (dock) dock.classList.add('visible');
+            const dock = document.querySelector('.dock');
+            if (dock) dock.classList.add('visible');
         }
     }
 
@@ -331,11 +331,11 @@ class DesktopManager {
         dock.addEventListener('mouseleave', () => {
             isDockHovered = false;
             // If we leave the dock, start the hide timer if appropriate
-             if (document.body.classList.contains('has-maximized-window')) {
+            if (document.body.classList.contains('has-maximized-window')) {
                 if (hideTimeout) clearTimeout(hideTimeout);
                 hideTimeout = setTimeout(() => {
                     if (!isDockHovered && document.body.classList.contains('has-maximized-window')) {
-                         dock.classList.remove('visible');
+                        dock.classList.remove('visible');
                     }
                     hideTimeout = null;
                 }, 200);
@@ -343,8 +343,8 @@ class DesktopManager {
         });
 
         document.addEventListener('mousemove', (e) => {
-             // If NO maximized window, dock is always visible (handled by CSS default + class absence)
-             // We only need to manage auto-hide when 'has-maximized-window' is present.
+            // If NO maximized window, dock is always visible (handled by CSS default + class absence)
+            // We only need to manage auto-hide when 'has-maximized-window' is present.
             if (!document.body.classList.contains('has-maximized-window')) {
                 if (hideTimeout) {
                     clearTimeout(hideTimeout);
@@ -355,10 +355,10 @@ class DesktopManager {
 
             const h = window.innerHeight;
             const w = window.innerWidth;
-            
+
             // Trigger: Bottom 15px, Center 60%
-            const inTriggerZone = (e.clientY >= h ) && (e.clientX >= w * 0.2 && e.clientX <= w * 0.8);
-            
+            const inTriggerZone = (e.clientY >= h) && (e.clientX >= w * 0.2 && e.clientX <= w * 0.8);
+
             // Keep Visible: Bottom 100px or hovered
             const inKeepAliveZone = (e.clientY >= h - 100);
 
@@ -403,14 +403,14 @@ class DesktopManager {
         if (searchBalloon && searchDockIcon) {
             searchBalloon.classList.add('hidden');
             searchDockIcon.classList.remove('active');
-            
+
             // Also hide history dropdown
             const dropdown = document.getElementById('search-history-dropdown');
             if (dropdown) {
                 dropdown.classList.remove('show');
             }
         }
-        
+
         this.deselectAllIcons();
     }
 
@@ -462,7 +462,7 @@ class DesktopManager {
             // Don't hide architecture list if clicking inside it or on an architecture icon
             const archList = document.getElementById('architecture-models-list');
             const clickedArchIcon = e.target.closest('.desktop-icon.architecture-icon');
-            
+
             if ((archList && archList.contains(e.target)) || clickedArchIcon) {
                 // Don't hide anything if clicking on arch list or arch icon
                 return;
@@ -571,7 +571,7 @@ class DesktopManager {
                     } catch (error) {
                         console.error('Error loading presets for double-click launch:', error);
                     }
-                    
+
                     // Fallback to default launch if no presets or error
                     this.launchModel(icon);
                 }
@@ -602,12 +602,12 @@ class DesktopManager {
             contextMenu.addEventListener('click', async (e) => {
                 const actionElement = e.target.closest('[data-action]');
                 const action = actionElement?.dataset.action;
-                
+
                 if (action) {
                     // Don't trigger action if clicking on a menu item with submenu (unless it's a submenu item itself)
                     const hasSubmenu = actionElement?.classList.contains('has-submenu');
                     const isSubmenuItem = actionElement?.closest('.context-menu-submenu');
-                    
+
                     if (action === 'expand-architecture' && this.selectedIcon) {
                         // Show the architecture models list
                         this.showArchitectureModels(this.selectedIcon);
@@ -750,7 +750,7 @@ class DesktopManager {
             searchInput.addEventListener('focus', () => {
                 this.hideModelHint();
             });
-            
+
             // Toggle dropdown when clicking the input
             searchInput.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -772,7 +772,7 @@ class DesktopManager {
                 if (dropdown) {
                     // Update dropdown with filtered results but keep it shown if it was already shown
                     this.updateSearchHistoryDropdown(e.target.value);
-                    
+
                     // Only show dropdown if there are matching results and input is not empty
                     if (e.target.value.trim() !== '' && searchHistory.hasHistory()) {
                         dropdown.classList.add('show');
@@ -834,7 +834,7 @@ class DesktopManager {
                     cancelText: 'Cancel',
                     type: 'danger'
                 });
-                
+
                 if (confirmed) {
                     searchHistory.clearHistory();
                     this.updateSearchHistoryDropdown();
@@ -1021,8 +1021,8 @@ class DesktopManager {
                         presetsHTMLExternal = '<div class="context-menu-submenu">';
                         presets.forEach(preset => {
                             const defaultBadge = preset.is_default ? ' <span class="material-icons" style="font-size: 12px; vertical-align: middle;">home</span>' : '';
-                              presetsHTML += `<div class="context-menu-item" data-action="launch-preset" data-preset-id="${preset.id}">${preset.name}${defaultBadge}</div>`;
-                              presetsHTMLExternal += `<div class="context-menu-item" data-action="launch-preset-external" data-preset-id="${preset.id}">${preset.name}${defaultBadge}</div>`;
+                            presetsHTML += `<div class="context-menu-item" data-action="launch-preset" data-preset-id="${preset.id}">${preset.name}${defaultBadge}</div>`;
+                            presetsHTMLExternal += `<div class="context-menu-item" data-action="launch-preset-external" data-preset-id="${preset.id}">${preset.name}${defaultBadge}</div>`;
                         });
                         presetsHTML += '</div>';
                         presetsHTMLExternal += '</div>';
@@ -1059,12 +1059,12 @@ class DesktopManager {
                 </div>
             `;
         }
-        
+
         // Don't show menu if there are no items
         if (!menuItems || menuItems.trim() === '') {
             return;
         }
-        
+
         contextMenu.innerHTML = menuItems;
 
         // Show the menu temporarily to get its dimensions
@@ -1174,7 +1174,7 @@ class DesktopManager {
             // Running application
             const isMinimized = window.style.display === 'none' || window.classList.contains('hidden');
             const isMaximized = window.classList.contains('maximized');
-            
+
             menuItems = `
                 <div class="context-menu-item" data-action="show-window" data-window-id="${windowId}">
                     <span class="material-icons">${isMinimized ? 'visibility' : 'visibility_off'}</span>
@@ -1201,7 +1201,7 @@ class DesktopManager {
         // Show menu temporarily to get its height
         dockContextMenu.style.visibility = 'hidden';
         dockContextMenu.classList.remove('hidden');
-        
+
         // Position the menu above the cursor
         const rect = dockContextMenu.getBoundingClientRect();
         let menuX = x;
@@ -1230,7 +1230,7 @@ class DesktopManager {
             if (!actionElement) return;
 
             const action = actionElement.dataset.action;
-            
+
             if (action === 'open-app') {
                 const appType = actionElement.dataset.app;
                 if (appType === 'search') {
@@ -1332,7 +1332,7 @@ class DesktopManager {
     toggleArchitectureModels(icon) {
         const arch = icon.dataset.architecture;
         if (!arch) return;
-        
+
         // Show the folder view for this architecture
         this.showArchitectureFolderView(arch);
     }
@@ -1343,7 +1343,7 @@ class DesktopManager {
         const folderTitle = document.getElementById('search-folder-title');
         const folderStats = document.getElementById('search-folder-stats');
         const searchFolderInput = document.getElementById('search-folder-input');
-        
+
         if (!folderView || !folderGrid) return;
 
         // Clear the filter input
@@ -1372,7 +1372,7 @@ class DesktopManager {
                     console.error(`Error checking custom args for ${model.name}:`, error);
                 }
                 const customArgsIndicator = hasCustomArgs ? '<div class="model-card-custom-indicator"></div>' : '';
-                
+
                 return `
                     <div class="model-card" data-path="${model.path}" data-name="${model.name}" 
                          data-size="${model.size_gb}" data-architecture="${model.architecture}" 
@@ -1397,7 +1397,7 @@ class DesktopManager {
                     </div>
                 `;
             });
-            
+
             const cardsHTMLArray = await Promise.all(cardsHTMLPromises);
             return cardsHTMLArray.join('');
         };
@@ -1427,7 +1427,7 @@ class DesktopManager {
                 tempIcon.dataset.architecture = card.dataset.architecture;
                 tempIcon.dataset.quantization = card.dataset.quantization;
                 tempIcon.dataset.date = card.dataset.date;
-                
+
                 this.selectedIcon = tempIcon;
                 await this.showContextMenu(e.clientX, e.clientY, 'icon');
             });
@@ -1475,14 +1475,14 @@ class DesktopManager {
 
             // Hide all other popups
             this.hideContextMenu();
-            
+
             // Collapse memory monitor
             const memoryMonitor = document.getElementById('desktop-memory-monitor');
             if (memoryMonitor) {
                 memoryMonitor.classList.remove('expanded');
                 memoryMonitor.classList.remove('active');
             }
-            
+
             if (window.downloadManager) {
                 window.downloadManager.hideDownloadManager();
             }
@@ -1524,7 +1524,7 @@ class DesktopManager {
         if (!historyList) return;
 
         let history = searchHistory.getHistory(30); // Show up to 30 items
-        
+
         // Filter history based on the current search term if provided
         if (filterTerm && filterTerm.trim() !== '') {
             const lowerFilterTerm = filterTerm.toLowerCase().trim();
@@ -1576,7 +1576,7 @@ class DesktopManager {
         const folderTitle = document.getElementById('search-folder-title');
         const folderStats = document.getElementById('search-folder-stats');
         const searchFolderInput = document.getElementById('search-folder-input');
-        
+
         if (!folderView || !folderGrid) return;
 
         // Clear the filter input
@@ -1616,7 +1616,7 @@ class DesktopManager {
                     console.error(`Error checking custom args for ${model.name}:`, error);
                 }
                 const customArgsIndicator = hasCustomArgs ? '<div class="model-card-custom-indicator"></div>' : '';
-                
+
                 return `
                     <div class="model-card" data-path="${model.path}" data-name="${model.name}" 
                          data-size="${model.size_gb}" data-architecture="${model.architecture}" 
@@ -1641,7 +1641,7 @@ class DesktopManager {
                     </div>
                 `;
             });
-            
+
             const cardsHTMLArray = await Promise.all(cardsHTMLPromises);
             return cardsHTMLArray.join('');
         };
@@ -1671,7 +1671,7 @@ class DesktopManager {
                 tempIcon.dataset.architecture = card.dataset.architecture;
                 tempIcon.dataset.quantization = card.dataset.quantization;
                 tempIcon.dataset.date = card.dataset.date;
-                
+
                 this.selectedIcon = tempIcon;
                 await this.showContextMenu(e.clientX, e.clientY, 'icon');
             });
@@ -1691,11 +1691,11 @@ class DesktopManager {
     hideSearchFolderView() {
         const folderView = document.getElementById('search-folder-view');
         const searchFolderInput = document.getElementById('search-folder-input');
-        
+
         if (folderView) {
             folderView.classList.add('hidden');
         }
-        
+
         // Clear the filter input
         if (searchFolderInput) {
             searchFolderInput.value = '';
@@ -1713,7 +1713,7 @@ class DesktopManager {
         cards.forEach(card => {
             const modelName = (card.dataset.name || '').toLowerCase();
             const cleanModelName = modelName.replace(/[^a-z0-9]/g, '');
-            
+
             if (cleanTerm === '' || cleanModelName.includes(cleanTerm)) {
                 card.style.display = 'flex';
             } else {
@@ -1729,11 +1729,26 @@ class DesktopManager {
         // Create architecture folder icons
         Object.keys(this.modelsByArchitecture).sort().forEach(arch => {
             const archModels = this.modelsByArchitecture[arch];
+
+            // Calculate folder stats for sorting
+            let totalSize = 0;
+            let latestDate = 0;
+
+            archModels.forEach(m => {
+                const s = parseFloat(m.size_gb) || 0;
+                totalSize += s;
+
+                const d = parseFloat(m.date) || 0;
+                if (d > latestDate) latestDate = d;
+            });
+
             const archElement = document.createElement('div');
             archElement.className = 'desktop-icon architecture-icon';
             archElement.setAttribute('data-architecture', arch);
             archElement.setAttribute('data-model-count', archModels.length);
             archElement.setAttribute('data-name', arch);
+            archElement.setAttribute('data-size', totalSize);
+            archElement.setAttribute('data-date', latestDate);
 
             archElement.innerHTML = `
                 <div class="icon-image">
@@ -2181,19 +2196,19 @@ class DesktopManager {
             // Handle architecture icons - they should always come first
             const aIsArch = a.classList.contains('architecture-icon');
             const bIsArch = b.classList.contains('architecture-icon');
-            
+
             if (aIsArch && !bIsArch) return -1;
             if (!aIsArch && bIsArch) return 1;
-            
+
             // Both are architecture icons or both are regular icons
             let aValue = a.dataset[sortType];
             let bValue = b.dataset[sortType];
-            
+
             // Handle undefined values
             if (!aValue && !bValue) return 0;
             if (!aValue) return 1;
             if (!bValue) return -1;
-            
+
             let comparison = 0;
 
             switch (sortType) {
@@ -2203,7 +2218,7 @@ class DesktopManager {
                     break;
                 case 'quantization':
                     const getQuantValue = (s) => {
-                        if (s === 'Unknown') return -1;
+                        if (s === 'Unknown' || !s) return -1;
                         const match = s.match(/(\d+)/);
                         return match ? parseInt(match[0], 10) : -1;
                     };
@@ -2215,6 +2230,14 @@ class DesktopManager {
                     comparison = aValue.localeCompare(bValue, undefined, { numeric: true });
                     break;
             }
+
+            // Fallback to sorting by name if values are identical
+            if (comparison === 0 && sortType !== 'name') {
+                const aName = a.dataset.name || '';
+                const bName = b.dataset.name || '';
+                comparison = aName.localeCompare(bName, undefined, { numeric: true });
+            }
+
             return this.sortDirection === 'asc' ? comparison : -comparison;
         });
 
@@ -2250,7 +2273,7 @@ class DesktopManager {
     async toggleSettingsPanel() {
         const windowElement = document.getElementById('settings-window');
         const settingsDockIcon = document.getElementById('settings-dock-icon');
-        
+
         if (windowElement) {
             if (windowElement.classList.contains('hidden')) {
                 windowElement.classList.remove('hidden');
@@ -2305,7 +2328,7 @@ class DesktopManager {
     hideSettingsPanel() {
         const windowElement = document.getElementById('settings-window');
         const settingsDockIcon = document.getElementById('settings-dock-icon');
-        
+
         if (windowElement) {
             windowElement.classList.add('hidden');
             // Don't remove from windows map to allow reopening
@@ -2318,7 +2341,7 @@ class DesktopManager {
     async closeSettingsPanel() {
         const windowElement = document.getElementById('settings-window');
         const settingsDockIcon = document.getElementById('settings-dock-icon');
-        
+
         if (windowElement) {
             windowElement.classList.add('hidden');
             this.windows.delete('settings-window');
@@ -2489,7 +2512,7 @@ class DesktopManager {
                     if (pathParts.length >= 2) {
                         const versionPart = pathParts[pathParts.length - 2]; // Second to last part
                         const backendPart = pathParts[pathParts.length - 1]; // Last part
-                        
+
                         // Check if it's nested structure (version/backend) or flat (version-backend)
                         if (versionPart === 'versions') {
                             // Flat structure: versions/b7779-cuda
@@ -2621,7 +2644,7 @@ class DesktopManager {
         try {
             console.log('Invoking launch_model_with_preset command...');
 
-            const result = await invoke('launch_model_with_preset', { 
+            const result = await invoke('launch_model_with_preset', {
                 modelPath: modelPath,
                 presetId: presetId
             });
@@ -2639,7 +2662,7 @@ class DesktopManager {
                     if (pathParts.length >= 2) {
                         const versionPart = pathParts[pathParts.length - 2]; // Second to last part
                         const backendPart = pathParts[pathParts.length - 1]; // Last part
-                        
+
                         // Check if it's nested structure (version/backend) or flat (version-backend)
                         if (versionPart === 'versions') {
                             // Flat structure: versions/b7779-cuda
@@ -2700,7 +2723,7 @@ class DesktopManager {
         const modelName = icon.dataset.name;
 
         try {
-            const result = await invoke('launch_model_with_preset_external', { 
+            const result = await invoke('launch_model_with_preset_external', {
                 modelPath: modelPath,
                 presetId: presetId
             });
@@ -2846,7 +2869,7 @@ class DesktopManager {
         settingsConfig.forEach(setting => {
             // Map the main argument
             argToSetting[setting.argument] = setting;
-            
+
             // Map all aliases if they exist
             if (setting.aliases && Array.isArray(setting.aliases)) {
                 setting.aliases.forEach(alias => {
@@ -2978,7 +3001,7 @@ class DesktopManager {
                         }
                         result.push(argName, val); // Use the primary argument name
                         // Skip the old value if it exists and wasn't part of equals syntax
-                        if (currentArgValue === null && i + 1 < args.length && 
+                        if (currentArgValue === null && i + 1 < args.length &&
                             (!args[i + 1].startsWith('-') || /^-\d+(\.\d+)?$/.test(args[i + 1]))) {
                             i += 2;
                         } else {
@@ -2986,7 +3009,7 @@ class DesktopManager {
                         }
                     } else {
                         // Skip both the argument and its value when removing
-                        if (currentArgValue === null && i + 1 < args.length && 
+                        if (currentArgValue === null && i + 1 < args.length &&
                             (!args[i + 1].startsWith('-') || /^-\d+(\.\d+)?$/.test(args[i + 1]))) {
                             i += 2; // Skip argument and its value
                         } else {
@@ -3038,8 +3061,8 @@ class DesktopManager {
                     // For value arguments, add if value exists and is not empty
                     // Exception: model-select, select, and text should be added even if empty (as an empty string)
                     // Also handle numeric values including 0
-                    if ((value !== undefined && value !== null && value.toString().trim() !== '') || 
-                        settingConfig.type === 'model-select' || 
+                    if ((value !== undefined && value !== null && value.toString().trim() !== '') ||
+                        settingConfig.type === 'model-select' ||
                         settingConfig.type === 'select' ||
                         settingConfig.type === 'text' ||
                         (typeof value === 'number' && !isNaN(value))) {
@@ -3319,7 +3342,7 @@ class DesktopManager {
         document.body.appendChild(window);
         this.windows.set(id, window);
         this.makeDraggable(window);
-        
+
         // Update focused state for the new window
         this.updateDockFocusedState(id);
 
@@ -3453,7 +3476,7 @@ class DesktopManager {
         window.addEventListener('mousedown', (e) => {
             // Bring window to front first
             window.style.zIndex = ++this.windowZIndex;
-            
+
             // Update focused state for dock items
             this.updateDockFocusedState(window.id);
 
@@ -3461,7 +3484,7 @@ class DesktopManager {
             if (e.target.classList.contains('resize-handle')) {
                 isResizing = true;
                 resizeDirection = e.target.dataset.direction;
-                
+
                 // Remove transform if it exists (from initial centering)
                 if (window.style.transform) {
                     const rect = window.getBoundingClientRect();
@@ -3469,7 +3492,7 @@ class DesktopManager {
                     window.style.top = rect.top + 'px';
                     window.style.transform = '';
                 }
-                
+
                 initialX = e.clientX;
                 initialY = e.clientY;
                 initialWidth = parseInt(window.offsetWidth);
@@ -3489,7 +3512,7 @@ class DesktopManager {
             // Check if clicking on header (for dragging)
             if (e.target.closest('.window-header') && !e.target.closest('.window-controls')) {
                 isDragging = true;
-                
+
                 // Remove transform if it exists (from initial centering)
                 if (window.style.transform) {
                     const rect = window.getBoundingClientRect();
@@ -3497,7 +3520,7 @@ class DesktopManager {
                     window.style.top = rect.top + 'px';
                     window.style.transform = '';
                 }
-                
+
                 initialX = e.clientX - (parseInt(window.style.left) || window.offsetLeft);
                 initialY = e.clientY - (parseInt(window.style.top) || window.offsetTop);
 
@@ -3595,7 +3618,7 @@ class DesktopManager {
 
             // Remove from session storage
             this.removeWindowFromSession(id);
-            
+
             this.updateDockAutoHidingStatus();
         }
     }
@@ -3626,7 +3649,7 @@ class DesktopManager {
         // Remove focused class from all dock items
         const allDockItems = document.querySelectorAll('.dock-item, .taskbar-item');
         allDockItems.forEach(item => item.classList.remove('focused'));
-        
+
         // Add focused class to the corresponding dock item
         if (focusedWindowId === 'settings-window') {
             const settingsDockIcon = document.getElementById('settings-dock-icon');
@@ -3764,7 +3787,7 @@ class DesktopManager {
         const dock = document.getElementById('dock');
         const separators = dock.querySelectorAll('.dock-separator');
         const rightSeparator = separators[1]; // Get the second separator (right divisor)
-        
+
         // Check if item already exists
         let item = document.getElementById(`taskbar-${id}`);
         if (!item) {
@@ -3812,11 +3835,11 @@ class DesktopManager {
                     } else if (window.style.zIndex < this.windowZIndex) {
                         // Window is visible but not on top - bring it to front
                         window.style.zIndex = ++this.windowZIndex;
-                        
+
                         // Update active states
                         document.querySelectorAll('.window').forEach(w => w.classList.remove('active'));
                         window.classList.add('active');
-                        
+
                         document.querySelectorAll('.taskbar-item').forEach(t => t.classList.remove('active'));
                         item.classList.add('active');
                     } else {
@@ -4010,12 +4033,12 @@ class DesktopManager {
     async updateSingleIconIndicator(icon, modelPath) {
         const hasCustomArgs = await this.hasCustomArguments(modelPath);
         const iconImage = icon.querySelector('.icon-image');
-        
+
         if (!iconImage) {
             console.warn('No icon-image found for icon:', icon);
             return;
         }
-        
+
         const existingIndicator = iconImage.querySelector('.custom-args-indicator');
 
         if (hasCustomArgs && !existingIndicator) {
@@ -4237,7 +4260,7 @@ class DesktopManager {
 
     toggleMemoryMonitorExpanded(stats, monitorElement) {
         const isExpanded = monitorElement.classList.contains('expanded');
-        
+
         if (isExpanded) {
             // Collapse
             monitorElement.classList.remove('expanded');
