@@ -1432,6 +1432,9 @@ class DesktopManager {
         // Ensure folder view is always on top of all windows
         folderView.style.zIndex = ++this.windowZIndex;
 
+        // Update model indicators (both running status and custom args)
+        await this.updateCustomArgsIndicators();
+
         // Focus the filter input
         if (searchFolderInput) {
             setTimeout(() => {
@@ -1901,6 +1904,9 @@ class DesktopManager {
         }
 
         console.log(`Search folder view: ${modelCount} models found`);
+
+        // Update model indicators (both running status and custom args)
+        await this.updateCustomArgsIndicators();
     }
 
     hideSearchFolderView() {
@@ -4366,6 +4372,13 @@ class DesktopManager {
                 const hasCustomArgs = await this.hasCustomArguments(modelPath);
                 const iconContainer = card.querySelector('.model-card-icon');
                 if (iconContainer) {
+                    // Add/remove has-custom-args class for the border indicator
+                    if (hasCustomArgs) {
+                        iconContainer.classList.add('has-custom-args');
+                    } else {
+                        iconContainer.classList.remove('has-custom-args');
+                    }
+                    
                     const existingIndicator = iconContainer.querySelector('.model-card-custom-indicator');
                     if (hasCustomArgs && !existingIndicator) {
                         const indicator = document.createElement('div');
@@ -4379,6 +4392,47 @@ class DesktopManager {
         });
 
         await Promise.all([...iconPromises, ...cardPromises]);
+
+        // Also update running model indicators
+        await this.updateRunningModelIndicators();
+    }
+
+    // Check if a model is currently running in a terminal
+    isModelRunning(modelPath) {
+        if (!terminalManager || !modelPath) return false;
+        
+        // Check if there's an existing terminal for this model
+        const existingTerminal = terminalManager.getExistingTerminal ? terminalManager.getExistingTerminal(modelPath) : null;
+        if (existingTerminal) {
+            const [windowId, terminalInfo] = existingTerminal;
+            // Check if the terminal is actually running or starting (not stopped)
+            return terminalInfo && (terminalInfo.status === 'running' || terminalInfo.status === 'starting');
+        }
+        return false;
+    }
+
+    // Update running model indicators for folder view cards
+    async updateRunningModelIndicators() {
+        const cards = document.querySelectorAll('.model-card');
+        
+        cards.forEach(card => {
+            const modelPath = card.dataset.path;
+            const iconContainer = card.querySelector('.model-card-icon');
+            if (!iconContainer || !modelPath) return;
+
+            const isRunning = this.isModelRunning(modelPath);
+            
+            if (isRunning) {
+                iconContainer.classList.add('running');
+            } else {
+                iconContainer.classList.remove('running');
+            }
+        });
+    }
+
+    // Public method to refresh all indicators (called by terminal manager)
+    refreshModelIndicators() {
+        this.updateCustomArgsIndicators();
     }
 
     // Update custom arguments indicator for a single icon

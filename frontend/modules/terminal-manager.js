@@ -463,6 +463,11 @@ class TerminalManager {
                 }
             }
         }
+
+        // Update model indicators in desktop folder view
+        if (this.desktop.refreshModelIndicators) {
+            this.desktop.refreshModelIndicators();
+        }
     }
 
     async stopServer(processId, windowId, modelPath, modelName) {

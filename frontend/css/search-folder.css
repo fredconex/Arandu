@@ -334,12 +334,54 @@
     background: #111111;
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 6px;
+    position: relative;
 }
 
 .model-card-icon img {
     width: 24px;
     height: 24px;
     opacity: 0.7;
+}
+
+/* Status indicator as bottom border behind the icon */
+.model-card-icon {
+    position: relative;
+    overflow: visible;
+}
+
+.model-card-icon::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #333333;
+    border-radius: 0 0 6px 6px;
+    z-index: 0;
+}
+
+/* White indicator for models with custom arguments */
+.model-card-icon.has-custom-args::before {
+    background: #ffffff;
+}
+
+/* Green indicator for models running in terminal */
+.model-card-icon.running::before {
+    background: #4caf50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
+}
+
+/* Override for running with custom args - green takes priority */
+.model-card-icon.running.has-custom-args::before {
+    background: #4caf50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
+}
+
+/* Ensure icon image stays above the indicator */
+.model-card-icon img {
+    position: relative;
+    z-index: 1;
 }
 
 .model-card-info {
