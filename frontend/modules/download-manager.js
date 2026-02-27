@@ -491,6 +491,8 @@ class DownloadManager {
             if (invoke) {
                 this.downloads = await invoke('clear_download_history');
                 this.updateDownloadManager();
+                // Also close the download manager after clearing
+                this.hideDownloadManager();
             }
         } catch (error) {
             console.error('Error clearing download history:', error);
