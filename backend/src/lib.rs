@@ -579,8 +579,63 @@ async fn launch_model(
     model_path: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let result = launch_model_server(model_path, &state).await
+    // Get custom args - use default preset if available
+    let custom_args = {
+        let model_configs = state.model_configs.lock().await;
+        let config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        
+        // Check if there's a default preset and use its args
+        if let Some(default_id) = &config.default_preset_id {
+            config.presets.iter()
+                .find(|p| p.id == *default_id)
+                .map(|p| p.custom_args.clone())
+                .unwrap_or_else(|| config.custom_args.clone())
+        } else if !config.presets.is_empty() {
+            // No default set, but there are presets - use the first one
+            config.presets.first()
+                .map(|p| p.custom_args.clone())
+                .unwrap_or_else(|| config.custom_args.clone())
+        } else {
+            // No presets, use main custom_args
+            config.custom_args.clone()
+        }
+    };
+    
+    // Store original args for restoration
+    let original_args = {
+        let model_configs = state.model_configs.lock().await;
+        let config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        config.custom_args.clone()
+    };
+    
+    // Temporarily update the model config with preset/default args
+    {
+        let mut model_configs = state.model_configs.lock().await;
+        let mut config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        
+        config.custom_args = custom_args;
+        model_configs.insert(model_path.clone(), config);
+    }
+    
+    // Launch the model
+    let result = launch_model_server(model_path.clone(), &state).await
         .map_err(|e| format!("Failed to launch model: {}", e))?;
+    
+    // Restore original args
+    {
+        let mut model_configs = state.model_configs.lock().await;
+        let mut config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        config.custom_args = original_args;
+        model_configs.insert(model_path, config);
+    }
     
     Ok(serde_json::json!({
         "success": true,
@@ -596,8 +651,63 @@ async fn launch_model_external(
     model_path: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let result = launch_model_external_impl(model_path, &state).await
+    // Get custom args - use default preset if available
+    let custom_args = {
+        let model_configs = state.model_configs.lock().await;
+        let config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        
+        // Check if there's a default preset and use its args
+        if let Some(default_id) = &config.default_preset_id {
+            config.presets.iter()
+                .find(|p| p.id == *default_id)
+                .map(|p| p.custom_args.clone())
+                .unwrap_or_else(|| config.custom_args.clone())
+        } else if !config.presets.is_empty() {
+            // No default set, but there are presets - use the first one
+            config.presets.first()
+                .map(|p| p.custom_args.clone())
+                .unwrap_or_else(|| config.custom_args.clone())
+        } else {
+            // No presets, use main custom_args
+            config.custom_args.clone()
+        }
+    };
+    
+    // Store original args for restoration
+    let original_args = {
+        let model_configs = state.model_configs.lock().await;
+        let config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        config.custom_args.clone()
+    };
+    
+    // Temporarily update the model config with preset/default args
+    {
+        let mut model_configs = state.model_configs.lock().await;
+        let mut config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        
+        config.custom_args = custom_args;
+        model_configs.insert(model_path.clone(), config);
+    }
+    
+    // Launch externally
+    let result = launch_model_external_impl(model_path.clone(), &state).await
         .map_err(|e| format!("Failed to launch model externally: {}", e))?;
+    
+    // Restore original args
+    {
+        let mut model_configs = state.model_configs.lock().await;
+        let mut config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        config.custom_args = original_args;
+        model_configs.insert(model_path, config);
+    }
     
     Ok(serde_json::json!({
         "success": true,
