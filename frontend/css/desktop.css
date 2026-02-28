@@ -615,6 +615,29 @@
 	margin: 4px 0;
 }
 
+/* Clip model - faint appearance on desktop */
+.desktop-icon.clip-model {
+	opacity: 0.5;
+}
+
+.desktop-icon.clip-model .icon-image {
+	opacity: 0.6;
+}
+
+.desktop-icon.clip-model .icon-label {
+	opacity: 0.6;
+}
+
+/* Context menu disabled state */
+.context-menu-item.disabled {
+	opacity: 0.4;
+	pointer-events: none;
+}
+
+.context-menu-item.disabled .menu-item-content {
+	color: var(--theme-text-muted);
+}
+
 /* Model Hint */
 .model-hint {
 	position: fixed;

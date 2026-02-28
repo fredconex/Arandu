@@ -465,3 +465,31 @@
 #search-folder-history-dropdown::-webkit-scrollbar-thumb:hover {
     background: var(--theme-text-muted);
 }
+
+/* Clip model - faint appearance */
+.model-card.clip-model {
+    opacity: 0.5;
+}
+
+.model-card.clip-model .model-card-icon {
+    opacity: 0.6;
+}
+
+.model-card.clip-model .model-card-icon img {
+    opacity: 0.5;
+}
+
+.model-card.clip-model .model-card-name,
+.model-card.clip-model .model-card-details {
+    opacity: 0.6;
+}
+
+/* Context menu disabled state */
+.context-menu-item.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.context-menu-item.disabled .menu-item-content {
+    color: var(--theme-text-muted);
+}

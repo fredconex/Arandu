@@ -483,6 +483,13 @@ class DesktopManager {
                         return;
                     }
 
+                    // Check if this is a clip model - clip models cannot be launched
+                    const modelArchitecture = icon.dataset.architecture;
+                    if (modelArchitecture && modelArchitecture.toLowerCase() === 'clip') {
+                        this.showNotification('Clip models cannot be launched', 'info');
+                        return;
+                    }
+
                     // Check if we have presets and use default/single preset
                     const modelPath = icon.dataset.path;
                     try {
@@ -887,6 +894,12 @@ class DesktopManager {
                 this.hideDockContextMenu();
             }
             if (e.key === 'Enter' && this.selectedIcon) {
+                // Check if this is a clip model - clip models cannot be launched
+                const modelArchitecture = this.selectedIcon.dataset.architecture;
+                if (modelArchitecture && modelArchitecture.toLowerCase() === 'clip') {
+                    this.showNotification('Clip models cannot be launched', 'info');
+                    return;
+                }
                 this.launchModel(this.selectedIcon);
             }
         });
@@ -952,7 +965,12 @@ class DesktopManager {
             let presetsHTML = '';
             let presetsHTMLExternal = '';
             let hasMultiplePresets = false;
-            if (this.selectedIcon) {
+            
+            // Check if this is a clip model - clip models cannot be launched or have properties edited
+            const isClipModel = this.selectedIcon && this.selectedIcon.dataset.architecture && 
+                               this.selectedIcon.dataset.architecture.toLowerCase() === 'clip';
+            
+            if (this.selectedIcon && !isClipModel) {
                 const modelPath = this.selectedIcon.dataset.path;
                 try {
                     const presets = await invoke('get_model_presets', { modelPath: modelPath });
@@ -975,24 +993,33 @@ class DesktopManager {
                 }
             }
 
-            menuItems = `
-                <div class="context-menu-item ${hasMultiplePresets ? 'has-submenu' : ''}" data-action="open">
-                    <div class="menu-item-content">
-                        <span class="material-icons">rocket_launch</span>
-                        <span>Launch Model</span>
+            // Build menu items - hide launch and properties for clip models
+            let menuItemsContent = '';
+            
+            if (!isClipModel) {
+                // Show launch options for non-clip models
+                menuItemsContent = `
+                    <div class="context-menu-item${hasMultiplePresets ? ' has-submenu' : ''}" data-action="open">
+                        <div class="menu-item-content">
+                            <span class="material-icons">rocket_launch</span>
+                            <span>Launch Model</span>
+                        </div>
+                        ${hasMultiplePresets ? '<span class="material-icons submenu-arrow">chevron_right</span>' : ''}
                     </div>
-                    ${hasMultiplePresets ? '<span class="material-icons submenu-arrow">chevron_right</span>' : ''}
-                </div>
-                ${presetsHTML}
-                <div class="context-menu-item ${hasMultiplePresets ? 'has-submenu' : ''}" data-action="launch-external">
-                    <div class="menu-item-content">
-                        <span class="material-icons">computer</span>
-                        <span>Launch as External Terminal</span>
+                    ${presetsHTML}
+                    <div class="context-menu-item${hasMultiplePresets ? ' has-submenu' : ''}" data-action="launch-external">
+                        <div class="menu-item-content">
+                            <span class="material-icons">computer</span>
+                            <span>Launch as External Terminal</span>
+                        </div>
+                        ${hasMultiplePresets ? '<span class="material-icons submenu-arrow">chevron_right</span>' : ''}
                     </div>
-                    ${hasMultiplePresets ? '<span class="material-icons submenu-arrow">chevron_right</span>' : ''}
-                </div>
-                ${presetsHTMLExternal}
-                <div class="context-menu-separator"></div>
+                    ${presetsHTMLExternal}
+                    <div class="context-menu-separator"></div>
+                `;
+            }
+            
+            menuItems = menuItemsContent + `
                 <div class="context-menu-item" data-action="delete">
                     <div class="menu-item-content">
                         <span class="material-icons" style="color: #e74c3c;">delete</span>
@@ -1005,12 +1032,14 @@ class DesktopManager {
                         <span>Open Model Folder</span>
                     </div>
                 </div>
+                ${!isClipModel ? `
                 <div class="context-menu-item" data-action="properties">
                     <div class="menu-item-content">
                         <span class="material-icons">settings</span>
                         <span>Properties</span>
                     </div>
                 </div>
+                ` : ''}
             `;
         }
 
@@ -1340,8 +1369,12 @@ class DesktopManager {
                 }
                 const customArgsIndicator = hasCustomArgs ? '<div class="model-card-custom-indicator"></div>' : '';
 
+                // Check if this is a clip model
+                const isClipModel = model.architecture && model.architecture.toLowerCase() === 'clip';
+                const clipModelClass = isClipModel ? ' clip-model' : '';
+
                 return `
-                    <div class="model-card" data-path="${model.path}" data-name="${model.name}"
+                    <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
                          data-quantization="${model.quantization}" data-date="${model.date}">
                         <div class="model-card-icon">
@@ -1396,6 +1429,12 @@ class DesktopManager {
                 if (e.target.closest('.model-card-menu-btn')) return;
                 // Don't launch if clicking on the favorite button
                 if (e.target.closest('.model-card-favorite-btn')) return;
+                
+                // Check if this is a clip model - clip models cannot be launched
+                const cardArch = card.dataset.architecture;
+                if (cardArch && cardArch.toLowerCase() === 'clip') {
+                    return;
+                }
                 
                 const tempIcon = document.createElement('div');
                 tempIcon.dataset.path = card.dataset.path;
@@ -1851,8 +1890,12 @@ class DesktopManager {
                 }
                 const customArgsIndicator = hasCustomArgs ? '<div class="model-card-custom-indicator"></div>' : '';
 
+                // Check if this is a clip model
+                const isClipModel = model.architecture && model.architecture.toLowerCase() === 'clip';
+                const clipModelClass = isClipModel ? ' clip-model' : '';
+
                 return `
-                    <div class="model-card" data-path="${model.path}" data-name="${model.name}"
+                    <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
                          data-quantization="${model.quantization}" data-date="${model.date}">
                         <div class="model-card-icon">
@@ -1910,6 +1953,12 @@ class DesktopManager {
                 if (e.target.closest('.model-card-menu-btn')) return;
                 // Don't launch if clicking on the favorite button
                 if (e.target.closest('.model-card-favorite-btn')) return;
+                
+                // Check if this is a clip model - clip models cannot be launched
+                const cardArch = card.dataset.architecture;
+                if (cardArch && cardArch.toLowerCase() === 'clip') {
+                    return;
+                }
                 
                 const tempIcon = document.createElement('div');
                 tempIcon.dataset.path = card.dataset.path;
@@ -2050,8 +2099,12 @@ class DesktopManager {
                 if (d > latestDate) latestDate = d;
             });
 
+            // Check if this is a clip architecture folder
+            const isClipArch = arch.toLowerCase() === 'clip';
+            const clipModelClass = isClipArch ? ' clip-model' : '';
+
             const archElement = document.createElement('div');
-            archElement.className = 'desktop-icon architecture-icon';
+            archElement.className = 'desktop-icon architecture-icon' + clipModelClass;
             archElement.setAttribute('data-architecture', arch);
             archElement.setAttribute('data-model-count', archModels.length);
             archElement.setAttribute('data-name', arch);
