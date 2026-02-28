@@ -285,7 +285,23 @@
                     </button>
                     <h2 class="search-folder-title" id="search-folder-title">Search Results</h2>
                 </div>
-                <p class="search-folder-stats" id="search-folder-stats">0 models • 0 GB</p>
+                <div class="search-folder-sort-row">
+                    <p class="search-folder-stats" id="search-folder-stats">0 models • 0 GB</p>
+                    <div class="search-folder-sort-controls">
+                        <button class="sort-btn" data-sort="name" title="Sort by Name">
+                            <span class="material-icons">sort_by_alpha</span>
+                        </button>
+                        <button class="sort-btn" data-sort="size" title="Sort by Size">
+                            <span class="material-icons">storage</span>
+                        </button>
+                        <button class="sort-btn" data-sort="date" title="Sort by Last Modified">
+                            <span class="material-icons">schedule</span>
+                        </button>
+                        <button class="sort-btn favorites-toggle" data-action="toggle-favorites" title="Toggle Favorites on Top">
+                            <span class="material-icons">star</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="search-folder-filter">

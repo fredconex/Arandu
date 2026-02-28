@@ -13,6 +13,9 @@ class DesktopManager {
         this.sortType = null;
         this.sortDirection = 'asc';
         this.sessionSyncTimer = null;
+        this.folderSortType = null;
+        this.folderSortDirection = 'asc';
+        this.folderSortFavoritesFirst = true; // Toggle to keep favorites on top
         this.isLoaded = false;
         this.sessionData = null; // Store session data for deferred restoration
         this.restorationInProgress = false; // Flag to prevent duplicate restoration
@@ -210,6 +213,11 @@ class DesktopManager {
     }
 
     async initializeSession() {
+        // Load folder sort settings from localStorage
+        this.folderSortType = localStorage.getItem('folderSortType') || null;
+        this.folderSortDirection = localStorage.getItem('folderSortDirection') || 'asc';
+        this.folderSortFavoritesFirst = localStorage.getItem('folderSortFavoritesFirst') !== 'false';
+        
         // Load session state first to restore desktop settings
         await this.loadSessionState();
 
@@ -610,9 +618,6 @@ class DesktopManager {
                         this.deleteModelFile(this.selectedIcon);
                     } else if (action === 'refresh') {
                         this.refreshDesktop();
-                    } else if (action.startsWith('sort-')) {
-                        const sortType = action.replace('sort-', '');
-                        this.sortIcons(sortType);
                     }
                 }
                 this.hideContextMenu();
@@ -938,36 +943,7 @@ class DesktopManager {
         // Dynamically build the context menu
         let menuItems = '';
         if (type === 'desktop') {
-            // Helper function to get sort arrow for a given sort type
-            const getSortArrow = (sortType) => {
-                if (this.sortType === sortType) {
-                    return this.sortDirection === 'asc' ? '↑' : '↓';
-                }
-                return '';
-            };
-
             menuItems = `
-                <div class="context-menu-item" data-action="sort-name">
-                    <span>Sort by Name</span>
-                    <span class="sort-arrow">${getSortArrow('name')}</span>
-                </div>
-                <div class="context-menu-item" data-action="sort-architecture">
-                    <span>Sort by Architecture</span>
-                    <span class="sort-arrow">${getSortArrow('architecture')}</span>
-                </div>
-                <div class="context-menu-item" data-action="sort-quantization">
-                    <span>Sort by Quantization</span>
-                    <span class="sort-arrow">${getSortArrow('quantization')}</span>
-                </div>
-                <div class="context-menu-item" data-action="sort-size">
-                    <span>Sort by Size</span>
-                    <span class="sort-arrow">${getSortArrow('size')}</span>
-                </div>
-                <div class="context-menu-item" data-action="sort-date">
-                    <span>Sort by Date</span>
-                    <span class="sort-arrow">${getSortArrow('date')}</span>
-                </div>
-                <div class="context-menu-separator"></div>
                 <div class="context-menu-item" data-action="refresh"><span class="material-icons">refresh</span> Refresh Desktop</div>
             `;
         } else if (type === 'architecture') {
@@ -1420,6 +1396,9 @@ class DesktopManager {
                 const isClipModel = model.architecture && model.architecture.toLowerCase() === 'clip';
                 const clipModelClass = isClipModel ? ' clip-model' : '';
 
+                // Format the date
+                const formattedDate = this.formatDate(parseFloat(model.date));
+
                 return `
                     <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
@@ -1436,6 +1415,8 @@ class DesktopManager {
                                 <span class="model-card-detail-value">${model.quantization}</span>
                                 <span class="model-card-detail-separator">•</span>
                                 <span class="model-card-detail-value">${sizeGB} GB</span>
+                                <span class="model-card-detail-separator">•</span>
+                                <span class="model-card-detail-value date-modified">${formattedDate}</span>
                             </div>
                         </div>
                         <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
@@ -1467,6 +1448,9 @@ class DesktopManager {
                 searchFolderInput.value = '';
             }
         }
+
+        // Update sort button states
+        this.updateFolderSortButtons();
 
         // Add click handlers for model cards
         folderGrid.querySelectorAll('.model-card').forEach(card => {
@@ -1558,8 +1542,11 @@ class DesktopManager {
         // Update model indicators (both running status and custom args)
         await this.updateCustomArgsIndicators();
 
-        // Sort by favorites (favorites at top)
-        this.sortFolderViewByFavorites();
+        // Update sort button states
+        this.updateFolderSortButtons();
+
+        // Apply current sort settings
+        this.applyFolderSort();
 
         // Focus the filter input
         if (searchFolderInput) {
@@ -1588,6 +1575,7 @@ class DesktopManager {
         const clearBtn = document.getElementById('search-folder-clear');
         const backBtn = document.getElementById('search-folder-back');
         const overlay = document.querySelector('.search-folder-overlay');
+        const sortButtons = document.querySelectorAll('.search-folder-sort-controls .sort-btn');
 
         if (searchInput) {
             searchInput.addEventListener('click', (e) => {
@@ -1726,6 +1714,26 @@ class DesktopManager {
                 this.hideSearchFolderView(isAllModels);
             });
         }
+
+        // Sort buttons
+        sortButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const sortType = btn.dataset.sort;
+                const isFavoritesToggle = btn.dataset.action === 'toggle-favorites';
+                
+                if (isFavoritesToggle) {
+                    // Toggle favorites on top
+                    this.folderSortFavoritesFirst = !this.folderSortFavoritesFirst;
+                    localStorage.setItem('folderSortFavoritesFirst', this.folderSortFavoritesFirst);
+                    // Re-sort with new setting
+                    this.applyFolderSort();
+                    this.updateFolderSortButtons();
+                } else if (sortType) {
+                    this.sortFolderView(sortType);
+                }
+            });
+        });
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
@@ -1957,6 +1965,9 @@ class DesktopManager {
                 const isClipModel = model.architecture && model.architecture.toLowerCase() === 'clip';
                 const clipModelClass = isClipModel ? ' clip-model' : '';
 
+                // Format the date
+                const formattedDate = this.formatDate(parseFloat(model.date));
+
                 return `
                     <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
@@ -1975,6 +1986,10 @@ class DesktopManager {
                                 <span class="model-card-detail-separator">•</span>
                                 <span class="model-card-detail-item">
                                     <span class="model-card-detail-value">${sizeGB} GB</span>
+                                </span>
+                                <span class="model-card-detail-separator">•</span>
+                                <span class="model-card-detail-item">
+                                    <span class="model-card-detail-value date-modified">${formattedDate}</span>
                                 </span>
                             </div>
                         </div>
@@ -2007,6 +2022,9 @@ class DesktopManager {
                 searchFolderInput.value = '';
             }
         }
+
+        // Update sort button states
+        this.updateFolderSortButtons();
 
         // Add click handlers for model cards
         folderGrid.querySelectorAll('.model-card').forEach(card => {
@@ -2105,8 +2123,11 @@ class DesktopManager {
         // Update model indicators (both running status and custom args)
         await this.updateCustomArgsIndicators();
 
-        // Sort by favorites (favorites at top)
-        this.sortFolderViewByFavorites();
+        // Update sort button states
+        this.updateFolderSortButtons();
+
+        // Apply current sort settings
+        this.applyFolderSort();
     }
 
     hideSearchFolderView(isAllModels = false) {
@@ -2583,8 +2604,11 @@ class DesktopManager {
             }
         }
         
-        // Re-sort the folder view to put favorites at top
-        this.sortFolderViewByFavorites();
+        // Re-sort the folder view based on current settings
+        const folderGrid = document.getElementById('search-folder-grid');
+        if (folderGrid && !folderGrid.classList.contains('hidden')) {
+            this.applyFolderSort();
+        }
     }
 
     sortFolderViewByFavorites() {
@@ -2599,14 +2623,106 @@ class DesktopManager {
             const aFav = this.isFavorite(aPath);
             const bFav = this.isFavorite(bPath);
             
-            // Favorites first
-            if (aFav && !bFav) return -1;
-            if (!aFav && bFav) return 1;
+            // Favorites first (only if enabled)
+            if (this.folderSortFavoritesFirst) {
+                if (aFav && !bFav) return -1;
+                if (!aFav && bFav) return 1;
+            }
             return 0;
         });
 
         // Re-append in sorted order
         cards.forEach(card => folderGrid.appendChild(card));
+    }
+
+    applyFolderSort() {
+        const folderGrid = document.getElementById('search-folder-grid');
+        if (!folderGrid) return;
+
+        // If no sorting criteria are active, skip sorting
+        if (!this.folderSortFavoritesFirst && !this.folderSortType) {
+            return;
+        }
+
+        const cards = Array.from(folderGrid.querySelectorAll('.model-card'));
+
+        cards.sort((a, b) => {
+            // Favorites first (if enabled)
+            if (this.folderSortFavoritesFirst) {
+                const aPath = a.dataset.path;
+                const bPath = b.dataset.path;
+                const aFav = this.isFavorite(aPath);
+                const bFav = this.isFavorite(bPath);
+                if (aFav && !bFav) return -1;
+                if (!aFav && bFav) return 1;
+            }
+
+            // If no sort type selected, keep current order (among favorites/non-favorites)
+            if (!this.folderSortType) return 0;
+
+            // Apply selected sort
+            let aValue = a.dataset[this.folderSortType];
+            let bValue = b.dataset[this.folderSortType];
+
+            // Handle undefined values
+            if (!aValue && !bValue) return 0;
+            if (!aValue) return 1;
+            if (!bValue) return -1;
+
+            let comparison = 0;
+
+            switch (this.folderSortType) {
+                case 'date':
+                case 'size':
+                    comparison = parseFloat(aValue) - parseFloat(bValue);
+                    break;
+                case 'name':
+                case 'architecture':
+                case 'quantization':
+                default:
+                    comparison = aValue.localeCompare(bValue, undefined, { numeric: true });
+                    break;
+            }
+
+            return this.folderSortDirection === 'asc' ? comparison : -comparison;
+        });
+
+        // Re-append in sorted order
+        cards.forEach(card => folderGrid.appendChild(card));
+    }
+
+    sortFolderView(sortType) {
+        // Toggle direction if same sort type
+        if (this.folderSortType === sortType) {
+            this.folderSortDirection = this.folderSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.folderSortType = sortType;
+            // Default to descending for date (newest first), ascending for others
+            this.folderSortDirection = sortType === 'date' ? 'desc' : 'asc';
+        }
+
+        this.applyFolderSort();
+        this.updateFolderSortButtons();
+        localStorage.setItem('folderSortType', this.folderSortType);
+        localStorage.setItem('folderSortDirection', this.folderSortDirection);
+    }
+
+    updateFolderSortButtons() {
+        const sortButtons = document.querySelectorAll('.search-folder-sort-controls .sort-btn');
+        sortButtons.forEach(btn => {
+            const sortType = btn.dataset.sort;
+            const isFavoritesToggle = btn.dataset.action === 'toggle-favorites';
+            
+            btn.classList.remove('active');
+            
+            if (sortType && sortType === this.folderSortType) {
+                btn.classList.add('active');
+            }
+            
+            if (isFavoritesToggle) {
+                btn.classList.toggle('active', this.folderSortFavoritesFirst);
+            }
+        });
     }
 
     formatNumber(num) {
@@ -2624,6 +2740,31 @@ class DesktopManager {
         const hours = Math.floor(minutes / 60);
         const remainingMinutes = minutes % 60;
         return `${hours}h ${remainingMinutes}m`;
+    }
+
+    formatDate(timestamp) {
+        if (!timestamp) return 'Unknown';
+        const date = new Date(timestamp * 1000);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) {
+            return 'Today';
+        } else if (diffDays === 1) {
+            return 'Yesterday';
+        } else if (diffDays < 7) {
+            return `${diffDays} days ago`;
+        } else if (diffDays < 30) {
+            const weeks = Math.floor(diffDays / 7);
+            return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
+        } else if (diffDays < 365) {
+            const months = Math.floor(diffDays / 30);
+            return `${months} month${months !== 1 ? 's' : ''} ago`;
+        } else {
+            const years = Math.floor(diffDays / 365);
+            return `${years} year${years !== 1 ? 's' : ''} ago`;
+        }
     }
 
     setupIconDragging() {
@@ -5069,7 +5210,12 @@ class DesktopManager {
             this.sortType = desktopState.sort_type || localStorage.getItem('iconSortOrder');
             this.sortDirection = desktopState.sort_direction || localStorage.getItem('iconSortDirection') || 'asc';
 
+            // Load folder view sort state
+            this.folderSortType = localStorage.getItem('folderSortType');
+            this.folderSortDirection = localStorage.getItem('folderSortDirection') || 'asc';
+
             console.log('Restored sorting state:', { sortType: this.sortType, sortDirection: this.sortDirection });
+            console.log('Restored folder sorting state:', { folderSortType: this.folderSortType, folderSortDirection: this.folderSortDirection });
 
             // Update localStorage with session data if we got it from server
             if (sessionData.desktop_state) {

@@ -103,6 +103,49 @@
     /* Align with title text */
 }
 
+.search-folder-sort-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.search-folder-sort-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.sort-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--theme-surface-light);
+    border: 1px solid var(--theme-border);
+    border-radius: 4px;
+    color: var(--theme-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.sort-btn:hover {
+    background: var(--theme-hover);
+    border-color: var(--theme-primary);
+    color: var(--theme-text);
+}
+
+.sort-btn.active {
+    background: var(--theme-primary);
+    border-color: var(--theme-primary);
+    color: var(--theme-text);
+}
+
+.sort-btn .material-icons {
+    font-size: 16px;
+}
+
 /* Filter Input - Clean like in the picture */
 .search-folder-filter {
     padding: 12px 24px 16px 24px;
@@ -445,6 +488,11 @@
 
 .model-card-detail-value {
     color: var(--theme-text-muted);
+}
+
+.model-card-detail-value.date-modified {
+    font-size: 10px;
+    opacity: 0.8;
 }
 
 .model-card-detail-separator {
