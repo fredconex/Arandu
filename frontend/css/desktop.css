@@ -167,27 +167,26 @@
 	align-items: center;
 	gap: 24px;
 	padding: 30px 0;
-	background: #090909;
-	/* Solid dark sidebar */
-	border-right: 1px solid rgba(255, 255, 255, 0.05);
+	background: color-mix(in srgb, var(--theme-surface), black 12%);
+	border-right: 1px solid rgba(255, 255, 255, 0.08);
 	z-index: 9998;
 	user-select: none;
 	transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .dock .material-icons {
-	color: rgba(255, 255, 255, 0.7);
+	color: var(--theme-text-muted);
 	transition: color 0.2s ease;
 }
 
 .dock-item:hover .material-icons {
-	color: #ffffff;
+	color: var(--theme-text);
 }
 
 .dock-separator {
 	width: 30px;
 	height: 1px;
-	background: rgba(255, 255, 255, 0.1);
+	background: rgba(255, 255, 255, 0.08);
 	margin: 8px 0;
 	flex-shrink: 0;
 }
