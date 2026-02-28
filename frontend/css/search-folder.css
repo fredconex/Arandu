@@ -268,6 +268,13 @@
     flex-direction: column;
 }
 
+.downloads-folder-grid {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
 /* Model Card - Clean & Minimal */
 .model-card {
     display: flex;
@@ -492,4 +499,239 @@
 
 .context-menu-item.disabled .menu-item-content {
     color: var(--theme-text-muted);
+}
+
+/* Downloads Folder View - Same as search folder view */
+.downloads-folder-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+    display: flex;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.downloads-folder-view:not(.hidden) {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* Download Card Styles */
+.download-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 24px;
+    cursor: pointer;
+    transition: background 0.1s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    position: relative;
+}
+
+.download-card:hover {
+    background: var(--theme-bg-light);
+}
+
+.download-card-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, var(--theme-surface-light) 0%, var(--theme-surface) 100%);
+    border: 1px solid var(--theme-border);
+    border-radius: 8px;
+    position: relative;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.download-card-icon .material-icons {
+    font-size: 20px;
+    color: var(--theme-text-muted);
+}
+
+/* Status-specific colors */
+.download-card.starting .download-card-icon .material-icons {
+    color: #f39c12;
+}
+
+.download-card.downloading .download-card-icon .material-icons {
+    color: var(--theme-primary);
+}
+
+.download-card.paused .download-card-icon .material-icons {
+    color: #9b59b6;
+}
+
+.download-card.extracting .download-card-icon .material-icons {
+    color: #e67e22;
+}
+
+.download-card.completed .download-card-icon .material-icons {
+    color: var(--theme-success);
+}
+
+.download-card.failed .download-card-icon .material-icons {
+    color: var(--theme-error);
+}
+
+.download-card.cancelled .download-card-icon .material-icons {
+    color: var(--theme-text-muted);
+}
+
+.download-card-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.download-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--theme-text);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.download-card-details {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+}
+
+.download-card-source {
+    color: var(--theme-text-muted);
+    word-break: break-all;
+    font-size: 11px;
+}
+
+.download-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--theme-text-muted);
+}
+
+.download-card-time {
+    color: var(--theme-text-muted);
+}
+
+.download-card-progress-info {
+    color: var(--theme-text-muted);
+}
+
+.download-card-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--theme-surface-light);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.download-card-progress-fill {
+    height: 100%;
+    background: var(--theme-primary);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.download-card.completed .download-card-progress-fill {
+    background: var(--theme-success);
+}
+
+.download-card.paused .download-card-progress-fill {
+    background: #9b59b6;
+}
+
+.download-card.failed .download-card-progress-fill {
+    background: var(--theme-error);
+}
+
+.download-card-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.download-pause,
+.download-resume,
+.download-cancel {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--theme-border);
+    border-radius: 4px;
+    color: var(--theme-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.download-pause:hover,
+.download-resume:hover {
+    background: var(--theme-bg-light);
+    color: var(--theme-text);
+    border-color: var(--theme-primary);
+}
+
+.download-cancel:hover {
+    background: var(--theme-error-bg);
+    color: var(--theme-error);
+    border-color: var(--theme-error);
+}
+
+.download-pause .material-icons,
+.download-resume .material-icons,
+.download-cancel .material-icons {
+    font-size: 18px;
+}
+
+.download-error {
+    font-size: 11px;
+    color: var(--theme-error);
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: var(--theme-error-bg);
+    border-radius: 4px;
+}
+
+/* Clear history button in downloads folder */
+.downloads-folder-clear {
+    background: transparent;
+    border: none;
+    color: var(--theme-text-muted);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    pointer-events: all;
+    transition: opacity 0.2s ease;
+}
+
+.downloads-folder-clear:hover {
+    color: var(--theme-error);
+}
+
+.downloads-folder-clear .material-icons {
+    font-size: 18px;
 }

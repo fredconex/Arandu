@@ -191,6 +191,37 @@
 	flex-shrink: 0;
 }
 
+.dock-separator-bottom {
+	width: 30px;
+	height: 1px;
+	background: rgba(255, 255, 255, 0.08);
+	margin: auto 0 8px 0;
+	flex-shrink: 0;
+}
+
+.search-folder-clear-btn {
+	background: transparent;
+	border: none;
+	color: var(--theme-text-muted);
+	cursor: pointer;
+	padding: 6px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-left: auto;
+	transition: all 0.2s ease;
+}
+
+.search-folder-clear-btn:hover {
+	color: var(--theme-text);
+	background: var(--theme-hover);
+}
+
+.search-folder-clear-btn .material-icons {
+	font-size: 20px;
+}
+
 .dock-item, .taskbar-item {
 	width: 100%;
 	height: 48px;

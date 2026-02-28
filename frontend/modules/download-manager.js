@@ -297,7 +297,15 @@ class DownloadManager {
     }
     
     showDownloadManager() {
-        if (this.downloadManagerVisible) return;
+        // Close any open folder view (like models search folder)
+        const searchFolderView = document.getElementById('search-folder-view');
+        if (searchFolderView && !searchFolderView.classList.contains('hidden')) {
+            if (this.desktop) {
+                const folderTitle = document.getElementById('search-folder-title');
+                const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+                this.desktop.hideSearchFolderView(isAllModels);
+            }
+        }
         
         // Update button active state
         if (this.desktop) {
@@ -306,34 +314,33 @@ class DownloadManager {
             this.desktop.updateDockFocusedState('download-history-window');
         }
         
-        const existingManager = document.getElementById('download-manager');
-        if (existingManager) {
-            existingManager.classList.remove('hidden');
+        const existingFolder = document.getElementById('downloads-folder-view');
+        if (existingFolder) {
+            existingFolder.classList.remove('hidden');
+            // Ensure folder view is always on top
+            if (this.desktop) {
+                existingFolder.style.zIndex = ++this.desktop.windowZIndex;
+            }
             this.downloadManagerVisible = true;
             // Update the icon state when showing the manager
             this.updateDownloadManagerIcon();
+            this.updateDownloadsFolderView();
+            this.setupDownloadsFolderListeners();
             return;
         }
         
-        const downloadManager = document.createElement('div');
-        downloadManager.id = 'download-manager';
-        downloadManager.className = 'download-manager';
-        downloadManager.innerHTML = `
-            <div class="download-manager-header">
-                <h4>Downloads</h4>
-                <div class="download-manager-controls">
-                    <button class="download-history-clear" onclick="downloadManager.clearDownloadHistory()" title="Clear completed downloads">Clear</button>
-                    <button class="download-manager-close" onclick="downloadManager.hideDownloadManager()">×</button>
-                </div>
-            </div>
-            <div class="download-manager-content" id="download-manager-content">
-                <!-- Downloads will be populated here -->
-            </div>
-        `;
-        
-        document.body.appendChild(downloadManager);
-        this.downloadManagerVisible = true;
-        this.updateDownloadManager();
+        // Show the folder view
+        const folderView = document.getElementById('downloads-folder-view');
+        if (folderView) {
+            folderView.classList.remove('hidden');
+            // Ensure folder view is always on top
+            if (this.desktop) {
+                folderView.style.zIndex = ++this.desktop.windowZIndex;
+            }
+            this.downloadManagerVisible = true;
+            this.updateDownloadsFolderView();
+            this.setupDownloadsFolderListeners();
+        }
     }
     
     hideDownloadManager() {
@@ -342,9 +349,9 @@ class DownloadManager {
             this.desktop.updateTaskbarButtonState('downloads-dock-icon', false);
         }
         
-        const manager = document.getElementById('download-manager');
-        if (manager) {
-            manager.classList.add('hidden');
+        const folderView = document.getElementById('downloads-folder-view');
+        if (folderView) {
+            folderView.classList.add('hidden');
         }
         this.downloadManagerVisible = false;
         
@@ -352,7 +359,214 @@ class DownloadManager {
         this.updateDownloadManagerIcon();
     }
     
+    setupDownloadsFolderListeners() {
+        // Set up back button
+        const backBtn = document.getElementById('downloads-folder-back');
+        if (backBtn) {
+            backBtn.onclick = () => {
+                this.hideDownloadManager();
+            };
+        }
+        
+        // Set up overlay click to close
+        const folderView = document.getElementById('downloads-folder-view');
+        const overlay = folderView?.querySelector('.search-folder-overlay');
+        if (overlay) {
+            overlay.onclick = () => {
+                this.hideDownloadManager();
+            };
+        }
+        
+        // Set up clear history button
+        const clearBtn = document.getElementById('downloads-folder-clear-history');
+        if (clearBtn) {
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.clearDownloadHistory();
+            };
+        }
+    }
+    
+    filterDownloads(term) {
+        const grid = document.getElementById('downloads-folder-grid');
+        if (!grid) return;
+        
+        const lowerTerm = term.toLowerCase().trim();
+        const cards = grid.querySelectorAll('.download-card');
+        
+        cards.forEach(card => {
+            const name = (card.dataset.name || '').toLowerCase();
+            const source = (card.dataset.source || '').toLowerCase();
+            
+            if (lowerTerm === '' || name.includes(lowerTerm) || source.includes(lowerTerm)) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+    
+    updateDownloadsFolderView() {
+        const grid = document.getElementById('downloads-folder-grid');
+        const statsEl = document.getElementById('downloads-folder-stats');
+        
+        if (!grid) return;
+        
+        // Update stats
+        const activeCount = this.downloads.filter(d => 
+            d.status === 'Downloading' || d.status === 'Starting' || d.status === 'Extracting' || d.status === 'Paused'
+        ).length;
+        const completedCount = this.downloads.filter(d => d.status === 'Completed').length;
+        
+        if (statsEl) {
+            if (this.downloads.length === 0) {
+                statsEl.textContent = 'No downloads';
+            } else if (activeCount > 0) {
+                statsEl.textContent = `${activeCount} active • ${completedCount} completed`;
+            } else {
+                statsEl.textContent = `${completedCount} completed`;
+            }
+        }
+        
+        // Update the download manager icon state
+        this.updateDownloadManagerIcon();
+        
+        if (this.downloads.length === 0) {
+            grid.innerHTML = '<div style="grid-column: 1/-1; padding: 60px; text-align: center; color: rgba(255,255,255,0.5); font-size: 18px;">No downloads</div>';
+            return;
+        }
+        
+        const downloadsHTML = this.downloads.map(download => {
+            const statusIcon = {
+                'Starting': '<span class="material-icons">hourglass_top</span>',
+                'Downloading': '<span class="material-icons">download</span>',
+                'Paused': '<span class="material-icons">pause</span>',
+                'Extracting': '<span class="material-icons">folder_zip</span>',
+                'Completed': '<span class="material-icons">check_circle</span>',
+                'Failed': '<span class="material-icons">error</span>',
+                'Cancelled': '<span class="material-icons">cancel</span>',
+            }[download.status] || '<span class="material-icons">help</span>';
+
+            const isActiveDownload = download.status === 'Downloading' || download.status === 'Starting' || download.status === 'Paused' || download.status === 'Extracting';
+            
+            // Extract meaningful information from the download
+            let downloadName = 'Unknown Download';
+            let downloadSource = download.source_url || 'Unknown Source';
+            
+            // Try to extract filename from URL or files
+            if (download.files && download.files.length > 0) {
+                downloadName = download.files[0];
+            } else if (download.source_url) {
+                // Extract filename from URL
+                const urlParts = download.source_url.split('/');
+                downloadName = urlParts[urlParts.length - 1] || 'Unknown File';
+            }
+            
+            // Clean up the name for display
+            downloadName = downloadName.replace(/\.download$/, '').replace(/\.gguf$/, '');
+            
+            // Format time display
+            let timeDisplay;
+            if (download.status === 'Downloading' && download.speed > 0 && download.total_bytes > 0) {
+                const remainingBytes = download.total_bytes - (download.downloaded_bytes || 0);
+                const remainingSeconds = remainingBytes / download.speed;
+                timeDisplay = `ETA: ${this.formatTime(Math.ceil(remainingSeconds))}`;
+            } else if (download.status === 'Completed') {
+                timeDisplay = `Completed in ${this.formatTime(download.elapsed_time)}`;
+            } else if (download.status === 'Failed' || download.status === 'Cancelled') {
+                timeDisplay = download.status;
+            } else {
+                timeDisplay = `Running for ${this.formatTime(download.elapsed_time)}`;
+            }
+            
+            // Get progress info
+            let progressPercent = 0;
+            let progressInfo = '';
+            
+            if (download.status === 'Extracting') {
+                progressPercent = download.extraction_progress || 0;
+                progressInfo = `${download.extraction_completed_files || 0}/${download.extraction_total_files || 0} files`;
+            } else if (isActiveDownload) {
+                progressPercent = download.progress || 0;
+                if (download.total_bytes > 0) {
+                    progressInfo = `${this.formatFileSize(download.downloaded_bytes || 0)} / ${this.formatFileSize(download.total_bytes)}`;
+                }
+                if (download.speed > 0) {
+                    progressInfo += progressInfo ? ` • ${this.formatFileSize(download.speed)}/s` : `${this.formatFileSize(download.speed)}/s`;
+                }
+            } else if (download.status === 'Completed') {
+                progressPercent = 100;
+                progressInfo = this.formatFileSize(download.total_bytes || 0);
+            }
+            
+            // Status class for styling
+            const statusClass = download.status.toLowerCase();
+            
+            // Build control buttons HTML
+            let controlsHTML = '';
+            if (isActiveDownload) {
+                if (download.status === 'Downloading' || download.status === 'Starting' || download.status === 'Extracting') {
+                    controlsHTML = `
+                        <button class="download-pause" onclick="downloadManager.pauseDownload('${download.id}')" title="Pause download">
+                            <span class="material-icons">pause</span>
+                        </button>
+                        <button class="download-cancel" onclick="downloadManager.cancelDownload('${download.id}')" title="Cancel download">
+                            <span class="material-icons">close</span>
+                        </button>
+                    `;
+                } else if (download.status === 'Paused') {
+                    controlsHTML = `
+                        <button class="download-resume" onclick="downloadManager.resumeDownload('${download.id}')" title="Resume download">
+                            <span class="material-icons">play_arrow</span>
+                        </button>
+                        <button class="download-cancel" onclick="downloadManager.cancelDownload('${download.id}')" title="Cancel download">
+                            <span class="material-icons">close</span>
+                        </button>
+                    `;
+                }
+            }
+            
+            // Error message if failed
+            const errorMsg = download.status === 'Failed' ? `<div class="download-error">${download.error || 'Download failed'}</div>` : '';
+            
+            return `
+                <div class="download-card ${statusClass}" data-name="${downloadName}" data-source="${downloadSource}">
+                    <div class="download-card-icon">${statusIcon}</div>
+                    <div class="download-card-info">
+                        <h3 class="download-card-name">${downloadName}</h3>
+                        <div class="download-card-details">
+                            <span class="download-card-source">${downloadSource}</span>
+                        </div>
+                        <div class="download-card-meta">
+                            <span class="download-card-time">${timeDisplay}</span>
+                            ${progressInfo ? `<span class="download-card-progress-info">${progressInfo}</span>` : ''}
+                        </div>
+                        ${isActiveDownload || download.status === 'Completed' ? `
+                        <div class="download-card-progress-bar">
+                            <div class="download-card-progress-fill" style="width: ${progressPercent}%"></div>
+                        </div>
+                        ` : ''}
+                        ${errorMsg}
+                    </div>
+                    <div class="download-card-controls">
+                        ${controlsHTML}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        grid.innerHTML = downloadsHTML;
+    }
+    
     updateDownloadManager() {
+        // If folder view is visible, update it
+        const folderView = document.getElementById('downloads-folder-view');
+        if (folderView && !folderView.classList.contains('hidden')) {
+            this.updateDownloadsFolderView();
+            return;
+        }
+        
+        // Otherwise update the legacy popup if it exists (for backward compatibility)
         const content = document.getElementById('download-manager-content');
         if (!content) return;
 

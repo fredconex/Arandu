@@ -121,14 +121,16 @@
             <button class="dock-item permanent" id="llamacpp-dock-icon" title="Llama.cpp Releases" data-app="llamacpp">
                 <span class="material-icons">build</span>
             </button>
+            <div class="dock-separator"></div>
+            <!-- New terminals will be inserted here -->
+            <div class="dock-separator-bottom"></div>
+            <!-- Downloads - at the very bottom of taskbar -->
             <button class="dock-item permanent" id="downloads-dock-icon" title="Download History" data-app="downloads">
                 <span class="material-icons">download</span>
                 <div class="dock-progress-container hidden">
                     <div class="dock-progress-bar"></div>
                 </div>
             </button>
-            <div class="dock-separator"></div>
-            <!-- Running applications will appear here -->
         </div>
     </div>
 
@@ -313,6 +315,29 @@
 
             <div class="search-folder-grid" id="search-folder-grid">
                 <!-- Model cards will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Downloads Folder View -->
+    <div class="downloads-folder-view hidden" id="downloads-folder-view">
+        <div class="search-folder-overlay"></div>
+        <div class="search-folder-content">
+            <div class="search-folder-header">
+                <div class="search-folder-top-row">
+                    <button class="search-folder-back" id="downloads-folder-back">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <h2 class="search-folder-title" id="downloads-folder-title">Downloads</h2>
+                    <button class="search-folder-clear-btn" id="downloads-folder-clear-history" title="Clear completed downloads">
+                        <span class="material-icons">delete_sweep</span>
+                    </button>
+                </div>
+                <p class="search-folder-stats" id="downloads-folder-stats">0 downloads</p>
+            </div>
+
+            <div class="downloads-folder-grid" id="downloads-folder-grid">
+                <!-- Download cards will be populated here -->
             </div>
         </div>
     </div>

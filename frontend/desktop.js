@@ -307,7 +307,14 @@ class DesktopManager {
     handleGlobalClickInteraction() {
         this.hideContextMenu();
         this.hideDockContextMenu();
-        // Don't hide folder view here - it should only close via back button or overlay click
+        
+        // Close downloads folder view if clicking on the overlay
+        const downloadsFolderView = document.getElementById('downloads-folder-view');
+        const downloadsOverlay = downloadsFolderView?.querySelector('.search-folder-overlay');
+        if (downloadsFolderView && !downloadsFolderView.classList.contains('hidden') && downloadsOverlay) {
+            // Don't hide here - the overlay click should close it via the download manager
+            // Just make sure it's handled properly
+        }
 
         // Collapse memory monitor
         const memoryMonitor = document.getElementById('desktop-memory-monitor');
@@ -626,6 +633,12 @@ class DesktopManager {
                     const isAllModels = folderTitle && folderTitle.textContent === 'Models';
                     this.hideSearchFolderView(isAllModels);
                     return;
+                }
+                
+                // Close search balloon if open (folder view takes priority)
+                const searchBalloon = document.getElementById('search-balloon');
+                if (searchBalloon && !searchBalloon.classList.contains('hidden')) {
+                    searchBalloon.classList.add('hidden');
                 }
                 
                 // Don't auto-display recent searches when opening All Models
@@ -1357,6 +1370,11 @@ class DesktopManager {
     }
 
     async showArchitectureFolderView(arch, openWithSearchHistory = false) {
+        // Close downloads folder view if open
+        if (window.downloadManager) {
+            window.downloadManager.hideDownloadManager();
+        }
+        
         const folderView = document.getElementById('search-folder-view');
         const folderGrid = document.getElementById('search-folder-grid');
         const folderTitle = document.getElementById('search-folder-title');
@@ -1533,6 +1551,9 @@ class DesktopManager {
 
         // Ensure folder view is always on top of all windows
         folderView.style.zIndex = ++this.windowZIndex;
+
+        // Set active state on the search dock icon
+        this.updateTaskbarButtonState('search-dock-icon', true);
 
         // Update model indicators (both running status and custom args)
         await this.updateCustomArgsIndicators();
@@ -1773,8 +1794,16 @@ class DesktopManager {
                 memoryMonitor.classList.remove('active');
             }
 
+            // Close downloads folder view if open
             if (window.downloadManager) {
                 window.downloadManager.hideDownloadManager();
+            }
+
+            // Close search folder view if open (search balloon takes priority)
+            const folderView = document.getElementById('search-folder-view');
+            if (folderView && !folderView.classList.contains('hidden')) {
+                folderView.classList.add('hidden');
+                this.updateTaskbarButtonState('search-dock-icon', false);
             }
 
             if (isHidden) {
@@ -1878,6 +1907,11 @@ class DesktopManager {
     }
 
     async showSearchFolderView(cleanTerm) {
+        // Close downloads folder view if open
+        if (window.downloadManager) {
+            window.downloadManager.hideDownloadManager();
+        }
+        
         const folderView = document.getElementById('search-folder-view');
         const folderGrid = document.getElementById('search-folder-grid');
         const folderTitle = document.getElementById('search-folder-title');
@@ -2058,6 +2092,9 @@ class DesktopManager {
         // Ensure search folder view is always on top of all windows
         folderView.style.zIndex = ++this.windowZIndex;
 
+        // Set active state on the search dock icon
+        this.updateTaskbarButtonState('search-dock-icon', true);
+
         // Focus the filter input
         if (searchFolderInput) {
             setTimeout(() => searchFolderInput.focus(), 300);
@@ -2079,6 +2116,9 @@ class DesktopManager {
         if (folderView) {
             folderView.classList.add('hidden');
         }
+
+        // Remove active state from search dock icon
+        this.updateTaskbarButtonState('search-dock-icon', false);
 
         // Save the search input value only when closing "All Models" folder
         if (isAllModels && searchFolderInput && searchFolderInput.value.trim() !== '') {
@@ -4272,8 +4312,9 @@ class DesktopManager {
 
     addTaskbarItem(name, id, icon) {
         const dock = document.getElementById('dock');
+        // Find the separator after Llama.cpp to insert new items after it
         const separators = dock.querySelectorAll('.dock-separator');
-        const rightSeparator = separators[1]; // Get the second separator (right divisor)
+        const rightSeparator = separators[separators.length - 1]; // Get the last separator (after Llama.cpp)
 
         // Check if item already exists
         let item = document.getElementById(`taskbar-${id}`);
@@ -4281,7 +4322,7 @@ class DesktopManager {
             item = document.createElement('button');
             item.className = 'taskbar-item';
             item.id = `taskbar-${id}`;
-            // Add after the right separator (second separator)
+            // Add after the separator (after Llama.cpp)
             if (rightSeparator) {
                 rightSeparator.parentNode.insertBefore(item, rightSeparator.nextSibling);
             } else {
