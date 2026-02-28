@@ -18,6 +18,7 @@ class DesktopManager {
         this.restorationInProgress = false; // Flag to prevent duplicate restoration
         this.modelsByArchitecture = {}; // Store models grouped by architecture
         this.favorites = this.loadFavorites(); // Load favorites from localStorage
+        this.searchFolderInputValue = ''; // Store search input value when closing folder view
 
         this.init();
     }
@@ -375,7 +376,10 @@ class DesktopManager {
                 (e.target.classList.contains('search-folder-overlay') ||
                     e.target.classList.contains('search-folder-content') ||
                     e.target.id === 'search-folder-grid')) {
-                this.hideSearchFolderView();
+                // Check if we're in "All Models" folder
+                const folderTitle = document.getElementById('search-folder-title');
+                const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+                this.hideSearchFolderView(isAllModels);
                 return;
             }
 
@@ -610,7 +614,10 @@ class DesktopManager {
                 // Toggle folder view - if already open, close it
                 const folderView = document.getElementById('search-folder-view');
                 if (folderView && !folderView.classList.contains('hidden')) {
-                    this.hideSearchFolderView();
+                    // Check if we're in "All Models" folder
+                    const folderTitle = document.getElementById('search-folder-title');
+                    const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+                    this.hideSearchFolderView(isAllModels);
                     return;
                 }
                 
@@ -798,11 +805,10 @@ class DesktopManager {
         const searchFolderBack = document.getElementById('search-folder-back');
         if (searchFolderBack) {
             searchFolderBack.addEventListener('click', () => {
-                this.hideSearchFolderView();
-                // Clear the search input
-                if (searchInput) {
-                    searchInput.value = '';
-                }
+                // Check if we're in "All Models" folder
+                const folderTitle = document.getElementById('search-folder-title');
+                const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+                this.hideSearchFolderView(isAllModels);
             });
         }
 
@@ -1301,17 +1307,12 @@ class DesktopManager {
 
         if (!folderView || !folderGrid) return;
 
-        // Clear the filter input
-        if (searchFolderInput) {
-            searchFolderInput.value = '';
-        }
-
         // Get models for this architecture
         let models;
         if (arch === 'All') {
             models = [];
             Object.values(this.modelsByArchitecture).forEach(m => {
-                // Avoid duplicates if 'All' was already in modelsByArchitecture 
+                // Avoid duplicates if 'All' was already in modelsByArchitecture
                 // (though we expect to filter it out or not have it)
                 models.push(...m);
             });
@@ -1340,8 +1341,8 @@ class DesktopManager {
                 const customArgsIndicator = hasCustomArgs ? '<div class="model-card-custom-indicator"></div>' : '';
 
                 return `
-                    <div class="model-card" data-path="${model.path}" data-name="${model.name}" 
-                         data-size="${model.size_gb}" data-architecture="${model.architecture}" 
+                    <div class="model-card" data-path="${model.path}" data-name="${model.name}"
+                         data-size="${model.size_gb}" data-architecture="${model.architecture}"
                          data-quantization="${model.quantization}" data-date="${model.date}">
                         <div class="model-card-icon">
                             <img src="./assets/gguf.png">
@@ -1374,6 +1375,18 @@ class DesktopManager {
         // Build and set the HTML
         const cardsHTML = await buildCardsHTML();
         folderGrid.innerHTML = cardsHTML || '<div style="grid-column: 1/-1; padding: 60px; text-align: center; color: rgba(255,255,255,0.5); font-size: 18px;">No models found</div>';
+
+        // Restore the search input value only for "All Models" folder
+        if (arch === 'All' && searchFolderInput && this.searchFolderInputValue && this.searchFolderInputValue.trim() !== '') {
+            searchFolderInput.value = this.searchFolderInputValue;
+            // Trigger the filter function after cards are rendered
+            this.filterFolderViewModels(this.searchFolderInputValue);
+        } else {
+            // Clear the filter input for architecture folders or no saved value
+            if (searchFolderInput) {
+                searchFolderInput.value = '';
+            }
+        }
 
         // Add click handlers for model cards
         folderGrid.querySelectorAll('.model-card').forEach(card => {
@@ -1569,7 +1582,9 @@ class DesktopManager {
                 if (typeof huggingFaceApp !== 'undefined' && huggingFaceApp) {
                     try {
                         // Close search folder view if needed
-                        this.hideSearchFolderView();
+                        const folderTitle = document.getElementById('search-folder-title');
+                        const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+                        this.hideSearchFolderView(isAllModels);
 
                         await huggingFaceApp.openHuggingFaceSearch();
                         if (term) {
@@ -1607,15 +1622,19 @@ class DesktopManager {
 
         if (backBtn) {
             backBtn.addEventListener('click', () => {
-                const folderView = document.getElementById('search-folder-view');
-                if (folderView) folderView.classList.add('hidden');
+                // Check if we're in "All Models" folder
+                const folderTitle = document.getElementById('search-folder-title');
+                const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+                this.hideSearchFolderView(isAllModels);
             });
         }
 
         if (overlay) {
             overlay.addEventListener('click', () => {
-                const folderView = document.getElementById('search-folder-view');
-                if (folderView) folderView.classList.add('hidden');
+                // Check if we're in "All Models" folder
+                const folderTitle = document.getElementById('search-folder-title');
+                const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+                this.hideSearchFolderView(isAllModels);
             });
         }
 
@@ -1632,12 +1651,16 @@ class DesktopManager {
         if (!grid) return;
 
         const lowerTerm = term.toLowerCase().trim();
+        const cleanTerm = lowerTerm.replace(/[^a-z0-9]/g, '');
         const cards = grid.querySelectorAll('.model-card');
 
         cards.forEach(card => {
             const name = card.dataset.name.toLowerCase();
+            const cleanName = name.replace(/[^a-z0-9]/g, '');
             const arch = card.dataset.architecture.toLowerCase();
-            if (name.includes(lowerTerm) || arch.includes(lowerTerm)) {
+            const cleanArch = arch.replace(/[^a-z0-9]/g, '');
+
+            if (cleanTerm === '' || cleanName.includes(cleanTerm) || cleanArch.includes(cleanTerm)) {
                 card.style.display = 'flex';
             } else {
                 card.style.display = 'none';
@@ -1764,7 +1787,9 @@ class DesktopManager {
 
         if (cleanTerm === '') {
             // No search term - hide search folder view and show desktop
-            this.hideSearchFolderView();
+            const folderTitle = document.getElementById('search-folder-title');
+            const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+            this.hideSearchFolderView(isAllModels);
         } else {
             // Search term present - show search folder view
             this.showSearchFolderView(cleanTerm);
@@ -1779,11 +1804,6 @@ class DesktopManager {
         const searchFolderInput = document.getElementById('search-folder-input');
 
         if (!folderView || !folderGrid) return;
-
-        // Clear the filter input
-        if (searchFolderInput) {
-            searchFolderInput.value = '';
-        }
 
         // Collect all matching models
         const matchingModels = [];
@@ -1819,8 +1839,8 @@ class DesktopManager {
                 const customArgsIndicator = hasCustomArgs ? '<div class="model-card-custom-indicator"></div>' : '';
 
                 return `
-                    <div class="model-card" data-path="${model.path}" data-name="${model.name}" 
-                         data-size="${model.size_gb}" data-architecture="${model.architecture}" 
+                    <div class="model-card" data-path="${model.path}" data-name="${model.name}"
+                         data-size="${model.size_gb}" data-architecture="${model.architecture}"
                          data-quantization="${model.quantization}" data-date="${model.date}">
                         <div class="model-card-icon">
                             <img src="./assets/gguf.png">
@@ -1856,6 +1876,18 @@ class DesktopManager {
         // Build and set the HTML
         const cardsHTML = await buildCardsHTML();
         folderGrid.innerHTML = cardsHTML || '<div style="padding: 60px; text-align: center; color: rgba(255,255,255,0.5); font-size: 18px;">No models found</div>';
+
+        // Restore the search input value only when opening "All Models" folder (no search term)
+        if (cleanTerm === '' && searchFolderInput && this.searchFolderInputValue && this.searchFolderInputValue.trim() !== '') {
+            searchFolderInput.value = this.searchFolderInputValue;
+            // Trigger the filter function after cards are rendered
+            this.filterFolderModels(this.searchFolderInputValue);
+        } else {
+            // Clear the filter input for other cases or no saved value
+            if (searchFolderInput) {
+                searchFolderInput.value = '';
+            }
+        }
 
         // Add click handlers for model cards
         folderGrid.querySelectorAll('.model-card').forEach(card => {
@@ -1949,7 +1981,7 @@ class DesktopManager {
         this.sortFolderViewByFavorites();
     }
 
-    hideSearchFolderView() {
+    hideSearchFolderView(isAllModels = false) {
         const folderView = document.getElementById('search-folder-view');
         const searchFolderInput = document.getElementById('search-folder-input');
 
@@ -1957,9 +1989,11 @@ class DesktopManager {
             folderView.classList.add('hidden');
         }
 
-        // Clear the filter input
-        if (searchFolderInput) {
-            searchFolderInput.value = '';
+        // Save the search input value only when closing "All Models" folder
+        if (isAllModels && searchFolderInput && searchFolderInput.value.trim() !== '') {
+            this.searchFolderInputValue = searchFolderInput.value;
+        } else {
+            this.searchFolderInputValue = '';
         }
     }
 
@@ -2769,8 +2803,8 @@ class DesktopManager {
     }
 
     async launchModel(icon) {
-        // Close search folder view if open
-        this.hideSearchFolderView();
+        // Close search folder view if open (always clear saved search value)
+        this.hideSearchFolderView(false);
 
         const modelPath = icon.dataset.path;
         const modelName = icon.dataset.name;
