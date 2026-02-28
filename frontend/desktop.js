@@ -347,9 +347,8 @@ class DesktopManager {
             });
 
             backgroundColor.addEventListener('change', () => {
-                if (themeSyncButton.classList.contains('active')) {
-                    themeColor.value = backgroundColor.value;
-                }
+                // Turn off sync when background color is changed
+                themeSyncButton.classList.remove('active');
                 this.applyTheme(themeColor.value, backgroundColor.value);
             });
 
