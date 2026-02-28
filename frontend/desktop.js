@@ -1651,16 +1651,14 @@ class DesktopManager {
         if (!grid) return;
 
         const lowerTerm = term.toLowerCase().trim();
-        const cleanTerm = lowerTerm.replace(/[^a-z0-9]/g, '');
         const cards = grid.querySelectorAll('.model-card');
 
         cards.forEach(card => {
             const name = card.dataset.name.toLowerCase();
-            const cleanName = name.replace(/[^a-z0-9]/g, '');
             const arch = card.dataset.architecture.toLowerCase();
-            const cleanArch = arch.replace(/[^a-z0-9]/g, '');
 
-            if (cleanTerm === '' || cleanName.includes(cleanTerm) || cleanArch.includes(cleanTerm)) {
+            // Use fuzzy search for better matching
+            if (lowerTerm === '' || this.fuzzyMatch(lowerTerm, name) || this.fuzzyMatch(lowerTerm, arch)) {
                 card.style.display = 'flex';
             } else {
                 card.style.display = 'none';
@@ -1779,6 +1777,21 @@ class DesktopManager {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // Fuzzy search - checks if all characters in the search term appear in order in the target string
+    fuzzyMatch(searchTerm, target) {
+        const searchLower = searchTerm.toLowerCase().replace(/\s+/g, '');
+        const targetLower = target.toLowerCase();
+        
+        let searchIndex = 0;
+        for (let i = 0; i < targetLower.length && searchIndex < searchLower.length; i++) {
+            if (targetLower[i] === searchLower[searchIndex]) {
+                searchIndex++;
+            }
+        }
+        
+        return searchIndex === searchLower.length;
     }
 
     filterDesktopIcons(searchTerm) {
@@ -2003,13 +2016,13 @@ class DesktopManager {
 
         const cards = folderGrid.querySelectorAll('.model-card');
         const term = filterTerm.toLowerCase().trim();
-        const cleanTerm = term.replace(/[^a-z0-9]/g, '');
 
         cards.forEach(card => {
             const modelName = (card.dataset.name || '').toLowerCase();
-            const cleanModelName = modelName.replace(/[^a-z0-9]/g, '');
+            const arch = (card.dataset.architecture || '').toLowerCase();
 
-            if (cleanTerm === '' || cleanModelName.includes(cleanTerm)) {
+            // Use fuzzy search for better matching
+            if (term === '' || this.fuzzyMatch(term, modelName) || this.fuzzyMatch(term, arch)) {
                 card.style.display = 'flex';
             } else {
                 card.style.display = 'none';
