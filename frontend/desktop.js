@@ -4378,6 +4378,9 @@ class DesktopManager {
                 if (result.models) {
                     this.refreshDesktopIcons(result.models);
                 }
+
+                // Close the settings window after saving
+                this.hideSettingsPanel();
             } else {
                 this.showNotification('Failed to save configuration: ' + (result.error || 'Unknown error'), 'error');
             }
