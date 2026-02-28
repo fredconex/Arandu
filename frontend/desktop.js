@@ -1111,7 +1111,36 @@ class DesktopManager {
     }
 
     setupSubmenuBehavior(menuItem, submenu) {
+        // Calculate the proper position for the submenu based on the parent item's position
+        // Use position: absolute relative to the context menu container
+        const updateSubmenuPosition = () => {
+            const contextMenu = document.getElementById('context-menu');
+            if (!contextMenu) return;
+            
+            const contextMenuRect = contextMenu.getBoundingClientRect();
+            const menuItemRect = menuItem.getBoundingClientRect();
+            
+            // Calculate position relative to the context menu
+            const left = menuItemRect.right - contextMenuRect.left;
+            let top = menuItemRect.top - contextMenuRect.top;
+            
+            const submenuHeight = submenu.offsetHeight || 150;
+            
+            // Check if submenu would go below the context menu
+            if (top + submenuHeight > contextMenu.offsetHeight) {
+                top = contextMenu.offsetHeight - submenuHeight;
+            }
+            
+            // Ensure minimum top position
+            top = Math.max(0, top);
+            
+            submenu.style.position = 'absolute';
+            submenu.style.left = left + 'px';
+            submenu.style.top = top + 'px';
+        };
+        
         menuItem.addEventListener('mouseenter', () => {
+            updateSubmenuPosition();
             submenu.classList.add('show');
         });
         menuItem.addEventListener('mouseleave', (e) => {
