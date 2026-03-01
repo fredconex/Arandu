@@ -169,6 +169,11 @@
     transition: all 0.2s ease;
 }
 
+.search-folder-input::placeholder {
+    color: var(--theme-text-muted);
+    opacity: 0.5;
+}
+
 .search-folder-input:focus {
     background: var(--theme-surface);
     border-color: var(--theme-primary);

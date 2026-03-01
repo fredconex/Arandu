@@ -232,13 +232,15 @@ class PropertiesManager {
                             <h4>Available Settings</h4>
                         </div>
                         <div class="settings-search-container">
-                            <input type="text" class="settings-search-input" placeholder="Search settings..." 
-                                   oninput="propertiesManager.filterSettingsList(this.value)" 
+                            <span class="material-icons settings-search-icon">search</span>
+                            <input type="text" class="settings-search-input" placeholder="Search settings..."
+                                   oninput="propertiesManager.filterSettingsList(this.value)"
                                    onclick="event.stopPropagation()">
                             <button class="settings-search-clear" onclick="propertiesManager.clearSettingsSearch()" title="Clear search">
                                 <span class="material-icons">close</span>
                             </button>
                         </div>
+
                         <div class="settings-list" id="settings-list">
                             ${settingsListHTML}
                         </div>
