@@ -936,6 +936,61 @@ class DesktopManager {
         this.selectedIcon = null;
     }
 
+    async showPresetMenuForCard(button, icon, presets, isExternal = false) {
+        const contextMenu = document.getElementById('context-menu');
+        if (!contextMenu) return;
+
+        this.selectedIcon = icon;
+        
+        // Sort presets to move default to top
+        const sortedPresets = [...presets].sort((a, b) => {
+            if (a.is_default && !b.is_default) return -1;
+            if (!a.is_default && b.is_default) return 1;
+            return 0;
+        });
+
+        // Build preset menu items - No "Default" (base model) item anymore
+        let menuItems = `
+            <div class="context-menu-title" style="padding: 8px 12px; font-size: 11px; color: var(--theme-text-muted); text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8;">Select Preset</div>
+        `;
+        
+        sortedPresets.forEach(preset => {
+            // If it's a default preset, show the home icon
+            const iconName = preset.is_default ? 'home' : 'tune';
+            menuItems += `
+                <div class="context-menu-item" data-action="${isExternal ? 'launch-preset-external' : 'launch-preset'}" data-preset-id="${preset.id}">
+                    <span class="material-icons">${iconName}</span> ${preset.name}
+                </div>
+            `;
+        });
+
+        contextMenu.innerHTML = menuItems;
+        contextMenu.classList.remove('hidden');
+
+        // Close menu when mouse leaves it
+        contextMenu.onmouseleave = () => {
+            this.hideContextMenu();
+            contextMenu.onmouseleave = null;
+        };
+
+        const rect = button.getBoundingClientRect();
+        const menuRect = contextMenu.getBoundingClientRect();
+        
+        let left = rect.left;
+        let top = rect.bottom + 5;
+
+        // Keep on screen
+        if (left + menuRect.width > window.innerWidth) {
+            left = window.innerWidth - menuRect.width - 10;
+        }
+        if (top + menuRect.height > window.innerHeight) {
+            top = rect.top - menuRect.height - 5;
+        }
+
+        contextMenu.style.left = `${left}px`;
+        contextMenu.style.top = `${top}px`;
+    }
+
     async showContextMenu(x, y, type = 'icon') {
         const contextMenu = document.getElementById('context-menu');
         if (!contextMenu) return;
@@ -1399,32 +1454,75 @@ class DesktopManager {
                 // Format the date
                 const formattedDate = this.formatDate(parseFloat(model.date));
 
+                // Action buttons HTML based on model type
+                let actionButtonsHTML = '';
+                if (isClipModel) {
+                    // Reduced options for CLIP/faint models
+                    actionButtonsHTML = `
+                        <div class="action-buttons-left">
+                            <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
+                                <span class="material-icons">folder</span>
+                            </button>
+                        </div>
+                        <div class="action-buttons-right">
+                            <button class="action-btn delete" data-action="delete" title="Delete Model">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // Full options for standard models
+                    actionButtonsHTML = `
+                        <div class="action-buttons-left">
+                            <button class="action-btn launch" data-action="launch-internal" title="Launch Model">
+                                <span class="material-icons">rocket_launch</span>
+                            </button>
+                            <button class="action-btn launch-external" data-action="launch-external" title="Launch External">
+                                <span class="material-icons">computer</span>
+                            </button>
+                            <button class="action-btn properties" data-action="properties" title="Model Properties">
+                                <span class="material-icons">settings</span>
+                            </button>
+                            <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
+                                <span class="material-icons">folder</span>
+                            </button>
+                        </div>
+                        <div class="action-buttons-right">
+                            <button class="action-btn delete" data-action="delete" title="Delete Model">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </div>
+                    `;
+                }
+
                 return `
                     <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
                          data-quantization="${model.quantization}" data-date="${model.date}">
-                        <div class="model-card-icon">
-                            <img src="./assets/gguf.png">
-                            ${customArgsIndicator}
-                        </div>
-                        <div class="model-card-info">
-                            <h3 class="model-card-name">${model.name.replace('.gguf', '')}</h3>
-                            <div class="model-card-details">
-                                <span class="model-card-detail-value">${model.architecture}</span>
-                                <span class="model-card-detail-separator">•</span>
-                                <span class="model-card-detail-value">${model.quantization}</span>
-                                <span class="model-card-detail-separator">•</span>
-                                <span class="model-card-detail-value">${sizeGB} GB</span>
-                                <span class="model-card-detail-separator">•</span>
-                                <span class="model-card-detail-value date-modified">${formattedDate}</span>
+                        <div class="model-card-content">
+                            <div class="model-card-icon">
+                                <img src="./assets/gguf.png">
+                                ${customArgsIndicator}
                             </div>
+                            <div class="model-card-info">
+                                <h3 class="model-card-name">${model.name.replace('.gguf', '')}</h3>
+                                <div class="model-card-details">
+                                    <span class="model-card-detail-value">${model.architecture}</span>
+                                    <span class="model-card-detail-separator">•</span>
+                                    <span class="model-card-detail-value">${model.quantization}</span>
+                                    <span class="model-card-detail-separator">•</span>
+                                    <span class="model-card-detail-value">${sizeGB} GB</span>
+                                    <span class="model-card-detail-separator">•</span>
+                                    <span class="model-card-detail-value date-modified">${formattedDate}</span>
+                                </div>
+                            </div>
+                            <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
+                                <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
+                            </button>
                         </div>
-                        <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
-                            <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
-                        </button>
-                        <button class="model-card-menu-btn" data-action="menu" title="More options">
-                            <span class="material-icons">more_vert</span>
-                        </button>
+                        <div class="model-card-action-tab">
+                            ${actionButtonsHTML}
+                        </div>
                     </div>
                 `;
             });
@@ -1456,21 +1554,69 @@ class DesktopManager {
         folderGrid.querySelectorAll('.model-card').forEach(card => {
             card.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                // Don't launch if clicking on the menu button
-                if (e.target.closest('.model-card-menu-btn')) return;
-                // Don't launch if clicking on the favorite button
-                if (e.target.closest('.model-card-favorite-btn')) return;
                 
-                // Check if this is a clip model - clip models cannot be launched
-                const cardArch = card.dataset.architecture;
-                if (cardArch && cardArch.toLowerCase() === 'clip') {
+                // Check if clicking on action tab buttons
+                const actionBtn = e.target.closest('.action-btn');
+                if (actionBtn) {
+                    const action = actionBtn.dataset.action;
+                    const tempIcon = document.createElement('div');
+                    tempIcon.dataset.path = card.dataset.path;
+                    tempIcon.dataset.name = card.dataset.name;
+                    tempIcon.dataset.size = card.dataset.size;
+                    tempIcon.dataset.architecture = card.dataset.architecture;
+                    tempIcon.dataset.quantization = card.dataset.quantization;
+                    tempIcon.dataset.date = card.dataset.date;
+                    
+                    if (action === 'launch-internal') {
+                        const modelPath = card.dataset.path;
+                        try {
+                            const presets = await invoke('get_model_presets', { modelPath: modelPath });
+                            if (presets && presets.length > 1) {
+                                this.showPresetMenuForCard(actionBtn, tempIcon, presets, false);
+                            } else if (presets && presets.length === 1) {
+                                await this.launchModelWithPreset(tempIcon, presets[0].id);
+                            } else {
+                                await this.launchModel(tempIcon);
+                            }
+                        } catch (error) {
+                            console.error('Error loading presets:', error);
+                            await this.launchModel(tempIcon);
+                        }
+                    } else if (action === 'launch-external') {
+                        const modelPath = card.dataset.path;
+                        try {
+                            const presets = await invoke('get_model_presets', { modelPath: modelPath });
+                            if (presets && presets.length > 1) {
+                                this.showPresetMenuForCard(actionBtn, tempIcon, presets, true);
+                            } else if (presets && presets.length === 1) {
+                                await this.launchModelWithPresetExternal(tempIcon, presets[0].id);
+                            } else {
+                                await this.launchModelExternal(tempIcon);
+                            }
+                        } catch (error) {
+                            console.error('Error loading presets:', error);
+                            await this.launchModelExternal(tempIcon);
+                        }
+                    } else if (action === 'properties') {
+                        this.showProperties(tempIcon);
+                    } else if (action === 'delete') {
+                        this.deleteModelFile(tempIcon);
+                    } else if (action === 'open-folder') {
+                        this.openModelFolder(tempIcon);
+                    }
                     return;
                 }
                 
-                const tempIcon = document.createElement('div');
-                tempIcon.dataset.path = card.dataset.path;
-                tempIcon.dataset.name = card.dataset.name;
-                await this.launchModel(tempIcon);
+                // Don't show tab if clicking on the favorite button
+                if (e.target.closest('.model-card-favorite-btn')) return;
+                
+                // Toggle the action tab - works for all models now including faint ones
+                const wasSelected = card.classList.contains('selected');
+                folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+                
+                if (!wasSelected) {
+                    card.classList.add('selected');
+                }
             });
 
             // Add click handler for favorite button
@@ -1480,54 +1626,6 @@ class DesktopManager {
                     this.toggleFavorite(card.dataset.path, e);
                 });
             }
-
-            // Add click handler for menu button (more_vert)
-            const menuBtn = card.querySelector('.model-card-menu-btn');
-            if (menuBtn) {
-                menuBtn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    
-                    // Remove selected class from all cards in this grid
-                    folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
-                    // Add selected class to this card
-                    card.classList.add('selected');
-                    
-                    const tempIcon = document.createElement('div');
-                    tempIcon.dataset.path = card.dataset.path;
-                    tempIcon.dataset.name = card.dataset.name;
-                    tempIcon.dataset.size = card.dataset.size;
-                    tempIcon.dataset.architecture = card.dataset.architecture;
-                    tempIcon.dataset.quantization = card.dataset.quantization;
-                    tempIcon.dataset.date = card.dataset.date;
-
-                    this.selectedIcon = tempIcon;
-                    // Position the context menu at the button's location
-                    const rect = menuBtn.getBoundingClientRect();
-                    await this.showContextMenu(rect.left, rect.top + rect.height, 'icon');
-                });
-            }
-
-            // Add right-click context menu
-            card.addEventListener('contextmenu', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Remove selected class from all cards in this grid
-                folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
-                // Add selected class to this card
-                card.classList.add('selected');
-                
-                const tempIcon = document.createElement('div');
-                tempIcon.dataset.path = card.dataset.path;
-                tempIcon.dataset.name = card.dataset.name;
-                tempIcon.dataset.size = card.dataset.size;
-                tempIcon.dataset.architecture = card.dataset.architecture;
-                tempIcon.dataset.quantization = card.dataset.quantization;
-                tempIcon.dataset.date = card.dataset.date;
-
-                this.selectedIcon = tempIcon;
-                await this.showContextMenu(e.clientX, e.clientY, 'icon');
-            });
         });
 
         // Show the folder view
@@ -1968,37 +2066,80 @@ class DesktopManager {
                 // Format the date
                 const formattedDate = this.formatDate(parseFloat(model.date));
 
+                // Action buttons HTML based on model type
+                let actionButtonsHTML = '';
+                if (isClipModel) {
+                    // Reduced options for CLIP/faint models
+                    actionButtonsHTML = `
+                        <div class="action-buttons-left">
+                            <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
+                                <span class="material-icons">folder</span>
+                            </button>
+                        </div>
+                        <div class="action-buttons-right">
+                            <button class="action-btn delete" data-action="delete" title="Delete Model">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // Full options for standard models
+                    actionButtonsHTML = `
+                        <div class="action-buttons-left">
+                            <button class="action-btn launch" data-action="launch-internal" title="Launch Model">
+                                <span class="material-icons">rocket_launch</span>
+                            </button>
+                            <button class="action-btn launch-external" data-action="launch-external" title="Launch External">
+                                <span class="material-icons">computer</span>
+                            </button>
+                            <button class="action-btn properties" data-action="properties" title="Model Properties">
+                                <span class="material-icons">settings</span>
+                            </button>
+                            <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
+                                <span class="material-icons">folder</span>
+                            </button>
+                        </div>
+                        <div class="action-buttons-right">
+                            <button class="action-btn delete" data-action="delete" title="Delete Model">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </div>
+                    `;
+                }
+
                 return `
                     <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
                          data-quantization="${model.quantization}" data-date="${model.date}">
-                        <div class="model-card-icon">
-                            <img src="./assets/gguf.png">
-                            ${customArgsIndicator}
-                        </div>
-                        <div class="model-card-info">
-                            <h3 class="model-card-name">${model.name.replace('.gguf', '')}</h3>
-                            <div class="model-card-details">
-                                <span class="model-card-detail-item">
-                                    <span class="model-card-detail-label">Quant:</span>
-                                    <span class="model-card-detail-value">${model.quantization}</span>
-                                </span>
-                                <span class="model-card-detail-separator">•</span>
-                                <span class="model-card-detail-item">
-                                    <span class="model-card-detail-value">${sizeGB} GB</span>
-                                </span>
-                                <span class="model-card-detail-separator">•</span>
-                                <span class="model-card-detail-item">
-                                    <span class="model-card-detail-value date-modified">${formattedDate}</span>
-                                </span>
+                        <div class="model-card-content">
+                            <div class="model-card-icon">
+                                <img src="./assets/gguf.png">
+                                ${customArgsIndicator}
                             </div>
+                            <div class="model-card-info">
+                                <h3 class="model-card-name">${model.name.replace('.gguf', '')}</h3>
+                                <div class="model-card-details">
+                                    <span class="model-card-detail-item">
+                                        <span class="model-card-detail-label">Quant:</span>
+                                        <span class="model-card-detail-value">${model.quantization}</span>
+                                    </span>
+                                    <span class="model-card-detail-separator">•</span>
+                                    <span class="model-card-detail-item">
+                                        <span class="model-card-detail-value">${sizeGB} GB</span>
+                                    </span>
+                                    <span class="model-card-detail-separator">•</span>
+                                    <span class="model-card-detail-item">
+                                        <span class="model-card-detail-value date-modified">${formattedDate}</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
+                                <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
+                            </button>
                         </div>
-                        <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
-                            <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
-                        </button>
-                        <button class="model-card-menu-btn" data-action="menu" title="More options">
-                            <span class="material-icons">more_vert</span>
-                        </button>
+                        <div class="model-card-action-tab">
+                            ${actionButtonsHTML}
+                        </div>
                     </div>
                 `;
             });
@@ -2030,21 +2171,77 @@ class DesktopManager {
         folderGrid.querySelectorAll('.model-card').forEach(card => {
             card.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                // Don't launch if clicking on the menu button
-                if (e.target.closest('.model-card-menu-btn')) return;
-                // Don't launch if clicking on the favorite button
-                if (e.target.closest('.model-card-favorite-btn')) return;
                 
-                // Check if this is a clip model - clip models cannot be launched
-                const cardArch = card.dataset.architecture;
-                if (cardArch && cardArch.toLowerCase() === 'clip') {
+                // Check if clicking on action tab buttons
+                const actionBtn = e.target.closest('.action-btn');
+                if (actionBtn) {
+                    const action = actionBtn.dataset.action;
+                    const tempIcon = document.createElement('div');
+                    tempIcon.dataset.path = card.dataset.path;
+                    tempIcon.dataset.name = card.dataset.name;
+                    tempIcon.dataset.size = card.dataset.size;
+                    tempIcon.dataset.architecture = card.dataset.architecture;
+                    tempIcon.dataset.quantization = card.dataset.quantization;
+                    tempIcon.dataset.date = card.dataset.date;
+                    
+                    if (action === 'launch-internal') {
+                        // Check for presets and launch
+                        const modelPath = card.dataset.path;
+                        try {
+                            const presets = await invoke('get_model_presets', { modelPath: modelPath });
+                            if (presets && presets.length > 1) {
+                                // Show preset menu
+                                this.showPresetMenuForCard(actionBtn, tempIcon, presets, false);
+                            } else if (presets && presets.length === 1) {
+                                // Exactly one preset, launch it directly
+                                await this.launchModelWithPreset(tempIcon, presets[0].id);
+                            } else {
+                                // No presets, launch directly
+                                await this.launchModel(tempIcon);
+                            }
+                        } catch (error) {
+                            console.error('Error loading presets:', error);
+                            await this.launchModel(tempIcon);
+                        }
+                    } else if (action === 'launch-external') {
+                        // Check for presets and launch external
+                        const modelPath = card.dataset.path;
+                        try {
+                            const presets = await invoke('get_model_presets', { modelPath: modelPath });
+                            if (presets && presets.length > 1) {
+                                // Show preset menu
+                                this.showPresetMenuForCard(actionBtn, tempIcon, presets, true);
+                            } else if (presets && presets.length === 1) {
+                                // Exactly one preset, launch it directly
+                                await this.launchModelWithPresetExternal(tempIcon, presets[0].id);
+                            } else {
+                                // No presets, launch directly
+                                await this.launchModelExternal(tempIcon);
+                            }
+                        } catch (error) {
+                            console.error('Error loading presets:', error);
+                            await this.launchModelExternal(tempIcon);
+                        }
+                    } else if (action === 'properties') {
+                        this.showProperties(tempIcon);
+                    } else if (action === 'delete') {
+                        this.deleteModelFile(tempIcon);
+                    } else if (action === 'open-folder') {
+                        this.openModelFolder(tempIcon);
+                    }
                     return;
                 }
                 
-                const tempIcon = document.createElement('div');
-                tempIcon.dataset.path = card.dataset.path;
-                tempIcon.dataset.name = card.dataset.name;
-                await this.launchModel(tempIcon);
+                // Don't show tab if clicking on the favorite button
+                if (e.target.closest('.model-card-favorite-btn')) return;
+                
+                // Toggle the action tab - works for all models now including faint ones
+                const wasSelected = card.classList.contains('selected');
+                folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+                
+                if (!wasSelected) {
+                    card.classList.add('selected');
+                }
             });
 
             // Add click handler for favorite button
@@ -2054,54 +2251,6 @@ class DesktopManager {
                     this.toggleFavorite(card.dataset.path, e);
                 });
             }
-
-            // Add click handler for menu button (more_vert)
-            const menuBtn = card.querySelector('.model-card-menu-btn');
-            if (menuBtn) {
-                menuBtn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    
-                    // Remove selected class from all cards in this grid
-                    folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
-                    // Add selected class to this card
-                    card.classList.add('selected');
-                    
-                    const tempIcon = document.createElement('div');
-                    tempIcon.dataset.path = card.dataset.path;
-                    tempIcon.dataset.name = card.dataset.name;
-                    tempIcon.dataset.size = card.dataset.size;
-                    tempIcon.dataset.architecture = card.dataset.architecture;
-                    tempIcon.dataset.quantization = card.dataset.quantization;
-                    tempIcon.dataset.date = card.dataset.date;
-
-                    this.selectedIcon = tempIcon;
-                    // Position the context menu at the button's location
-                    const rect = menuBtn.getBoundingClientRect();
-                    await this.showContextMenu(rect.left, rect.top + rect.height, 'icon');
-                });
-            }
-
-            // Add right-click context menu
-            card.addEventListener('contextmenu', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Remove selected class from all cards in this grid
-                folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
-                // Add selected class to this card
-                card.classList.add('selected');
-                
-                const tempIcon = document.createElement('div');
-                tempIcon.dataset.path = card.dataset.path;
-                tempIcon.dataset.name = card.dataset.name;
-                tempIcon.dataset.size = card.dataset.size;
-                tempIcon.dataset.architecture = card.dataset.architecture;
-                tempIcon.dataset.quantization = card.dataset.quantization;
-                tempIcon.dataset.date = card.dataset.date;
-
-                this.selectedIcon = tempIcon;
-                await this.showContextMenu(e.clientX, e.clientY, 'icon');
-            });
         });
 
         // Show the folder view

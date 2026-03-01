@@ -321,62 +321,55 @@
 /* Model Card - Clean & Minimal */
 .model-card {
     display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    position: relative;
+    overflow: hidden; /* Necessary for the sliding tab animation */
+    user-select: none; /* Prevent text selection on click/double click */
+}
+
+.model-card-content {
+    display: flex;
     align-items: center;
     gap: 16px;
     padding: 12px 24px;
-    cursor: pointer;
-    transition: background 0.1s ease;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
-    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
 }
 
 .model-card:hover {
-    background: var(--theme-bg-light);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .model-card.selected {
-    background: var(--theme-bg-medium);
-    border-left: 3px solid var(--theme-accent);
-    padding-left: 21px;
+    background: rgba(0, 0, 0, 0.15);
 }
 
-.model-card-menu-btn {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: 4px;
-    color: var(--theme-text-muted);
-    cursor: pointer;
-    opacity: 0;
-    transition: all 0.15s ease;
+.model-card.selected .model-card-content {
+    background: rgba(255, 255, 255, 0.03);
 }
 
-.model-card:hover .model-card-menu-btn {
+/* CLIP/Faint model - Ensure it behaves consistently */
+.model-card.clip-model {
+    opacity: 0.85; /* Increased opacity from 0.5 to feel more interactive */
+    filter: grayscale(0.5); /* Use grayscale to indicate specialized nature */
+}
+
+.model-card.clip-model.selected {
     opacity: 1;
-}
-
-.model-card-menu-btn:hover {
-    background: var(--theme-bg-light);
-    color: var(--theme-text);
-}
-
-.model-card-menu-btn .material-icons {
-    font-size: 18px;
+    filter: grayscale(0);
 }
 
 /* Favorite Button */
 .model-card-favorite-btn {
     position: absolute;
-    right: 44px;
-    top: 50%;
+    right: 12px;
+    top: 32px; /* Fixed distance from top */
     transform: translateY(-50%);
     width: 28px;
     height: 28px;
@@ -537,6 +530,60 @@
 .model-card.clip-model .model-card-name,
 .model-card.clip-model .model-card-details {
     opacity: 0.6;
+}
+
+/* Model Card Action Tab - Slides down from under the card */
+.model-card-action-tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: rgba(0, 0, 0, 0.25);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Inner shadow from top to give "recessed" look */
+    box-shadow: inset 0 10px 10px -10px rgba(0, 0, 0, 0.8);
+    opacity: 0;
+}
+
+.model-card.selected .model-card-action-tab {
+    max-height: 48px;
+    padding: 8px 24px;
+    opacity: 1;
+}
+
+.model-card-action-tab .action-buttons-left,
+.model-card-action-tab .action-buttons-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.model-card-action-tab .action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--theme-text-muted);
+    padding: 0;
+}
+
+.model-card-action-tab .action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--theme-text);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.model-card-action-tab .action-btn .material-icons {
+    font-size: 18px;
 }
 
 /* Context menu disabled state */

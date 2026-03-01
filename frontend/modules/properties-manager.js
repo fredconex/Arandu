@@ -246,15 +246,7 @@ class PropertiesManager {
                     
                     <div class="properties-button-container">
                         <div class="properties-bottom-section">
-                            <div class="button-section">
-                                <div class="button-left">
-                                    <button class="delete-file-btn" onclick="propertiesManager.deleteModelFile('${btoa(modelPath)}')" title="Delete this model file">
-                                        <span class="material-icons">delete</span>
-                                        Delete File
-                                    </button>
-                                </div>
-                                <div class="button-note">
-                                </div>
+                            <div class="button-section" style="justify-content: flex-end;">
                                 <div class="button-group">
                                     <button class="properties-btn cancel-btn" onclick="propertiesManager.closePropertiesWindow()">Cancel</button>
                                     <button class="properties-btn save-btn" onclick="propertiesManager.saveProperties()">Save</button>
