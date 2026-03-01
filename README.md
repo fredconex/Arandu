@@ -23,12 +23,13 @@ Use ```cargo tauri build```, it will output to ```backend\target\release```.
 https://github.com/fredconex/Arandu/releases
 
 # Screenshots
-<img width="1463" height="983" alt="image" src="https://github.com/user-attachments/assets/5c9db52e-0213-44c6-bb6b-6f620c15c2bb" />
-<img width="1449" height="974" alt="image" src="https://github.com/user-attachments/assets/04f80032-a3fb-4086-9d62-f6878a2070e3" />
-<img width="1440" height="985" alt="image" src="https://github.com/user-attachments/assets/59e7b432-8fb0-4923-bbdd-890eafa0332b" />
-<img width="1440" height="976" alt="image" src="https://github.com/user-attachments/assets/bb1d70fa-3f72-4448-b2a8-71a3a1cde24e" />
-<img width="1452" height="979" alt="image" src="https://github.com/user-attachments/assets/7de5106a-ca8f-48be-b8cd-57d2c37a56bd" />
-<img width="1437" height="968" alt="image" src="https://github.com/user-attachments/assets/beb39b0c-9a17-4d88-ac77-5d0ee3439b80" />
+<img width="1432" height="956" alt="image" src="https://github.com/user-attachments/assets/ad78272c-e2ca-4ab9-89fe-2cf521be2254" />
+<img width="1421" height="946" alt="image" src="https://github.com/user-attachments/assets/5117ab50-05d7-4553-9cb3-7087d3075a50" />
+<img width="1441" height="966" alt="image" src="https://github.com/user-attachments/assets/bd410c36-a42f-46e6-a1c1-00581f81b7e4" />
+<img width="1456" height="980" alt="image" src="https://github.com/user-attachments/assets/ff67bb81-acda-41a5-876a-373c21cab841" />
+<img width="1444" height="971" alt="image" src="https://github.com/user-attachments/assets/8e810303-4f37-4e04-af10-364f8d889062" />
+<img width="1434" height="970" alt="image" src="https://github.com/user-attachments/assets/570b053d-3e31-4041-9c82-0744ace7086c" />
+
 
 
 # Support development
