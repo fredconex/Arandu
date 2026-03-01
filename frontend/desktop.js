@@ -1552,7 +1552,9 @@ class DesktopManager {
 
         // Add click handlers for model cards
         folderGrid.querySelectorAll('.model-card').forEach(card => {
-            card.addEventListener('click', async (e) => {
+            const handleSelection = async (e) => {
+                // Hide any open context/preset menus
+                this.hideContextMenu();
                 e.stopPropagation();
                 
                 // Check if clicking on action tab buttons
@@ -1568,6 +1570,7 @@ class DesktopManager {
                     tempIcon.dataset.date = card.dataset.date;
                     
                     if (action === 'launch-internal') {
+                        e.stopPropagation(); // Prevent global click from hiding menu immediately
                         const modelPath = card.dataset.path;
                         try {
                             const presets = await invoke('get_model_presets', { modelPath: modelPath });
@@ -1583,6 +1586,7 @@ class DesktopManager {
                             await this.launchModel(tempIcon);
                         }
                     } else if (action === 'launch-external') {
+                        e.stopPropagation(); // Prevent global click from hiding menu immediately
                         const modelPath = card.dataset.path;
                         try {
                             const presets = await invoke('get_model_presets', { modelPath: modelPath });
@@ -1617,6 +1621,12 @@ class DesktopManager {
                 if (!wasSelected) {
                     card.classList.add('selected');
                 }
+            };
+
+            card.addEventListener('click', handleSelection);
+            card.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                handleSelection(e);
             });
 
             // Add click handler for favorite button
@@ -2170,6 +2180,8 @@ class DesktopManager {
         // Add click handlers for model cards
         folderGrid.querySelectorAll('.model-card').forEach(card => {
             card.addEventListener('click', async (e) => {
+                // Hide any open context/preset menus
+                this.hideContextMenu();
                 e.stopPropagation();
                 
                 // Check if clicking on action tab buttons

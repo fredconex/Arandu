@@ -330,6 +330,7 @@
     position: relative;
     overflow: hidden; /* Necessary for the sliding tab animation */
     user-select: none; /* Prevent text selection on click/double click */
+    flex-shrink: 0;
 }
 
 .model-card-content {
@@ -347,11 +348,11 @@
 }
 
 .model-card.selected {
-    background: rgba(0, 0, 0, 0.15);
+    background: transparent;
 }
 
 .model-card.selected .model-card-content {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--theme-bg-medium);
 }
 
 /* CLIP/Faint model - Ensure it behaves consistently */
@@ -363,6 +364,10 @@
 .model-card.clip-model.selected {
     opacity: 1;
     filter: grayscale(0);
+}
+
+.model-card.clip-model.selected .model-card-content {
+    background: var(--theme-bg-medium);
 }
 
 /* Favorite Button */
@@ -537,21 +542,26 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 24px;
-    background: rgba(0, 0, 0, 0.25);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0 16px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: none;
     max-height: 0;
+    width: 96%;
+    margin: 0 auto;
+    border-radius: 0 0 10px 10px;
     overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
     /* Inner shadow from top to give "recessed" look */
-    box-shadow: inset 0 10px 10px -10px rgba(0, 0, 0, 0.8);
     opacity: 0;
+    box-sizing: border-box;
 }
 
 .model-card.selected .model-card-action-tab {
     max-height: 48px;
-    padding: 8px 24px;
+    padding: 8px 8px;
     opacity: 1;
+    margin-bottom: 4px;
 }
 
 .model-card-action-tab .action-buttons-left,
