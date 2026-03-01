@@ -272,6 +272,50 @@
 	font-size: 20px;
 }
 
+/* Hugging Face dock icon styling - filled like material icons */
+#huggingface-dock-icon .dock-icon-mask {
+	width: 24px;
+	height: 24px;
+	/* Use mask-image to apply color fill to the PNG */
+	-webkit-mask-image: url("../assets/huggingface.png");
+	mask-image: url("../assets/huggingface.png");
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+	background-color: var(--theme-text-muted);
+	transition: background-color 0.2s ease;
+}
+
+#huggingface-dock-icon:hover .dock-icon-mask {
+	/* Same color on hover as material icons */
+	background-color: var(--theme-text);
+}
+
+/* Llama.cpp dock icon styling - filled like material icons */
+#llamacpp-dock-icon .dock-icon-mask {
+	width: 32px;
+	height: 32px;
+	/* Use mask-image to apply color fill to the PNG */
+	-webkit-mask-image: url("../assets/llamacpp.png");
+	mask-image: url("../assets/llamacpp.png");
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+	background-color: var(--theme-text-muted);
+	transition: background-color 0.2s ease;
+}
+
+#llamacpp-dock-icon:hover .dock-icon-mask {
+	/* Same color on hover as material icons */
+	background-color: var(--theme-text);
+}
+
 .dock-progress-container {
 	position: absolute;
 	bottom: 4px;
