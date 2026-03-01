@@ -5249,7 +5249,7 @@ class DesktopManager {
             </div>
         `;
 
-        if (stats.gpu_name && stats.gpu_name !== 'Unknown' && stats.gpu_name !== 'No NVIDIA GPU detected' && stats.gpu_name !== 'No GPU detected') {
+        if (stats.gpu_name && stats.gpu_name !== 'Unknown' && !stats.gpu_name.includes('No NVIDIA GPU detected') && stats.gpu_name !== 'No GPU detected') {
             content += `
                 <div class="system-section">
                     <div class="section-header">

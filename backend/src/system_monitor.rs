@@ -56,44 +56,26 @@ pub async fn get_system_stats(state: tauri::State<'_, crate::AppState>) -> Resul
 }
 
 fn get_gpu_info() -> (String, f32, f32, f32) {
-    // Try to get NVIDIA GPU info
-    match nvml_wrapper::Nvml::init() {
-        Ok(nvml) => {
-            match nvml.device_count() {
-                Ok(count) if count > 0 => {
-                    match nvml.device_by_index(0) {
-                        Ok(device) => {
-                            let name = device.name().unwrap_or_else(|_| "NVIDIA GPU".to_string());
-                            
-                            // Get GPU utilization
-                            let gpu_usage = match device.utilization_rates() {
-                                Ok(util) => util.gpu as f32,
-                                Err(_) => 0.0,
-                            };
-                            
-                            // Get GPU memory info
-                            let (gpu_memory_total_gb, gpu_memory_used_gb) = match device.memory_info() {
-                                Ok(mem_info) => {
-                                    let total = mem_info.total as f32 / (1024.0 * 1024.0 * 1024.0);
-                                    let used = mem_info.used as f32 / (1024.0 * 1024.0 * 1024.0);
-                                    (total, used)
-                                },
-                                Err(_) => (0.0, 0.0),
-                            };
-                            
-                            (name, gpu_usage, gpu_memory_total_gb, gpu_memory_used_gb)
-                        },
-                        Err(_) => ("NVIDIA GPU (info unavailable)".to_string(), 0.0, 0.0, 0.0)
-                    }
-                },
-                _ => ("No NVIDIA GPU detected".to_string(), 0.0, 0.0, 0.0)
-            }
-        },
-        Err(_) => {
-            // Fallback for non-NVIDIA GPUs or when NVML is not available
-            ("No NVIDIA GPU detected".to_string(), 0.0, 0.0, 0.0)
+    // Cross-platform GPU detection via all-smi
+    // This supports NVIDIA, AMD, Apple Silicon, and more.
+    if let Ok(smi) = all_smi::AllSmi::new() {
+        let gpus = smi.get_gpu_info();
+        if !gpus.is_empty() {
+            // Get the first GPU found
+            let gpu = &gpus[0];
+            let name = gpu.name.clone();
+            
+            // all-smi provides memory in bytes as u64
+            let total_gb = gpu.total_memory as f32 / (1024.0 * 1024.0 * 1024.0);
+            let used_gb = gpu.used_memory as f32 / (1024.0 * 1024.0 * 1024.0);
+            
+            let usage_percent = gpu.utilization as f32;
+            
+            return (name, usage_percent, total_gb, used_gb);
         }
     }
+
+    ("No GPU detected".to_string(), 0.0, 0.0, 0.0)
 }
 
 async fn get_models_stats(state: &crate::AppState) -> (f32, u32) {
