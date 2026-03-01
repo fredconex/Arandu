@@ -3442,8 +3442,6 @@ class DesktopManager {
             // Refresh the desktop to update the view
             await this.loadModels(false);
             
-            // Also refresh folder view if it's open
-            this.refreshFolderViewIfOpen();
 
         } catch (error) {
             console.error('Error deleting file:', error);
@@ -4700,7 +4698,7 @@ class DesktopManager {
             if (searchInput && searchInput.value.trim()) {
                 this.filterFolderViewModels(searchInput.value);
             }
-        } else if (title === 'All Models' || title.endsWith(' Models')) {
+        } else if (title === 'Models') {
             // Refresh All Models view
             this.showArchitectureFolderView('All');
         } else {
