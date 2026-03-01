@@ -13,7 +13,6 @@ This is Arandu, an app to help with Llama.cpp usage, the idea is to create a sma
 
 # To-do (long way ahead)
 - [ ] Cleanup code and organize it better
-- [ ] Add option to group files by model / quantization / architecture
 - [ ] Make compatible with Linux and Mac
 
 # Building
