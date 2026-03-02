@@ -710,6 +710,17 @@
     justify-self: end;
 }
 
+.backend-actions .installed-open-folder {
+    background: var(--theme-surface-elevated);
+    color: var(--theme-text);
+}
+
+.backend-actions .installed-open-folder:hover {
+    background: var(--theme-primary);
+    color: white;
+    border-color: var(--theme-primary);
+}
+
 .backend-actions .installed-delete {
     background: #dc3545;
     color: white;

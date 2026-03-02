@@ -119,6 +119,7 @@ pub struct LaunchResult {
     pub server_host: String,
     pub server_port: u16,
     pub model_name: String,
+    pub command: Vec<String>,
     pub message: String,
 }
 

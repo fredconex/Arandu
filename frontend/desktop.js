@@ -3340,7 +3340,8 @@ class DesktopManager {
                     result.server_host,
                     result.server_port,
                     modelPath,
-                    activeVersion
+                    activeVersion,
+                    result.command
                 );
 
                 console.log('Terminal created:', terminal ? 'success' : 'failed');
@@ -3491,7 +3492,7 @@ class DesktopManager {
                     result.server_port,
                     modelPath,
                     activeVersion,
-                    presetArgs  // Pass the preset arguments
+                    result.command
                 );
 
                 if (!terminal) {

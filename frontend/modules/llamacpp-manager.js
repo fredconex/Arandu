@@ -179,6 +179,12 @@ class LlamaCppReleasesManager {
                                     </div>
                                     <div class="backend-actions">
                                         <button 
+                                            class="installed-open-folder" 
+                                            onclick="llamacppReleasesManager.openFolder('${escapedPath}')"
+                                            title="Open folder in file manager">
+                                            <span class="material-icons">folder</span>
+                                        </button>
+                                        <button 
                                             class="installed-delete" 
                                             onclick="llamacppReleasesManager.deleteVersion('${escapedPath}')"
                                             title="Delete this backend">
@@ -208,6 +214,17 @@ class LlamaCppReleasesManager {
             'metal': 'Metal'
         };
         return displayNames[backendType] || backendType.toUpperCase();
+    }
+
+    async openFolder(path) {
+        try {
+            const invoke = this.getInvoke();
+            if (!invoke) throw new Error('Tauri API not available');
+            await invoke('open_folder', { path });
+        } catch (e) {
+            console.error('Failed to open folder:', e);
+            alert(`Failed to open folder: ${e.message || e}`);
+        }
     }
 
     async setActiveVersion(path) {

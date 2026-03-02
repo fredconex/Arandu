@@ -570,7 +570,8 @@ async fn launch_model_with_preset(
         "process_id": result.process_id,
         "model_name": result.model_name,
         "server_host": result.server_host,
-        "server_port": result.server_port
+        "server_port": result.server_port,
+        "command": result.command
     }))
 }
 
@@ -642,7 +643,8 @@ async fn launch_model(
         "process_id": result.process_id,
         "model_name": result.model_name,
         "server_host": result.server_host,
-        "server_port": result.server_port
+        "server_port": result.server_port,
+        "command": result.command
     }))
 }
 
@@ -917,6 +919,15 @@ async fn open_url(url: String, app: tauri::AppHandle) -> Result<(), String> {
     app.opener()
         .open_url(url, None::<String>)
         .map_err(|e| format!("Failed to open URL: {}", e))
+}
+
+#[tauri::command]
+async fn open_folder(path: String, app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    
+    app.opener()
+        .open_path(path, None::<String>)
+        .map_err(|e| format!("Failed to open folder: {}", e))
 }
 
 #[tauri::command]
@@ -1723,6 +1734,7 @@ pub fn run() {
             get_process_output,
             browse_folder,
             open_url,
+            open_folder,
             open_model_folder,
             search_huggingface,
             get_model_details,

@@ -160,6 +160,7 @@ pub async fn launch_model_server(
     
     let requested_port = parse_port_from_args(&model_config.custom_args, model_config.server_port);
     let actual_port = find_available_port(requested_port);
+    let host = parse_host_from_args(&model_config.custom_args, &model_config.server_host);
     
     // If we had to change the port, update the model config for this session
     let final_port = if actual_port != requested_port {
@@ -170,19 +171,16 @@ pub async fn launch_model_server(
     };
     
     // Build command with custom args if any
-    let mut cmd = TokioCommand::new(&executable_path);
-    cmd.args(["-m", &model_config.model_path])
-       .args(["--host", &model_config.server_host])
-       .args(["--port", &final_port.to_string()])
-       .stdout(Stdio::piped())
-       .stderr(Stdio::piped())
-       .kill_on_drop(true); // Ensure child process is killed when dropped
-
-    // Hide console window on Windows release builds
-    #[cfg(all(windows, not(debug_assertions)))]
-    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    let mut full_command = vec![executable_path.to_string_lossy().to_string()];
+    let base_args = vec![
+        "-m".to_string(),
+        model_config.model_path.clone(),
+        "--port".to_string(),
+        final_port.to_string(),
+    ];
     
     // Add custom arguments if present
+    let mut custom_args_to_add = Vec::new();
     if !model_config.custom_args.trim().is_empty() {
         let mut custom_args = parse_custom_args(&model_config.custom_args);
         filter_port_args(&mut custom_args); // Filter out --port arguments
@@ -201,9 +199,25 @@ pub async fn launch_model_server(
                 i += 1;
             }
         }
-        
-        cmd.args(custom_args);
+        custom_args_to_add = custom_args;
     }
+
+    full_command.extend(base_args.clone());
+    full_command.extend(custom_args_to_add.clone());
+
+    let mut cmd = TokioCommand::new(&executable_path);
+    cmd.args(&base_args[0..]); // Use args instead of individual calls for clarity
+    if !custom_args_to_add.is_empty() {
+        cmd.args(&custom_args_to_add);
+    }
+    
+    cmd.stdout(Stdio::piped())
+       .stderr(Stdio::piped())
+       .kill_on_drop(true); // Ensure child process is killed when dropped
+
+    // Hide console window on Windows release builds
+    #[cfg(all(windows, not(debug_assertions)))]
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     
     let mut child = cmd.spawn()?;
     let process_id = Uuid::new_v4().to_string();
@@ -222,9 +236,9 @@ pub async fn launch_model_server(
         id: process_id.clone(),
         model_path: model_config.model_path.clone(),
         model_name: model_name.clone(),
-        host: model_config.server_host.clone(),
+        host: host.clone(),
         port: final_port,
-        command: vec![executable_path.to_string_lossy().to_string()],
+        command: full_command.clone(),
         status: ProcessStatus::Starting,
         output: Vec::new(),
         created_at: Utc::now(),
@@ -256,9 +270,10 @@ pub async fn launch_model_server(
     Ok(LaunchResult {
         success: true,
         process_id,
-        server_host: model_config.server_host,
+        server_host: host,
         server_port: final_port,
         model_name,
+        command: full_command,
         message: "Model server launched successfully".to_string(),
     })
 }
@@ -285,6 +300,7 @@ pub async fn launch_model_external(
     
     let requested_port = parse_port_from_args(&model_config.custom_args, model_config.server_port);
     let actual_port = find_available_port(requested_port);
+    let host = parse_host_from_args(&model_config.custom_args, &model_config.server_host);
     
     // If we had to change the port, update the model config for this session
     let final_port = if actual_port != requested_port {
@@ -298,8 +314,6 @@ pub async fn launch_model_external(
     let mut cmd_args = vec![
         "-m".to_string(),
         model_config.model_path.clone(),
-        "--host".to_string(),
-        model_config.server_host.clone(),
         "--port".to_string(),
         final_port.to_string(),
     ];
@@ -370,9 +384,10 @@ pub async fn launch_model_external(
     Ok(LaunchResult {
         success: true,
         process_id: "external".to_string(),
-        server_host: model_config.server_host,
+        server_host: host,
         server_port: final_port,
         model_name,
+        command: Vec::new(),
         message: "Model launched in external terminal".to_string(),
     })
 }
@@ -566,6 +581,33 @@ pub async fn get_process_logs(
     } else {
         Err("Process not found".into())
     }
+}
+
+fn parse_host_from_args(custom_args: &str, default_host: &str) -> String {
+    if let Some(host_pos) = custom_args.find("--host") {
+        let after_host = &custom_args[host_pos + 6..];
+        // Handle both --host=127.0.0.1 and --host 127.0.0.1 formats
+        let host_str = if after_host.starts_with('=') {
+            // Format: --host=127.0.0.1
+            let after_equals = &after_host[1..];
+            if let Some(space_pos) = after_equals.find(' ') {
+                &after_equals[..space_pos]
+            } else {
+                after_equals
+            }
+        } else {
+            // Format: --host 127.0.0.1
+            let trimmed = after_host.trim_start();
+            if let Some(space_pos) = trimmed.find(' ') {
+                &trimmed[..space_pos]
+            } else {
+                trimmed
+            }
+        };
+        
+        return host_str.to_string();
+    }
+    default_host.to_string()
 }
 
 fn parse_port_from_args(custom_args: &str, default_port: u16) -> u16 {

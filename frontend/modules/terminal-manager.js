@@ -40,6 +40,13 @@ class TerminalManager {
         const windowId = `server_${processId}`;
         console.log('Creating terminal window with ID:', windowId);
 
+        // Format launch command if available
+        let launchCommandHtml = '';
+        if (launchArgs) {
+            const commandStr = Array.isArray(launchArgs) ? launchArgs.join(' ') : launchArgs;
+            launchCommandHtml = `<div class="server-command-line" style="width: 100%; word-break: break-all; opacity: 0.5; font-family: monospace; font-size: 10px; margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05);">${commandStr}</div>`;
+        }
+
         const content = `
             <div class="server-terminal-container">
                 <div class="server-main-content">
@@ -51,6 +58,7 @@ class TerminalManager {
                                 <button class="server-btn auto-switch-btn ${this.autoSwitchEnabled ? 'active' : ''}" id="auto-switch-btn-${windowId}" onclick="terminalManager.toggleAutoSwitch('${windowId}')" title="${this.autoSwitchEnabled ? 'Auto-switch to chat: ON' : 'Auto-switch to chat: OFF'}"><span class="material-icons">${this.autoSwitchEnabled ? 'toggle_on' : 'toggle_off'}</span></button>
                                 <button class="server-btn stop-btn" id="stop-btn-${windowId}"><span class="material-icons">stop</span> Stop</button>
                             </div>
+                            ${launchCommandHtml}
                         </div>
                         <div class="server-output" id="server-output-${windowId}"><div class="server-line server-system">Starting ${modelName}...</div><div class="server-line server-system">Process ID: ${processId}</div><div class="server-line server-system">Server will be available at: ${host}:${port}</span></div><div class="server-line server-system">Waiting for server output...</div></div>
                     </div>
@@ -553,6 +561,7 @@ class TerminalManager {
                     const statusElement = window.querySelector('.server-status');
                     const startBtn = window.querySelector('.start-btn');
                     const serverDetails = window.querySelector('.server-details');
+                    const commandLine = window.querySelector('.server-command-line');
 
                     if (statusElement) {
                         statusElement.innerHTML = '<span class="material-icons" style="color: #ffc107; font-size: 14px;">circle</span> Starting';
@@ -561,6 +570,10 @@ class TerminalManager {
 
                     if (serverDetails) {
                         serverDetails.innerHTML = `${modelName} - <span class="clickable" style="cursor: pointer; text-decoration: underline;" onclick="terminalManager.openUrl('http://${result.server_host}:${result.server_port}')">${result.server_host}:${result.server_port}</span><button class="copy-link-btn" style="background: none; border: none; cursor: pointer; margin-left: 5px; padding: 0; font-size: 14px; vertical-align: middle;" onclick="terminalManager.copyToClipboard('http://${result.server_host}:${result.server_port}', this)" title="Copy link"><span class="material-icons" style="font-size: 14px; color: var(--theme-text-muted);">content_copy</span></button>`;
+                    }
+
+                    if (commandLine && result.command) {
+                        commandLine.textContent = Array.isArray(result.command) ? result.command.join(' ') : result.command;
                     }
 
                     // Change start button back to stop button
@@ -808,7 +821,8 @@ class TerminalManager {
                     port: terminalData.port,
                     status: terminalData.status,
                     output: terminalData.output || [],
-                    activeVersion: terminalData.activeVersion || ''
+                    activeVersion: terminalData.activeVersion || '',
+                    launchArgs: terminalData.launchArgs || null
                 })
             });
 
@@ -939,7 +953,7 @@ class TerminalManager {
                 console.log('Terminal data for window restoration:', terminalData);
                 if (terminalData && (terminalData.status === 'running' || terminalData.status === 'starting')) {
                     console.log('Restoring terminal window for running/starting process:', windowId, windowData);
-                    this.desktop.restoreWindow(windowId, windowData);
+                    this.restoreTerminalWindow(windowId, terminalData, windowData);
                 } else {
                     console.log('Skipping terminal window restoration - process not running:', windowId,
                         terminalData ? `status: ${terminalData.status}` : 'no terminal data');
@@ -982,6 +996,13 @@ class TerminalManager {
         console.log('Restoring terminal window with data:', terminalData);
         console.log('Terminal output length:', terminalData.output ? terminalData.output.length : 'no output');
 
+        // Format launch command if available
+        let launchCommandHtml = '';
+        if (terminalData.launchArgs) {
+            const commandStr = Array.isArray(terminalData.launchArgs) ? terminalData.launchArgs.join(' ') : terminalData.launchArgs;
+            launchCommandHtml = `<div class="server-command-line" style="width: 100%; word-break: break-all; opacity: 0.5; font-family: monospace; font-size: 10px; margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05);">${commandStr}</div>`;
+        }
+
         const content = `
             <div class="server-terminal-container">
                 <div class="server-main-content">
@@ -999,6 +1020,7 @@ class TerminalManager {
                 `<button class="server-btn start-btn" onclick="terminalManager.restartServer('${windowId}', '${terminalData.modelPath}', '${terminalData.modelName}')"><span class="material-icons">play_arrow</span> Start</button>`
             }
                             </div>
+                            ${launchCommandHtml}
                         </div>
                         <div class="server-output" id="server-output-${windowId}">
                             <div class="server-line">Restored ${terminalData.modelName} session</div>
