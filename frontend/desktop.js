@@ -940,6 +940,13 @@ class DesktopManager {
         const contextMenu = document.getElementById('context-menu');
         if (!contextMenu) return;
 
+        // Hide any existing context menus first to clear menu-open classes
+        this.hideContextMenu();
+
+        // Add menu-open class to the card to keep it highlighted and action tab visible
+        const modelCard = button.closest('.model-card');
+        if (modelCard) modelCard.classList.add('menu-open');
+
         this.selectedIcon = icon;
         
         // Sort presets to move default to top
@@ -1204,6 +1211,11 @@ class DesktopManager {
     hideContextMenu() {
         const contextMenu = document.getElementById('context-menu');
         if (contextMenu) contextMenu.classList.add('hidden');
+        
+        // Remove menu-open class from all model cards
+        document.querySelectorAll('.model-card.menu-open').forEach(card => {
+            card.classList.remove('menu-open');
+        });
     }
 
     hideDockContextMenu() {
@@ -1460,11 +1472,11 @@ class DesktopManager {
                     // Reduced options for CLIP/faint models
                     actionButtonsHTML = `
                         <div class="action-buttons-left">
+                        </div>
+                        <div class="action-buttons-right">
                             <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
                                 <span class="material-icons">folder</span>
                             </button>
-                        </div>
-                        <div class="action-buttons-right">
                             <button class="action-btn delete" data-action="delete" title="Delete Model">
                                 <span class="material-icons">delete</span>
                             </button>
@@ -1483,11 +1495,11 @@ class DesktopManager {
                             <button class="action-btn properties" data-action="properties" title="Model Properties">
                                 <span class="material-icons">settings</span>
                             </button>
+                        </div>
+                        <div class="action-buttons-right">
                             <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
                                 <span class="material-icons">folder</span>
                             </button>
-                        </div>
-                        <div class="action-buttons-right">
                             <button class="action-btn delete" data-action="delete" title="Delete Model">
                                 <span class="material-icons">delete</span>
                             </button>
@@ -1516,13 +1528,13 @@ class DesktopManager {
                                     <span class="model-card-detail-value date-modified">${formattedDate}</span>
                                 </div>
                             </div>
-                            <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
-                                <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
-                            </button>
                         </div>
                         <div class="model-card-action-tab">
                             ${actionButtonsHTML}
                         </div>
+                        <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
+                            <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
+                        </button>
                     </div>
                 `;
             });
@@ -2076,11 +2088,11 @@ class DesktopManager {
                     // Reduced options for CLIP/faint models
                     actionButtonsHTML = `
                         <div class="action-buttons-left">
+                        </div>
+                        <div class="action-buttons-right">
                             <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
                                 <span class="material-icons">folder</span>
                             </button>
-                        </div>
-                        <div class="action-buttons-right">
                             <button class="action-btn delete" data-action="delete" title="Delete Model">
                                 <span class="material-icons">delete</span>
                             </button>
@@ -2099,11 +2111,11 @@ class DesktopManager {
                             <button class="action-btn properties" data-action="properties" title="Model Properties">
                                 <span class="material-icons">settings</span>
                             </button>
+                        </div>
+                        <div class="action-buttons-right">
                             <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
                                 <span class="material-icons">folder</span>
                             </button>
-                        </div>
-                        <div class="action-buttons-right">
                             <button class="action-btn delete" data-action="delete" title="Delete Model">
                                 <span class="material-icons">delete</span>
                             </button>

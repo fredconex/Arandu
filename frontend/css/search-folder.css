@@ -31,7 +31,7 @@
     position: relative;
     z-index: 2;
     width: 100%;
-    max-width: 500px;
+    max-width: 750px;
     height: 100%;
     background: var(--theme-surface);
     margin-left: 60px;
@@ -326,102 +326,82 @@
 /* Model Card - Clean & Minimal */
 .model-card {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 0;
     padding: 0;
     cursor: pointer;
     transition: all 0.2s ease;
     border-bottom: 1px solid rgba(255, 255, 255, 0.02);
     position: relative;
-    overflow: hidden; /* Necessary for the sliding tab animation */
-    user-select: none; /* Prevent text selection on click/double click */
+    overflow: hidden;
+    user-select: none;
     flex-shrink: 0;
+    align-items: stretch;
+    height: 72px; /* Stable height */
 }
 
 .model-card-content {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 12px 24px;
-    width: 100%;
+    gap: 20px;
+    padding: 0 24px;
+    flex: 1;
+    min-width: 0;
     box-sizing: border-box;
-    transition: all 0.2s ease;
 }
 
-.model-card:hover {
-    background: transparent;
-}
-
-.model-card:hover .model-card-content {
-    background: var(--theme-bg-medium);
-}
-
-.model-card.selected {
-    background: transparent;
-}
-
-.model-card.selected .model-card-content {
+.model-card:hover,
+.model-card.menu-open {
     background: var(--theme-bg-medium);
 }
 
 /* CLIP/Faint model - Ensure it behaves consistently */
 .model-card.clip-model {
-    opacity: 0.85; /* Increased opacity from 0.5 to feel more interactive */
-    filter: grayscale(0.5); /* Use grayscale to indicate specialized nature */
+    opacity: 0.85;
+    filter: grayscale(0.5);
 }
 
 .model-card.clip-model:hover,
-.model-card.clip-model.selected {
+.model-card.clip-model.menu-open {
     opacity: 1;
     filter: grayscale(0);
 }
 
-.model-card.clip-model:hover .model-card-content,
-.model-card.clip-model.selected .model-card-content {
-    background: var(--theme-bg-medium);
-}
-
-/* Favorite Button */
+/* Favorite Button - Now at the far right of the card */
 .model-card-favorite-btn {
-    position: absolute;
-    right: 12px;
-    top: 32px; /* Fixed distance from top */
-    transform: translateY(-50%);
-    width: 28px;
-    height: 28px;
+    width: 56px; /* Wider hit area at the end */
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     background: transparent;
     border: none;
-    border-radius: 4px;
     color: var(--theme-text-muted);
     cursor: pointer;
-    opacity: 0;
-    transition: all 0.15s ease;
+    opacity: 0.2;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.03);
 }
 
-.model-card:hover .model-card-favorite-btn {
-    opacity: 1;
+.model-card:hover .model-card-favorite-btn,
+.model-card.menu-open .model-card-favorite-btn {
+    opacity: 0.6;
 }
 
 .model-card-favorite-btn:hover {
     background: var(--theme-bg-light);
     color: var(--theme-text);
+    opacity: 1 !important;
+}
+
+.model-card-favorite-btn.active {
+    opacity: 1 !important;
+    color: var(--theme-text);
 }
 
 .model-card-favorite-btn .material-icons {
     font-size: 18px;
-}
-
-/* Active favorite state */
-.model-card-favorite-btn.active {
-    opacity: 1;
-    color: var(--theme-text-muted);
-}
-
-.model-card-favorite-btn.active:hover {
-    color: var(--theme-text);
 }
 
 .model-card-icon {
@@ -439,7 +419,6 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.05),
         inset 0 -1px 0 rgba(0, 0, 0, 0.3),
         0 2px 4px rgba(0, 0, 0, 0.3);
-    /* Status indicator as bottom border - only visible as a sliver behind the button */
     border-bottom-width: 3px;
     border-bottom-color: var(--theme-border);
 }
@@ -451,34 +430,17 @@
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 
-/* White indicator for models with custom arguments */
-.model-card-icon.has-custom-args {
-    border-bottom-color: var(--theme-text);
-    box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
-}
-
-/* Green indicator for models running in terminal */
-.model-card-icon.running {
-    border-bottom-color: var(--theme-success);
-    box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
-}
-
-/* Override for running with custom args - green takes priority */
-.model-card-icon.running.has-custom-args {
-    border-bottom-color: var(--theme-success);
-    box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
-}
-
 .model-card-info {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    justify-content: center;
+    gap: 4px;
 }
 
 .model-card-name {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--theme-text);
     margin: 0;
@@ -490,120 +452,90 @@
 .model-card-details {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 11px;
+    gap: 12px;
+    font-size: 12px;
     color: var(--theme-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .model-card-detail-value {
     color: var(--theme-text-muted);
-}
-
-.model-card-detail-value.date-modified {
-    font-size: 10px;
-    opacity: 0.8;
+    flex-shrink: 0;
 }
 
 .model-card-detail-separator {
     color: var(--theme-border);
+    flex-shrink: 0;
 }
 
-/* Custom Scrollbar */
-.search-folder-grid::-webkit-scrollbar,
-#search-folder-history-dropdown::-webkit-scrollbar {
-    width: 6px;
-}
-
-.search-folder-grid::-webkit-scrollbar-track,
-#search-folder-history-dropdown::-webkit-scrollbar-track {
-    background: var(--theme-bg-light);
-}
-
-.search-folder-grid::-webkit-scrollbar-thumb,
-#search-folder-history-dropdown::-webkit-scrollbar-thumb {
-    background: var(--theme-border);
-    border-radius: 3px;
-}
-
-.search-folder-grid::-webkit-scrollbar-thumb:hover,
-#search-folder-history-dropdown::-webkit-scrollbar-thumb:hover {
-    background: var(--theme-text-muted);
-}
-
-/* Clip model - faint appearance */
-.model-card.clip-model {
-    opacity: 0.5;
-}
-
-.model-card.clip-model .model-card-icon {
-    opacity: 0.6;
-}
-
-.model-card.clip-model .model-card-icon img {
-    opacity: 0.5;
-}
-
-.model-card.clip-model .model-card-name,
-.model-card.clip-model .model-card-details {
-    opacity: 0.6;
-}
-
-/* Model Card Action Tab - Slides down from under the card */
+/* Model Card Action Tab - Positioned between Info and Favorite */
 .model-card-action-tab {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     padding: 0 16px;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-top: none;
-    max-height: 0;
-    width: 100%;
+    background: rgba(0, 0, 0, 0.1);
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    width: 260px;
+    height: 100%;
     margin: 0;
     border-radius: 0;
     overflow: hidden;
-    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-    /* Inner shadow from top to give "recessed" look */
+    transition: opacity 0.2s ease, background 0.2s ease;
     opacity: 0;
     box-sizing: border-box;
+    flex-shrink: 0;
 }
 
-.model-card:hover .model-card-action-tab {
-    max-height: 48px;
-    padding: 8px 8px;
+.model-card:hover .model-card-action-tab,
+.model-card.menu-open .model-card-action-tab {
     opacity: 1;
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .model-card-action-tab .action-buttons-left,
 .model-card-action-tab .action-buttons-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+}
+
+.model-card-action-tab .action-buttons-right {
+    margin-left: auto;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding-left: 10px;
 }
 
 .model-card-action-tab .action-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 6px;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.05);
     color: var(--theme-text-muted);
     padding: 0;
 }
 
 .model-card-action-tab .action-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--theme-text);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--theme-primary);
+    color: #fff;
+    border-color: var(--theme-primary);
+    transform: translateY(-1px);
 }
 
 .model-card-action-tab .action-btn .material-icons {
     font-size: 18px;
+}
+
+.model-card-action-tab .action-btn.delete:hover {
+    background: var(--theme-error);
+    border-color: var(--theme-error);
 }
 
 /* Context menu disabled state */
