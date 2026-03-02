@@ -158,15 +158,6 @@ class LlamaCppReleasesManager {
 
                             return `
                                 <div class="backend-item ${isActive ? 'active' : ''}">
-                                    <div class="backend-info">
-                                        <div class="backend-name">
-                                            <span class="backend-type">${backendDisplay}</span>
-                                        </div>
-                                        <div class="backend-path">${v.path}</div>
-                                    </div>
-                                    <div class="backend-status">
-                                        ${isActive ? '' : (v.has_server ? '' : '<span class="badge warn">Missing server</span>')}
-                                    </div>
                                     <div class="backend-activate">
                                         ${isActive ? '<span class="badge active">Active</span>' : `
                                             <span
@@ -177,7 +168,16 @@ class LlamaCppReleasesManager {
                                             </span>
                                         `}
                                     </div>
-                                    <div class="backend-actions">
+                                    <div class="backend-info">
+                                        <div class="backend-name">
+                                            <span class="backend-type">${backendDisplay}</span>
+                                        </div>
+                                        <div class="backend-path">${v.path}</div>
+                                    </div>
+                                    <div class="backend-status">
+                                        ${isActive ? '' : (v.has_server ? '' : '<span class="badge warn">Missing server</span>')}
+                                    </div>
+                                    <div class="backend-actions-right">
                                         <button 
                                             class="installed-open-folder" 
                                             onclick="llamacppReleasesManager.openFolder('${escapedPath}')"

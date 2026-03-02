@@ -647,7 +647,7 @@
 
 .backend-item {
     display: grid;
-    grid-template-columns: 1fr auto auto auto;
+    grid-template-columns: auto 1fr auto auto;
     gap: 8px;
     align-items: center;
     padding: 12px 16px;
@@ -693,9 +693,10 @@
 }
 
 .backend-path {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--theme-text-muted);
     word-break: break-all;
+    opacity: 0.7;
 }
 
 .backend-status {
@@ -703,39 +704,20 @@
 }
 
 .backend-activate {
+    justify-self: start;
+}
+
+.backend-actions-right {
     justify-self: end;
+    display: flex;
+    gap: 8px;
+    margin-left: 8px;
 }
 
-.backend-actions {
-    justify-self: end;
-}
-
-.backend-actions .installed-open-folder {
-    background: var(--theme-surface-elevated);
-    color: var(--theme-text);
-}
-
-.backend-actions .installed-open-folder:hover {
-    background: var(--theme-primary);
-    color: white;
-    border-color: var(--theme-primary);
-}
-
-.backend-actions .installed-delete {
-    background: #dc3545;
-    color: white;
-    border-color: #dc3545;
-}
-
-.backend-actions .installed-delete:hover {
-    background: #c82333;
-    border-color: #c82333;
-    color: white;
-}
-
-.backend-actions button {
+.backend-actions-right button {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     padding: 6px 8px;
     border-radius: 4px;
@@ -749,20 +731,22 @@
     box-sizing: border-box;
 }
 
-.backend-actions button:hover {
+.backend-actions-right .installed-open-folder:hover {
+    background: var(--theme-primary);
+    color: white;
     border-color: var(--theme-primary);
-    color: var(--theme-primary);
 }
 
-.backend-actions .installed-activate.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+.backend-actions-right .installed-delete {
+    background: rgba(220, 53, 69, 0.1);
+    color: #ff4d4d;
+    border-color: rgba(220, 53, 69, 0.2);
 }
 
-.backend-actions .installed-activate.disabled:hover {
-    background: var(--theme-surface-elevated);
-    color: var(--theme-text);
-    border-color: var(--theme-border);
+.backend-actions-right .installed-delete:hover {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: white;
 }
 
 /* Responsive adjustments for backend management */
@@ -773,11 +757,14 @@
     }
     
     .backend-status,
-    .backend-actions {
+    .backend-activate,
+    .backend-actions-left,
+    .backend-actions-right {
         justify-self: start;
     }
     
-    .backend-actions {
+    .backend-actions-left,
+    .backend-actions-right {
         flex-wrap: wrap;
     }
 }
