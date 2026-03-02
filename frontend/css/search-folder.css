@@ -349,7 +349,11 @@
 }
 
 .model-card:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: transparent;
+}
+
+.model-card:hover .model-card-content {
+    background: var(--theme-bg-medium);
 }
 
 .model-card.selected {
@@ -366,11 +370,13 @@
     filter: grayscale(0.5); /* Use grayscale to indicate specialized nature */
 }
 
+.model-card.clip-model:hover,
 .model-card.clip-model.selected {
     opacity: 1;
     filter: grayscale(0);
 }
 
+.model-card.clip-model:hover .model-card-content,
 .model-card.clip-model.selected .model-card-content {
     background: var(--theme-bg-medium);
 }
@@ -552,9 +558,9 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-top: none;
     max-height: 0;
-    width: 96%;
-    margin: 0 auto;
-    border-radius: 0 0 10px 10px;
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
     overflow: hidden;
     transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
     /* Inner shadow from top to give "recessed" look */
@@ -562,11 +568,10 @@
     box-sizing: border-box;
 }
 
-.model-card.selected .model-card-action-tab {
+.model-card:hover .model-card-action-tab {
     max-height: 48px;
     padding: 8px 8px;
     opacity: 1;
-    margin-bottom: 4px;
 }
 
 .model-card-action-tab .action-buttons-left,

@@ -1614,13 +1614,7 @@ class DesktopManager {
                 // Don't show tab if clicking on the favorite button
                 if (e.target.closest('.model-card-favorite-btn')) return;
                 
-                // Toggle the action tab - works for all models now including faint ones
-                const wasSelected = card.classList.contains('selected');
-                folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
-                
-                if (!wasSelected) {
-                    card.classList.add('selected');
-                }
+                // Selection is now handled by hover in CSS
             };
 
             card.addEventListener('click', handleSelection);
@@ -2246,16 +2240,9 @@ class DesktopManager {
                 
                 // Don't show tab if clicking on the favorite button
                 if (e.target.closest('.model-card-favorite-btn')) return;
-                
-                // Toggle the action tab - works for all models now including faint ones
-                const wasSelected = card.classList.contains('selected');
-                folderGrid.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
-                
-                if (!wasSelected) {
-                    card.classList.add('selected');
-                }
-            });
 
+                // Selection is now handled by hover in CSS
+                });
             // Add click handler for favorite button
             const favBtn = card.querySelector('.model-card-favorite-btn');
             if (favBtn) {
