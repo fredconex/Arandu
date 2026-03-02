@@ -329,7 +329,6 @@
     flex-direction: row;
     gap: 0;
     padding: 0;
-    cursor: pointer;
     transition: all 0.2s ease;
     border-bottom: 1px solid rgba(255, 255, 255, 0.02);
     position: relative;
@@ -357,14 +356,12 @@
 
 /* CLIP/Faint model - Ensure it behaves consistently */
 .model-card.clip-model {
-    opacity: 0.85;
-    filter: grayscale(0.5);
+    opacity: 0.6;
 }
 
 .model-card.clip-model:hover,
 .model-card.clip-model.menu-open {
     opacity: 1;
-    filter: grayscale(0);
 }
 
 /* Favorite Button - Now at the far right of the card */
@@ -423,11 +420,39 @@
     border-bottom-color: var(--theme-border);
 }
 
+.model-card-icon.has-custom-args {
+    border-bottom-color: var(--theme-text);
+    box-shadow: 0 4px 4px -2px rgba(255, 255, 255, 0.4);
+}
+
+.model-card-icon.running {
+    border-bottom-color: var(--theme-success);
+    box-shadow: 0 4px 8px -2px rgba(76, 175, 80, 0.8);
+}
+
+.model-card-icon.running.has-custom-args {
+    border-bottom-color: var(--theme-success);
+    box-shadow: 0 4px 8px -2px rgba(76, 175, 80, 0.8);
+}
+
 .model-card-icon img {
     width: 24px;
     height: 24px;
-    opacity: 0.9;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+    background-color: #ffffff;
+    -webkit-mask-image: url('../assets/gguf.png');
+    mask-image: url('../assets/gguf.png');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    /* Remove default img behavior */
+    object-position: -9999px;
+    opacity: 0.8;
+}
+
+.model-card:hover .model-card-icon img {
+    opacity: 1;
+    background-color: #ffffff;
 }
 
 .model-card-info {
