@@ -111,8 +111,14 @@ pub fn extract_gguf_metadata(file_path: &Path) -> Result<GgufMetadata, Box<dyn s
         });
     }
     
-    // Skip version and tensor count
-    file.seek(SeekFrom::Current(12))?;
+    // Read version (4 bytes)
+    let mut version_bytes = [0u8; 4];
+    file.read_exact(&mut version_bytes)?;
+    let version = u32::from_le_bytes(version_bytes);
+    
+    // Read tensor count (8 bytes)
+    let mut tensor_count_bytes = [0u8; 8];
+    file.read_exact(&mut tensor_count_bytes)?;
     
     // Read metadata key-value count
     let mut kv_count_bytes = [0u8; 8];
@@ -125,8 +131,19 @@ pub fn extract_gguf_metadata(file_path: &Path) -> Result<GgufMetadata, Box<dyn s
         .unwrap_or("Unknown")
         .to_string();
     
-    // Read key-value pairs
-    for _ in 0..kv_count {
+    let mut found_architecture = false;
+    let mut found_name = false;
+    
+    println!("Parsing GGUF file: {:?}, version: {}, kv_count: {}", file_path.file_name(), version, kv_count);
+    
+    // Read key-value pairs (limit to first 100 entries or until we find both values)
+    let max_entries = std::cmp::min(kv_count, 100);
+    for i in 0..max_entries {
+        // Early exit if we found both values
+        if found_architecture && found_name {
+            println!("Found both values, exiting early at entry {}", i);
+            break;
+        }
         // Read key length
         let mut key_len_bytes = [0u8; 8];
         if file.read_exact(&mut key_len_bytes).is_err() {
@@ -144,6 +161,7 @@ pub fn extract_gguf_metadata(file_path: &Path) -> Result<GgufMetadata, Box<dyn s
         // Read value type
         let mut value_type_bytes = [0u8; 4];
         if file.read_exact(&mut value_type_bytes).is_err() {
+            println!("Failed to read value type for key: {}", key);
             break;
         }
         let value_type = u32::from_le_bytes(value_type_bytes);
@@ -167,17 +185,42 @@ pub fn extract_gguf_metadata(file_path: &Path) -> Result<GgufMetadata, Box<dyn s
             match key.as_ref() {
                 "general.architecture" => {
                     architecture = value.to_string();
+                    found_architecture = true;
+                    println!("Found architecture: {}", architecture);
                 }
                 "general.name" => {
                     name = value.to_string();
+                    found_name = true;
+                    println!("Found name: {}", name);
                 }
                 _ => {}
             }
         } else {
-            // Skip non-string values
-            break;
+            // Skip non-string values based on their type
+            println!("Attempting to skip non-string key '{}' with type {}", key, value_type);
+            
+            let skip_result = match value_type {
+                0 | 1 | 7 => file.seek(SeekFrom::Current(1)),   // uint8, int8, bool
+                2 | 3 => file.seek(SeekFrom::Current(2)),       // uint16, int16
+                4 | 5 | 6 => file.seek(SeekFrom::Current(4)),   // uint32, int32, float32
+                9 | 10 | 11 => file.seek(SeekFrom::Current(8)), // uint64, int64, float64
+                _ => {
+                    // Unknown or array type - break for safety
+                    println!("Unknown or complex type {}, breaking", value_type);
+                    Err(std::io::Error::new(std::io::ErrorKind::Other, "Unknown type"))
+                }
+            };
+            
+            if skip_result.is_err() {
+                println!("Failed to skip value, breaking");
+                break;
+            }
+            
+            println!("Successfully skipped non-string value");
         }
     }
+    
+    println!("Final metadata - architecture: {}, name: {}", architecture, name);
     
     Ok(GgufMetadata {
         architecture,

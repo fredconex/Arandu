@@ -1466,14 +1466,20 @@ class DesktopManager {
                 // Format the date
                 const formattedDate = this.formatDate(parseFloat(model.date));
 
+                // Get model_name (general.name from GGUF) if available
+                // Only show if it's different from the filename
+                const fileName = model.name.replace('.gguf', '');
+                const modelName = model.model_name || '';
+                const displayModelName = (modelName && modelName !== fileName && modelName !== model.name) 
+                    ? `<span class="model-card-general-name">${modelName}</span>` 
+                    : '';
+
                 // Action buttons HTML based on model type
                 let actionButtonsHTML = '';
                 if (isClipModel) {
-                    // Reduced options for CLIP/faint models
+                    // Reduced options for CLIP/faint models - no divider needed
                     actionButtonsHTML = `
-                        <div class="action-buttons-left">
-                        </div>
-                        <div class="action-buttons-right">
+                        <div class="action-buttons-right no-divider">
                             <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
                                 <span class="material-icons">folder</span>
                             </button>
@@ -1517,13 +1523,14 @@ class DesktopManager {
                                 ${customArgsIndicator}
                             </div>
                             <div class="model-card-info">
-                                <h3 class="model-card-name">${model.name.replace('.gguf', '')}</h3>
+                                <h3 class="model-card-name">
+                                    ${fileName}
+                                    ${displayModelName}
+                                </h3>
                                 <div class="model-card-details">
-                                    <span class="model-card-detail-value">${model.architecture}</span>
-                                    <span class="model-card-detail-separator">•</span>
-                                    <span class="model-card-detail-value">${model.quantization}</span>
-                                    <span class="model-card-detail-separator">•</span>
-                                    <span class="model-card-detail-value">${sizeGB} GB</span>
+                                    <span class="model-card-tag">${model.architecture}</span>
+                                    <span class="model-card-tag">${model.quantization}</span>
+                                    <span class="model-card-tag">${sizeGB} GB</span>
                                     <span class="model-card-detail-separator">•</span>
                                     <span class="model-card-detail-value date-modified">${formattedDate}</span>
                                 </div>

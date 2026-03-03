@@ -323,18 +323,18 @@
     transition: all 0.2s ease;
     border-bottom: 1px solid rgba(255, 255, 255, 0.02);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     user-select: none;
     flex-shrink: 0;
     align-items: stretch;
-    height: 72px; /* Stable height */
+    min-height: 72px;
 }
 
 .model-card-content {
     display: flex;
     align-items: center;
     gap: 20px;
-    padding: 0 24px;
+    padding: 12px 24px;
     flex: 1;
     min-width: 0;
     box-sizing: border-box;
@@ -357,7 +357,10 @@
 
 /* Favorite Button - Now at the far right of the card */
 .model-card-favorite-btn {
-    width: 56px; /* Wider hit area at the end */
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 56px;
     height: 100%;
     display: flex;
     align-items: center;
@@ -369,6 +372,7 @@
     opacity: 0.2;
     flex-shrink: 0;
     border-left: 1px solid rgba(255, 255, 255, 0.03);
+    z-index: 5;
 }
 
 .model-card:hover .model-card-favorite-btn,
@@ -459,19 +463,58 @@
     font-weight: 600;
     color: var(--theme-text);
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.model-card-filename {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--theme-text-muted);
+    opacity: 0.6;
+    margin-top: 2px;
+    margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
+.model-card-general-name {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--theme-text-muted);
+    opacity: 0.5;
+    font-style: italic;
+}
+
 .model-card-details {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     font-size: 12px;
     color: var(--theme-text-muted);
-    white-space: nowrap;
-    overflow: hidden;
+    flex-wrap: wrap;
+}
+
+.model-card-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--theme-text);
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.model-card:hover .model-card-tag {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.18);
 }
 
 .model-card-detail-value {
@@ -484,42 +527,51 @@
     flex-shrink: 0;
 }
 
-/* Model Card Action Tab - Positioned between Info and Favorite */
+/* Model Card Action Tab - Positioned as overlay on hover */
 .model-card-action-tab {
+    position: absolute;
+    right: 68px;
+    top: 50%;
+    transform: translateY(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 16px;
-    background: rgba(0, 0, 0, 0.1);
-    border-left: 1px solid rgba(255, 255, 255, 0.05);
-    width: 260px;
-    height: 100%;
-    margin: 0;
-    border-radius: 0;
-    overflow: hidden;
-    transition: opacity 0.2s ease, background 0.2s ease;
+    padding: 8px 16px;
+    background: var(--theme-surface);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    gap: 8px;
     opacity: 0;
-    box-sizing: border-box;
-    flex-shrink: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .model-card:hover .model-card-action-tab,
 .model-card.menu-open .model-card-action-tab {
     opacity: 1;
-    background: rgba(0, 0, 0, 0.2);
+    pointer-events: all;
 }
 
 .model-card-action-tab .action-buttons-left,
 .model-card-action-tab .action-buttons-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .model-card-action-tab .action-buttons-right {
-    margin-left: auto;
     border-left: 1px solid rgba(255, 255, 255, 0.1);
-    padding-left: 10px;
+    padding-left: 8px;
+    margin-left: 4px;
+}
+
+.model-card-action-tab .action-buttons-right.no-divider {
+    border-left: none;
+    padding-left: 0;
+    margin-left: 0;
 }
 
 .model-card-action-tab .action-btn {
