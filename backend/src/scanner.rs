@@ -310,7 +310,7 @@ pub fn get_quantization_from_filename(filename: &str) -> String {
     "Unknown".to_string()
 }
 
-pub async fn scan_mmproj_files(directory: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+pub async fn scan_mmproj_files(directory: &str) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
     if directory.is_empty() || !Path::new(directory).is_dir() {
         return Ok(Vec::new());
     }
@@ -325,18 +325,27 @@ pub async fn scan_mmproj_files(directory: &str) -> Result<Vec<String>, Box<dyn s
             // Check if this GGUF file has CLIP architecture
             if let Ok(metadata) = extract_gguf_metadata(&path) {
                 if metadata.architecture.to_lowercase() == "clip" {
-                    if let Ok(rel_path) = path.strip_prefix(base_path) {
-                        files.push(rel_path.to_string_lossy().to_string());
+                    let file_path = if let Ok(rel_path) = path.strip_prefix(base_path) {
+                        rel_path.to_string_lossy().to_string()
                     } else {
-                        files.push(path.to_string_lossy().to_string());
-                    }
+                        path.to_string_lossy().to_string()
+                    };
+                    
+                    files.push(serde_json::json!({
+                        "path": file_path,
+                        "name": metadata.name
+                    }));
                 }
             }
         }
     }
     
-    // Sort alphabetically
-    files.sort();
+    // Sort alphabetically by path
+    files.sort_by(|a, b| {
+        let path_a = a.get("path").and_then(|v| v.as_str()).unwrap_or("");
+        let path_b = b.get("path").and_then(|v| v.as_str()).unwrap_or("");
+        path_a.cmp(path_b)
+    });
     
     Ok(files)
 }

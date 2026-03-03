@@ -1803,8 +1803,11 @@ class PropertiesManager {
                             <select class="property-select" data-setting="${setting.id}" style="width: 100%; padding: 8px;">
                                 <option value="">None Selected</option>
                                 ${files.map(file => {
-                            const filename = file.split(/[\\/]/).pop();
-                            return `<option value="${file}" ${currentValue === file ? 'selected' : ''} title="${file}">${filename}</option>`;
+                            const filePath = file.path;
+                            const fileName = file.name || '';
+                            const filename = filePath.split(/[\\/]/).pop();
+                            const displayText = fileName ? `${filename} (${fileName})` : filename;
+                            return `<option value="${filePath}" ${currentValue === filePath ? 'selected' : ''} title="${filePath}">${displayText}</option>`;
                         }).join('')}
                             </select>
                         `;
