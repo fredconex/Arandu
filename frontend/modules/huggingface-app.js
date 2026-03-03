@@ -156,19 +156,26 @@ class HuggingFaceApp {
         const existingWindow = this.desktop.windows.get(this.windowId);
         if (existingWindow) {
             // Toggle window visibility
-            if (existingWindow.classList.contains('hidden')) {
+            const isHidden = existingWindow.classList.contains('hidden') || existingWindow.style.display === 'none';
+            
+            if (isHidden) {
+                // Restore window
                 existingWindow.classList.remove('hidden');
+                existingWindow.style.display = 'block';
                 existingWindow.style.zIndex = ++this.desktop.windowZIndex;
                 // Update focused state
                 this.desktop.updateDockFocusedState(this.windowId);
                 if (huggingfaceDockIcon) {
                     huggingfaceDockIcon.classList.add('active');
+                    huggingfaceDockIcon.classList.remove('minimized');
                 }
+            } else if (existingWindow.style.zIndex < this.desktop.windowZIndex) {
+                // Window is visible but not on top - bring it to front
+                existingWindow.style.zIndex = ++this.desktop.windowZIndex;
+                this.desktop.updateDockFocusedState(this.windowId);
             } else {
-                existingWindow.classList.add('hidden');
-                if (huggingfaceDockIcon) {
-                    huggingfaceDockIcon.classList.remove('active');
-                }
+                // Window is already on top - minimize it
+                this.desktop.minimizeWindow(this.windowId);
             }
             return;
         }

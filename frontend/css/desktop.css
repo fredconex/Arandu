@@ -267,6 +267,25 @@
 	transition: height 0.2s ease;
 }
 
+/* Minimized window indicator - shows a dot to indicate window exists but is minimized */
+.dock-item.minimized, .taskbar-item.minimized {
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.dock-item.minimized::after, .taskbar-item.minimized::after {
+	content: "";
+	position: absolute;
+	left: 4px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 4px;
+	height: 4px;
+	background: var(--theme-primary);
+	border-radius: 50%;
+	opacity: 0.7;
+	transition: all 0.2s ease;
+}
+
 
 .dock-item .material-icons, .taskbar-item .material-icons {
 	font-size: 20px;

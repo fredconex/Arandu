@@ -513,6 +513,7 @@ class LlamaCppReleasesManager {
             const existingWindow = this.desktop.windows.get(windowId);
             // Toggle window visibility
             if (existingWindow.classList.contains('hidden') || existingWindow.style.display === 'none') {
+                // Restore window
                 existingWindow.style.display = 'block';
                 existingWindow.classList.remove('hidden');
                 existingWindow.style.zIndex = ++this.desktop.windowZIndex;
@@ -520,12 +521,15 @@ class LlamaCppReleasesManager {
                 this.desktop.updateDockFocusedState(windowId);
                 if (llamacppDockIcon) {
                     llamacppDockIcon.classList.add('active');
+                    llamacppDockIcon.classList.remove('minimized');
                 }
+            } else if (existingWindow.style.zIndex < this.desktop.windowZIndex) {
+                // Window is visible but not on top - bring it to front
+                existingWindow.style.zIndex = ++this.desktop.windowZIndex;
+                this.desktop.updateDockFocusedState(windowId);
             } else {
-                existingWindow.classList.add('hidden');
-                if (llamacppDockIcon) {
-                    llamacppDockIcon.classList.remove('active');
-                }
+                // Window is already on top - minimize it
+                this.desktop.minimizeWindow(windowId);
             }
             return;
         }

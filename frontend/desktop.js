@@ -3104,8 +3104,12 @@ class DesktopManager {
         const settingsDockIcon = document.getElementById('settings-dock-icon');
 
         if (windowElement) {
-            if (windowElement.classList.contains('hidden')) {
+            const isHidden = windowElement.classList.contains('hidden') || windowElement.style.display === 'none';
+            
+            if (isHidden) {
+                // Restore window
                 windowElement.classList.remove('hidden');
+                windowElement.style.display = 'block';
                 this.windows.set('settings-window', windowElement);
                 // Always ensure proper window behavior
                 this.makeDraggable(windowElement);
@@ -3140,16 +3144,17 @@ class DesktopManager {
                 // Mark dock icon as active
                 if (settingsDockIcon) {
                     settingsDockIcon.classList.add('active');
+                    settingsDockIcon.classList.remove('minimized');
                 }
 
                 // Don't add to taskbar - use permanent dock icon instead
+            } else if (windowElement.style.zIndex < this.windowZIndex) {
+                // Window is visible but not on top - bring it to front
+                windowElement.style.zIndex = ++this.windowZIndex;
+                this.updateDockFocusedState('settings-window');
             } else {
-                windowElement.classList.add('hidden');
-                // Don't remove from windows map to allow reopening
-                // Mark dock icon as inactive
-                if (settingsDockIcon) {
-                    settingsDockIcon.classList.remove('active');
-                }
+                // Window is already on top - minimize it
+                this.minimizeWindow('settings-window');
             }
         }
     }
@@ -4489,9 +4494,33 @@ class DesktopManager {
                 window.dataset.savedHeight = rect.height.toString();
 
                 window.style.display = 'none';
+                window.classList.add('hidden');
                 if (taskbarItem) {
                     taskbarItem.classList.remove('active');
+                    taskbarItem.classList.add('minimized');
                 }
+                
+                // Also update permanent dock icons
+                if (id === 'settings-window') {
+                    const settingsDockIcon = document.getElementById('settings-dock-icon');
+                    if (settingsDockIcon) {
+                        settingsDockIcon.classList.remove('active');
+                        settingsDockIcon.classList.add('minimized');
+                    }
+                } else if (id === 'huggingface-search') {
+                    const huggingfaceDockIcon = document.getElementById('huggingface-dock-icon');
+                    if (huggingfaceDockIcon) {
+                        huggingfaceDockIcon.classList.remove('active');
+                        huggingfaceDockIcon.classList.add('minimized');
+                    }
+                } else if (id === 'llamacpp-manager-window') {
+                    const llamacppDockIcon = document.getElementById('llamacpp-dock-icon');
+                    if (llamacppDockIcon) {
+                        llamacppDockIcon.classList.remove('active');
+                        llamacppDockIcon.classList.add('minimized');
+                    }
+                }
+                
                 this.updateDockAutoHidingStatus();
             }
         }
@@ -4506,7 +4535,7 @@ class DesktopManager {
         if (focusedWindowId === 'settings-window') {
             const settingsDockIcon = document.getElementById('settings-dock-icon');
             if (settingsDockIcon) settingsDockIcon.classList.add('focused');
-        } else if (focusedWindowId === 'huggingface-search-window') {
+        } else if (focusedWindowId === 'huggingface-search') {
             const huggingfaceDockIcon = document.getElementById('huggingface-dock-icon');
             if (huggingfaceDockIcon) huggingfaceDockIcon.classList.add('focused');
         } else if (focusedWindowId === 'llamacpp-manager-window') {
@@ -4672,6 +4701,7 @@ class DesktopManager {
                         window.classList.remove('hidden');
                         window.style.zIndex = ++this.windowZIndex;
                         item.classList.add('active');
+                        item.classList.remove('minimized');
 
                         // Check if window is visible enough, reposition if needed
                         setTimeout(() => {
@@ -4695,6 +4725,7 @@ class DesktopManager {
 
                         document.querySelectorAll('.taskbar-item').forEach(t => t.classList.remove('active'));
                         item.classList.add('active');
+                        item.classList.remove('minimized');
                     } else {
                         // Window is already on top - minimize it
                         this.minimizeWindow(id);
