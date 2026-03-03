@@ -708,7 +708,7 @@ class LlamaCppReleasesManager {
                         </div>
                         <div class="release-tab-content">
                             <div class="release-tab-pane active" data-pane="notes">
-                                <div class="release-body">${release.body || 'No release notes available for this release.'}</div>
+                                <div class="release-body">${this.formatMarkdown(release.body || 'No release notes available for this release.')}</div>
                             </div>
                             <div class="release-tab-pane" data-pane="downloads">
                                 ${assetsHTML}
@@ -830,7 +830,127 @@ class LlamaCppReleasesManager {
     formatCommitInfo(commitInfo) {
         if (!commitInfo) return null;
         
-        return commitInfo.message;
+        let message = commitInfo.message;
+        if (!message) return '';
+        
+        return this.formatMarkdown(message);
+    }
+    
+    formatMarkdown(text) {
+        if (!text) return '';
+        
+        // Escape HTML to prevent XSS
+        const escapeHtml = (str) => {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        };
+        
+        // Split into lines for processing
+        const lines = text.split('\n');
+        const html = [];
+        let inList = false;
+        let inCodeBlock = false;
+        let codeBlockContent = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            
+            // Handle code blocks
+            if (line.trim().startsWith('```')) {
+                if (inCodeBlock) {
+                    // End code block
+                    html.push('<pre><code>' + escapeHtml(codeBlockContent.join('\n')) + '</code></pre>');
+                    codeBlockContent = [];
+                    inCodeBlock = false;
+                } else {
+                    // Start code block
+                    inCodeBlock = true;
+                }
+                continue;
+            }
+            
+            if (inCodeBlock) {
+                codeBlockContent.push(line);
+                continue;
+            }
+            
+            // Handle headers
+            if (line.match(/^### /)) {
+                if (inList) { html.push('</ul>'); inList = false; }
+                html.push('<h3>' + this.formatInlineMarkdown(line.substring(4)) + '</h3>');
+                continue;
+            }
+            if (line.match(/^## /)) {
+                if (inList) { html.push('</ul>'); inList = false; }
+                html.push('<h2>' + this.formatInlineMarkdown(line.substring(3)) + '</h2>');
+                continue;
+            }
+            if (line.match(/^# /)) {
+                if (inList) { html.push('</ul>'); inList = false; }
+                html.push('<h1>' + this.formatInlineMarkdown(line.substring(2)) + '</h1>');
+                continue;
+            }
+            
+            // Handle lists
+            if (line.match(/^[\*\-] /)) {
+                if (!inList) {
+                    html.push('<ul>');
+                    inList = true;
+                }
+                html.push('<li>' + this.formatInlineMarkdown(line.substring(2)) + '</li>');
+                continue;
+            } else if (inList && line.trim() === '') {
+                html.push('</ul>');
+                inList = false;
+                continue;
+            }
+            
+            // Handle empty lines
+            if (line.trim() === '') {
+                if (inList) {
+                    html.push('</ul>');
+                    inList = false;
+                }
+                html.push('<br>');
+                continue;
+            }
+            
+            // Regular paragraph
+            if (inList) {
+                html.push('</ul>');
+                inList = false;
+            }
+            html.push('<p>' + this.formatInlineMarkdown(line) + '</p>');
+        }
+        
+        // Close any open lists
+        if (inList) {
+            html.push('</ul>');
+        }
+        
+        return html.join('');
+    }
+    
+    formatInlineMarkdown(text) {
+        // Inline code (do this first to protect code content)
+        text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Links
+        text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+        
+        // Bold (do before italic to handle ** correctly)
+        text = text.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+        // Only match __ for bold if surrounded by word boundaries (not in middle of identifiers)
+        text = text.replace(/\b__([^_]+)__\b/g, '<strong>$1</strong>');
+        
+        // Italic - only match * for italic (asterisks)
+        text = text.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
+        // For underscores, only match if they're at word boundaries and contain spaces
+        // This prevents matching underscores in identifiers like ggml_cl_mul_mat_q4_1_f32_adreno
+        text = text.replace(/\b_([^_]*\s[^_]*)_\b/g, '<em>$1</em>');
+        
+        return text;
     }
     
     // Extract version number from name
