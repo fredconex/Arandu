@@ -27,6 +27,13 @@
     "targets": "nsis",
     "icon": [
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "sidebarImage": "icons/nsis-sidebar.bmp",
+        "installMode": "currentUser"
+      }
+    }
   }
 }
