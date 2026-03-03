@@ -1564,7 +1564,7 @@ class DesktopManager {
 
         // Add click handlers for model cards
         folderGrid.querySelectorAll('.model-card').forEach(card => {
-            const handleSelection = async (e) => {
+            card.addEventListener('click', async (e) => {
                 // Hide any open context/preset menus
                 this.hideContextMenu();
                 e.stopPropagation();
@@ -1582,15 +1582,18 @@ class DesktopManager {
                     tempIcon.dataset.date = card.dataset.date;
                     
                     if (action === 'launch-internal') {
-                        e.stopPropagation(); // Prevent global click from hiding menu immediately
+                        // Check for presets and launch
                         const modelPath = card.dataset.path;
                         try {
                             const presets = await invoke('get_model_presets', { modelPath: modelPath });
                             if (presets && presets.length > 1) {
+                                // Show preset menu
                                 this.showPresetMenuForCard(actionBtn, tempIcon, presets, false);
                             } else if (presets && presets.length === 1) {
+                                // Exactly one preset, launch it directly
                                 await this.launchModelWithPreset(tempIcon, presets[0].id);
                             } else {
+                                // No presets, launch directly
                                 await this.launchModel(tempIcon);
                             }
                         } catch (error) {
@@ -1598,15 +1601,18 @@ class DesktopManager {
                             await this.launchModel(tempIcon);
                         }
                     } else if (action === 'launch-external') {
-                        e.stopPropagation(); // Prevent global click from hiding menu immediately
+                        // Check for presets and launch external
                         const modelPath = card.dataset.path;
                         try {
                             const presets = await invoke('get_model_presets', { modelPath: modelPath });
                             if (presets && presets.length > 1) {
+                                // Show preset menu
                                 this.showPresetMenuForCard(actionBtn, tempIcon, presets, true);
                             } else if (presets && presets.length === 1) {
+                                // Exactly one preset, launch it directly
                                 await this.launchModelWithPresetExternal(tempIcon, presets[0].id);
                             } else {
+                                // No presets, launch directly
                                 await this.launchModelExternal(tempIcon);
                             }
                         } catch (error) {
@@ -1625,16 +1631,9 @@ class DesktopManager {
                 
                 // Don't show tab if clicking on the favorite button
                 if (e.target.closest('.model-card-favorite-btn')) return;
-                
+
                 // Selection is now handled by hover in CSS
-            };
-
-            card.addEventListener('click', handleSelection);
-            card.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                handleSelection(e);
-            });
-
+                });
             // Add click handler for favorite button
             const favBtn = card.querySelector('.model-card-favorite-btn');
             if (favBtn) {
@@ -1643,6 +1642,12 @@ class DesktopManager {
                 });
             }
         });
+
+        // Apply current sort settings BEFORE showing to avoid blinking/jumping
+        this.applyFolderSort();
+
+        // Update model indicators (both running status and custom args)
+        await this.updateCustomArgsIndicators();
 
         // Show the folder view
         folderView.classList.remove('hidden');
@@ -1653,14 +1658,16 @@ class DesktopManager {
         // Set active state on the search dock icon
         this.updateTaskbarButtonState('search-dock-icon', true);
 
-        // Update model indicators (both running status and custom args)
-        await this.updateCustomArgsIndicators();
-
-        // Update sort button states
-        this.updateFolderSortButtons();
-
-        // Apply current sort settings
-        this.applyFolderSort();
+        // Click outside to close (since overlay is removed)
+        const closeOnOutsideClick = (e) => {
+            if (e.target === folderView) {
+                const folderTitle = document.getElementById('search-folder-title');
+                const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+                this.hideSearchFolderView(isAllModels);
+                folderView.removeEventListener('click', closeOnOutsideClick);
+            }
+        };
+        folderView.addEventListener('click', closeOnOutsideClick);
 
         // Focus the filter input
         if (searchFolderInput) {
@@ -2264,6 +2271,15 @@ class DesktopManager {
             }
         });
 
+        // Update sort button states
+        this.updateFolderSortButtons();
+
+        // Apply current sort settings BEFORE showing to avoid blinking/jumping
+        this.applyFolderSort();
+
+        // Update model indicators (both running status and custom args)
+        await this.updateCustomArgsIndicators();
+
         // Show the folder view
         folderView.classList.remove('hidden');
         
@@ -2273,21 +2289,23 @@ class DesktopManager {
         // Set active state on the search dock icon
         this.updateTaskbarButtonState('search-dock-icon', true);
 
+        // Click outside to close (since overlay is removed)
+        const closeOnOutsideClick = (e) => {
+            if (e.target === folderView) {
+                const folderTitle = document.getElementById('search-folder-title');
+                const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+                this.hideSearchFolderView(isAllModels);
+                folderView.removeEventListener('click', closeOnOutsideClick);
+            }
+        };
+        folderView.addEventListener('click', closeOnOutsideClick);
+
         // Focus the filter input
         if (searchFolderInput) {
             setTimeout(() => searchFolderInput.focus(), 300);
         }
 
         console.log(`Search folder view: ${modelCount} models found`);
-
-        // Update model indicators (both running status and custom args)
-        await this.updateCustomArgsIndicators();
-
-        // Update sort button states
-        this.updateFolderSortButtons();
-
-        // Apply current sort settings
-        this.applyFolderSort();
     }
 
     hideSearchFolderView(isAllModels = false) {

@@ -260,13 +260,13 @@ class DownloadManager {
         const folderView = document.getElementById('downloads-folder-view');
         if (!folderView) return;
 
-        folderView.classList.remove('hidden');
-        if (this.desktop) folderView.style.zIndex = ++this.desktop.windowZIndex;
-
         this.downloadManagerVisible = true;
         this.updateDownloadManagerIcon();
         this.renderDownloadsFolderView();       // Full render only on open
         this.setupDownloadsFolderListeners();
+
+        folderView.classList.remove('hidden');
+        if (this.desktop) folderView.style.zIndex = ++this.desktop.windowZIndex;
     }
 
     hideDownloadManager() {
@@ -285,8 +285,14 @@ class DownloadManager {
         const backBtn = document.getElementById('downloads-folder-back');
         if (backBtn) backBtn.onclick = () => this.hideDownloadManager();
 
-        const overlay = folderView?.querySelector('.search-folder-overlay');
-        if (overlay) overlay.onclick = () => this.hideDownloadManager();
+        // Click outside to close (since overlay is removed)
+        const closeOnOutsideClick = (e) => {
+            if (e.target === folderView) {
+                this.hideDownloadManager();
+                folderView.removeEventListener('click', closeOnOutsideClick);
+            }
+        };
+        if (folderView) folderView.addEventListener('click', closeOnOutsideClick);
 
         const clearBtn = document.getElementById('downloads-folder-clear-history');
         if (clearBtn) clearBtn.onclick = (e) => {
