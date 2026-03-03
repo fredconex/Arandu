@@ -250,15 +250,6 @@ async fn execute_download(
         // Wait if paused
         wait_if_paused(&download_id, state).await?;
 
-        // Update current file
-        {
-            let mut download_manager = state.download_manager.lock().await;
-            if let Some(status) = download_manager.downloads.get_mut(&download_id) {
-                status.current_file = file_path.clone();
-                status.status = DownloadState::Downloading;
-            }
-        }
-
         // Construct download URL
         let download_url = if files.len() == 1 && config.files.is_empty() {
             // Single file download from direct URL
@@ -267,6 +258,16 @@ async fn execute_download(
             // Multi-file download or specific file from base URL
             format!("{}/{}", config.base_url.trim_end_matches('/'), file_path.trim_start_matches('/'))
         };
+
+        // Update current file and source URL
+        {
+            let mut download_manager = state.download_manager.lock().await;
+            if let Some(status) = download_manager.downloads.get_mut(&download_id) {
+                status.current_file = file_path.clone();
+                status.source_url = download_url.clone();
+                status.status = DownloadState::Downloading;
+            }
+        }
 
         let file_name = Path::new(file_path).file_name()
             .ok_or("Invalid file path")?

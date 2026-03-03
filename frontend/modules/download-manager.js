@@ -81,31 +81,31 @@ class DownloadManager {
 
     // ─── Polling ──────────────────────────────────────────────────────────────
 
+    async refreshDownloads() {
+        const invoke = this.getInvoke();
+        if (!invoke) {
+            this.updateDownloadManagerIcon();
+            return;
+        }
+
+        try {
+            const allDownloads = await invoke('get_all_downloads_and_history');
+            const json = JSON.stringify(allDownloads);
+            if (json !== this.lastDownloadsJson) {
+                this.downloads = allDownloads;
+                this.lastDownloadsJson = json;
+                this.updateDownloadManager();
+            } else {
+                this.updateDownloadManagerIcon();
+            }
+        } catch (error) {
+            console.error('Error refreshing Tauri downloads:', error);
+            this.updateDownloadManagerIcon();
+        }
+    }
+
     startTauriDownloadMonitoring() {
-        const monitor = async () => {
-            const invoke = this.getInvoke();
-            if (!invoke) {
-                this.updateDownloadManagerIcon();
-                return;
-            }
-
-            try {
-                const allDownloads = await invoke('get_all_downloads_and_history');
-                const json = JSON.stringify(allDownloads);
-                if (json !== this.lastDownloadsJson) {
-                    this.downloads = allDownloads;
-                    this.lastDownloadsJson = json;
-                    this.updateDownloadManager();
-                } else {
-                    this.updateDownloadManagerIcon();
-                }
-            } catch (error) {
-                console.error('Error monitoring Tauri downloads:', error);
-                this.updateDownloadManagerIcon();
-            }
-        };
-
-        setInterval(monitor, 2000);
+        setInterval(() => this.refreshDownloads(), 2000);
     }
 
     // ─── Real-time Progress Updates ───────────────────────────────────────────
@@ -245,6 +245,9 @@ class DownloadManager {
     }
 
     showDownloadManager() {
+        // Refresh downloads immediately
+        this.refreshDownloads();
+
         // Close open folder views
         const searchFolderView = document.getElementById('search-folder-view');
         if (searchFolderView && !searchFolderView.classList.contains('hidden') && this.desktop) {
@@ -437,7 +440,7 @@ class DownloadManager {
             // Patch progress bar
             const isActive = this.isActiveDownload(download);
             let progressBar = card.querySelector('.download-card-progress-bar');
-            if (isActive || download.status === 'Completed') {
+            if (isActive) {
                 const pct = this.getProgressPercent(download);
                 if (!progressBar) {
                     progressBar = document.createElement('div');
@@ -567,7 +570,7 @@ class DownloadManager {
         const progressInfo = this.getProgressInfo(download);
         const timeDisplay  = this.getTimeDisplay(download);
 
-        const progressBarHTML = (isActive || download.status === 'Completed') ? `
+        const progressBarHTML = (isActive) ? `
             <div class="download-card-progress-bar">
                 <div class="download-card-progress-fill" style="width: ${progressPct}%"></div>
             </div>` : '';
