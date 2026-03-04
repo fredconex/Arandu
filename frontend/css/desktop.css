@@ -237,6 +237,7 @@
 	transition: all 0.2s ease;
 	position: relative;
 	flex-shrink: 0;
+	border-radius: 0 8px 8px 0;
 }
 
 .dock-item.permanent {
@@ -275,7 +276,7 @@
 .dock-item.minimized::after, .taskbar-item.minimized::after {
 	content: "";
 	position: absolute;
-	left: 4px;
+	left: 8px;
 	top: 50%;
 	transform: translateY(-50%);
 	width: 4px;
