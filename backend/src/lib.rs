@@ -280,7 +280,7 @@ async fn save_config(
     }
     
     // Scan models with new directory
-    match scan_models(&models_directory).await {
+    match scan_models(&models_directory) {
         Ok(models) => {
             println!("Successfully scanned {} models", models.len());
             Ok(serde_json::json!({
@@ -303,7 +303,7 @@ async fn scan_models_command(
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let config = state.config.lock().await;
-    let models = scan_models(&config.models_directory).await
+    let models = scan_models(&config.models_directory)
         .map_err(|e| format!("Failed to scan models: {}", e))?;
     
     Ok(serde_json::json!({
@@ -317,7 +317,7 @@ async fn scan_mmproj_files_command(
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let config = state.config.lock().await;
-    let files = scan_mmproj_files(&config.models_directory).await
+    let files = scan_mmproj_files(&config.models_directory)
         .map_err(|e| format!("Failed to scan mmproj files: {}", e))?;
     
     Ok(serde_json::json!({
