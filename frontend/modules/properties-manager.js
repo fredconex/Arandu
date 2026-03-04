@@ -27,6 +27,54 @@ class PropertiesManager {
         return this.invoke;
     }
 
+    // LocalStorage methods for tracking setting usage (tracks setting IDs, not values)
+    getSettingUsageCounts() {
+        try {
+            const stored = localStorage.getItem('arandu_setting_usage');
+            return stored ? JSON.parse(stored) : {};
+        } catch (e) {
+            console.error('Error reading setting usage from localStorage:', e);
+            return {};
+        }
+    }
+
+    saveSettingUsageCounts(counts) {
+        try {
+            localStorage.setItem('arandu_setting_usage', JSON.stringify(counts));
+        } catch (e) {
+            console.error('Error saving setting usage to localStorage:', e);
+        }
+    }
+
+    trackSettingUsage(settingId) {
+        const counts = this.getSettingUsageCounts();
+        counts[settingId] = (counts[settingId] || 0) + 1;
+        this.saveSettingUsageCounts(counts);
+        console.log(`Setting "${settingId}" usage count:`, counts[settingId]);
+    }
+
+    getMostUsedSettings(threshold = 2) {
+        const counts = this.getSettingUsageCounts();
+        // Return setting IDs that have been used more than the threshold
+        // Limit to max 15 items
+        return Object.entries(counts)
+            .filter(([_, count]) => count > threshold)
+            .sort((a, b) => b[1] - a[1]) // Sort by count descending
+            .slice(0, 15) // Limit to 15 items
+            .map(([id]) => id);
+    }
+
+    clearSettingUsageCounts() {
+        try {
+            localStorage.removeItem('arandu_setting_usage');
+            console.log('Setting usage counts cleared');
+            return true;
+        } catch (e) {
+            console.error('Error clearing setting usage from localStorage:', e);
+            return false;
+        }
+    }
+
     showProperties(icon) {
         const modelPath = icon.dataset.path;
         const modelName = icon.dataset.name;
@@ -240,6 +288,9 @@ class PropertiesManager {
                     <div class="settings-sidebar">
                         <div class="settings-header">
                             <h4>Available Settings</h4>
+                            <button class="settings-menu-btn" onclick="propertiesManager.showSettingsMenu(event)" title="Settings options">
+                                <span class="material-icons">more_vert</span>
+                            </button>
                         </div>
                         <div class="settings-search-container">
                             <span class="material-icons settings-search-icon">search</span>
@@ -297,6 +348,10 @@ class PropertiesManager {
     async generateSettingsListHTML(customArgs, settingsConfig) {
         const parsedSettings = customArgs && customArgs.trim() ? await this.desktop.parseArgumentsToSettings(customArgs) : {};
 
+        // Get usage counts for most used settings
+        const usageCounts = this.getSettingUsageCounts();
+        const mostUsedIds = this.getMostUsedSettings(2);
+
         // Group by category
         const categories = {};
         settingsConfig.forEach(setting => {
@@ -305,10 +360,52 @@ class PropertiesManager {
 
             // Mark if setting is already enabled
             setting.isEnabled = parsedSettings[setting.id + '_enabled'] || false;
+            // Add usage count to setting
+            setting.usageCount = usageCounts[setting.id] || 0;
             categories[cat].push(setting);
         });
 
         let html = '';
+
+        // Add "Most Used" category at the top if there are settings used more than 2 times
+        if (mostUsedIds.length > 0) {
+            const mostUsedSettings = settingsConfig.filter(s => mostUsedIds.includes(s.id));
+            // Sort by usage count descending
+            mostUsedSettings.sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
+            
+            html += `
+                <div class="settings-category collapsed" data-category="Most Used">
+                    <div class="settings-category-header" onclick="propertiesManager.toggleSettingsCategory(this.parentNode)">
+                        <span class="material-icons arrow-icon">expand_more</span>
+                        Most Used
+                        <span class="category-count">(${mostUsedSettings.length})</span>
+                    </div>
+                    <div class="settings-category-items">
+            `;
+
+            mostUsedSettings.forEach(setting => {
+                const searchText = `${setting.name} ${setting.description} ${setting.argument} ${setting.aliases ? setting.aliases.join(' ') : ''}`.toLowerCase();
+                const isEnabled = setting.isEnabled;
+                const itemClass = isEnabled ? 'settings-item in-use' : 'settings-item';
+                const onclick = `onclick="propertiesManager.toggleSetting('${setting.id}')"`;
+                const title = setting.description;
+
+                html += `
+                    <div class="${itemClass}"
+                         ${onclick}
+                         title="${title}"
+                         data-search-text="${searchText}">
+                        <div class="setting-info">
+                            <div class="setting-name">${setting.name}</div>
+                            <div class="setting-description">${setting.description}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
+        }
+
         const sortedCats = Object.keys(categories).sort();
 
         for (const cat of sortedCats) {
@@ -1276,6 +1373,20 @@ class PropertiesManager {
 
             console.log('Final presets to save:', activeWindow.workingPresets);
 
+            // Track usage of all settings in the presets being saved
+            const settingsConfig = await this.desktop.loadSettingsConfig();
+            for (const preset of activeWindow.workingPresets) {
+                if (preset.custom_args && preset.custom_args.trim()) {
+                    const parsedSettings = await this.desktop.parseArgumentsToSettings(preset.custom_args);
+                    // Track each enabled setting
+                    for (const setting of settingsConfig) {
+                        if (parsedSettings[setting.id + '_enabled']) {
+                            this.trackSettingUsage(setting.id);
+                        }
+                    }
+                }
+            }
+
             // Save all presets in one call
             await invoke('update_model_presets', {
                 modelPath: modelPath,
@@ -1658,6 +1769,62 @@ class PropertiesManager {
         }
     }
 
+    async showClearUsageConfirmation() {
+        const confirmed = await ModalDialog.showConfirmation({
+            title: 'Clear Usage History',
+            message: 'Are you sure you want to clear all usage history? This will reset the "Most Used" list.',
+            confirmText: 'Clear',
+            cancelText: 'Cancel',
+            type: 'danger'
+        });
+
+        if (confirmed) {
+            const success = this.clearSettingUsageCounts();
+            if (success) {
+                // Refresh the settings list to remove the "Most Used" category
+                await this.refreshSettingsList();
+                this.desktop.showNotification('Usage history cleared', 'info');
+            } else {
+                this.desktop.showNotification('Failed to clear usage history', 'error');
+            }
+        }
+    }
+
+    showSettingsMenu(event) {
+        event.stopPropagation();
+
+        // Remove any existing menu
+        const existingMenu = document.querySelector('.settings-context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+
+        const menu = document.createElement('div');
+        menu.className = 'settings-context-menu';
+        menu.innerHTML = `
+            <div class="context-menu-item" onclick="propertiesManager.showClearUsageConfirmation(); this.closest('.settings-context-menu').remove();">
+                <span class="material-icons" style="font-size: 16px; margin-right: 8px;">clear_all</span>
+                Clear Usage History
+            </div>
+        `;
+
+        document.body.appendChild(menu);
+
+        // Position the menu
+        const rect = event.target.closest('.settings-menu-btn').getBoundingClientRect();
+        menu.style.top = `${rect.bottom + 4}px`;
+        menu.style.right = `${window.innerWidth - rect.right}px`;
+
+        // Close menu when clicking outside
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    }
+
     async addCustomArgument() {
         try {
             const activeWindow = document.querySelector('.properties-window:not(.hidden)');
@@ -1710,6 +1877,9 @@ class PropertiesManager {
             } else {
                 // Add the setting
                 await this.addSettingToArguments(settingId, customArgsTextarea);
+
+                // Track usage when setting is added
+                this.trackSettingUsage(settingId);
 
                 // Refresh the settings list to update the "in use" status
                 await this.refreshSettingsList();

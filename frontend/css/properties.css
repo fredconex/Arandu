@@ -1107,6 +1107,31 @@ select.property-input {
 	font-weight: 600;
 }
 
+.settings-menu-btn {
+	width: 24px;
+	height: 24px;
+	background: transparent;
+	border: none;
+	color: var(--theme-text-muted);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+	padding: 0;
+	flex-shrink: 0;
+}
+
+.settings-menu-btn:hover {
+	background: var(--theme-surface-light);
+	color: var(--theme-text);
+}
+
+.settings-menu-btn .material-icons {
+	font-size: 18px;
+}
+
 .settings-search-container {
 	padding: 8px;
 	border-bottom: 1px solid var(--theme-border);
@@ -1581,4 +1606,39 @@ select.property-input {
 	font-size: 16px;
 	margin-left: 8px;
 	color: var(--theme-text-muted);
+}
+
+/* Settings Context Menu */
+.settings-context-menu {
+	position: fixed;
+	background: var(--theme-surface);
+	border: 1px solid var(--theme-border);
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	z-index: 10000;
+	min-width: 180px;
+	padding: 4px 0;
+	animation: popoverFadeIn 0.2s ease;
+}
+
+.settings-context-menu .context-menu-item {
+	padding: 8px 12px;
+	font-size: 13px;
+	color: var(--theme-text);
+	cursor: pointer;
+	transition: background 0.1s;
+	display: flex;
+	align-items: center;
+}
+
+.settings-context-menu .context-menu-item:hover {
+	background: var(--theme-hover);
+}
+
+.settings-context-menu .context-menu-item .material-icons {
+	color: var(--theme-text-muted);
+}
+
+.settings-context-menu .context-menu-item:hover .material-icons {
+	color: var(--theme-text);
 }
