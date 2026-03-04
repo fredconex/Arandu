@@ -82,7 +82,16 @@ class PropertiesManager {
                     presets = [defaultPreset];
                 }
 
-                const content = await this.generatePropertiesContent(config, modelPath, metadata, presets);
+                // Find the default preset to use for initial content
+                const defaultPreset = presets.find(p => p.is_default) || presets[0];
+                
+                // Use the default preset's arguments for initial content generation
+                const initialConfig = {
+                    ...config,
+                    custom_args: defaultPreset.custom_args
+                };
+
+                const content = await this.generatePropertiesContent(initialConfig, modelPath, metadata, presets, defaultPreset.id);
                 const window = this.desktop.createWindow(windowId, `Properties - ${modelName}`, 'properties-window', content);
                 // Add to taskbar
                 this.desktop.addTaskbarItem(`Properties - ${modelName}`, windowId, '<span class="material-icons">settings</span>');
@@ -100,16 +109,13 @@ class PropertiesManager {
                 // Initialize working presets
                 window.workingPresets = [...presets]; // Create a copy for editing
 
-                // Auto-select default preset or first preset
-                const defaultPreset = presets.find(p => p.is_default) || presets[0];
-                if (defaultPreset) {
-                    // Trigger click on the default preset
-                    setTimeout(() => {
-                        const presetItem = window.querySelector(`[data-preset-id="${defaultPreset.id}"]`);
-                        if (presetItem) {
-                            presetItem.click();
-                        }
-                    }, 100);
+                // Set the selected preset ID immediately
+                window.dataset.selectedPresetId = defaultPreset.id;
+
+                // Mark the default preset as selected in the UI
+                const presetItem = window.querySelector(`[data-preset-id="${defaultPreset.id}"]`);
+                if (presetItem) {
+                    presetItem.classList.add('selected');
                 }
             })
             .catch(error => {
@@ -117,7 +123,7 @@ class PropertiesManager {
             });
     }
 
-    async generatePropertiesContent(config, modelPath, metadata = null, presets = []) {
+    async generatePropertiesContent(config, modelPath, metadata = null, presets = [], selectedPresetId = null) {
         try {
             // Load settings configuration
             const settingsConfig = await this.desktop.loadSettingsConfig();
@@ -125,6 +131,10 @@ class PropertiesManager {
 
             // Generate Visualizer HTML
             const visualizerHTML = await this.generateArgumentsVisualizer(config.custom_args || '', settingsConfig);
+
+            // Determine which preset is selected for the title
+            const selectedPreset = selectedPresetId ? presets.find(p => p.id === selectedPresetId) : null;
+            const argumentsTitle = selectedPreset ? `Arguments (${selectedPreset.name})` : 'Arguments';
 
             // Generate file info HTML if metadata is available
             let fileInfoHTML = '';
@@ -188,7 +198,7 @@ class PropertiesManager {
                         </div>
                         
                         <div class="arguments-header">
-                            <h4 id="arguments-title">Arguments</h4>
+                            <h4 id="arguments-title">${argumentsTitle}</h4>
                             <div class="view-toggle">
                                 <button class="toggle-btn active" onclick="propertiesManager.switchView('visual')" id="btn-visual">Visual</button>
                                 <button class="toggle-btn" onclick="propertiesManager.switchView('raw')" id="btn-raw">Raw</button>
