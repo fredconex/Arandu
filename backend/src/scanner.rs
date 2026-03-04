@@ -1,24 +1,9 @@
 use std::fs;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read};
 use std::path::Path;
 use glob::glob;
 use regex::Regex;
 use crate::models::*;
-
-// GGUF value types
-const GGUF_TYPE_UINT8: u32   = 0;
-const GGUF_TYPE_INT8: u32    = 1;
-const GGUF_TYPE_UINT16: u32  = 2;
-const GGUF_TYPE_INT16: u32   = 3;
-const GGUF_TYPE_UINT32: u32  = 4;
-const GGUF_TYPE_INT32: u32   = 5;
-const GGUF_TYPE_FLOAT32: u32 = 6;
-const GGUF_TYPE_BOOL: u32    = 7;
-const GGUF_TYPE_STRING: u32  = 8;
-const GGUF_TYPE_ARRAY: u32   = 9;
-const GGUF_TYPE_UINT64: u32  = 10;
-const GGUF_TYPE_INT64: u32   = 11;
-const GGUF_TYPE_FLOAT64: u32 = 12;
 
 const MAX_KV_ENTRIES: u64 = 1024;
 const MAX_STRING_LEN: u64 = 1024 * 1024; // 1MB guard
@@ -116,6 +101,87 @@ fn process_model_group(
     })
 }
 
+/// A lightweight reader that mirrors the Pascal TGGUFModel approach:
+/// parse every KV value properly instead of skipping unknown types.
+struct GgufReader {
+    file: fs::File,
+    version: u32,
+}
+
+impl GgufReader {
+    fn new(file: fs::File, version: u32) -> Self {
+        Self { file, version }
+    }
+
+    fn read_u8(&mut self) -> Result<u8, Box<dyn std::error::Error>> {
+        let mut buf = [0u8; 1];
+        self.file.read_exact(&mut buf)?;
+        Ok(buf[0])
+    }
+
+    fn read_u16(&mut self) -> Result<u16, Box<dyn std::error::Error>> {
+        let mut buf = [0u8; 2];
+        self.file.read_exact(&mut buf)?;
+        Ok(u16::from_le_bytes(buf))
+    }
+
+    fn read_u32(&mut self) -> Result<u32, Box<dyn std::error::Error>> {
+        let mut buf = [0u8; 4];
+        self.file.read_exact(&mut buf)?;
+        Ok(u32::from_le_bytes(buf))
+    }
+
+    fn read_u64(&mut self) -> Result<u64, Box<dyn std::error::Error>> {
+        let mut buf = [0u8; 8];
+        self.file.read_exact(&mut buf)?;
+        Ok(u64::from_le_bytes(buf))
+    }
+
+    /// Like Pascal's ReadVersionSize: u32 for v1, u64 for v2/v3.
+    fn read_size(&mut self) -> Result<u64, Box<dyn std::error::Error>> {
+        if self.version == 1 {
+            Ok(self.read_u32()? as u64)
+        } else {
+            self.read_u64()
+        }
+    }
+
+    /// Read a GGUF length-prefixed string using version-aware length.
+    fn read_string(&mut self) -> Result<String, Box<dyn std::error::Error>> {
+        let len = self.read_size()?;
+        if len > MAX_STRING_LEN {
+            return Err(format!("String length {} exceeds safety limit", len).into());
+        }
+        let mut bytes = vec![0u8; len as usize];
+        self.file.read_exact(&mut bytes)?;
+        Ok(String::from_utf8_lossy(&bytes).into_owned())
+    }
+
+    /// Read and discard a value of the given type — mirrors Pascal's case dispatch.
+    fn skip_value(&mut self, value_type: u32) -> Result<(), Box<dyn std::error::Error>> {
+        match value_type {
+            0 | 1 => { self.read_u8()?; }                        // uint8 / int8
+            2 | 3 => { self.read_u16()?; }                       // uint16 / int16
+            4 | 5 | 6 => { self.read_u32()?; }                   // uint32 / int32 / float32
+            7 => { self.read_u8()?; }                            // bool
+            8 => { self.read_string()?; }                        // string
+            9 => {                                               // array
+                let elem_type = self.read_u32()?;
+                let count = self.read_size()?;
+                if count > MAX_KV_ENTRIES * 1024 {
+                    return Err(format!("Array count {} exceeds safety limit", count).into());
+                }
+                for _ in 0..count {
+                    self.skip_value(elem_type)?;
+                }
+            }
+            10 | 11 | 12 => { self.read_u64()?; }               // uint64 / int64 / float64
+            other => return Err(format!("Unknown GGUF value type: {}", other).into()),
+        }
+        Ok(())
+    }
+}
+
 pub fn extract_gguf_metadata(
     file_path: &Path,
 ) -> Result<GgufMetadata, Box<dyn std::error::Error>> {
@@ -126,9 +192,9 @@ pub fn extract_gguf_metadata(
         .unwrap_or("Unknown")
         .to_string();
 
+    // Magic
     let mut magic = [0u8; 4];
     file.read_exact(&mut magic)?;
-
     if &magic != b"GGUF" {
         return Ok(GgufMetadata {
             architecture: "Unknown".to_string(),
@@ -139,15 +205,15 @@ pub fn extract_gguf_metadata(
     // Version
     let mut buf4 = [0u8; 4];
     file.read_exact(&mut buf4)?;
-    let _version = u32::from_le_bytes(buf4);
+    let version = u32::from_le_bytes(buf4);
+
+    let mut reader = GgufReader::new(file, version);
 
     // Tensor count (skip)
-    let mut buf8 = [0u8; 8];
-    file.read_exact(&mut buf8)?;
+    reader.read_size()?;
 
     // KV count
-    file.read_exact(&mut buf8)?;
-    let kv_count = u64::from_le_bytes(buf8).min(MAX_KV_ENTRIES);
+    let kv_count = reader.read_size()?.min(MAX_KV_ENTRIES);
 
     let mut architecture = "Unknown".to_string();
     let mut name = fallback_name;
@@ -159,19 +225,19 @@ pub fn extract_gguf_metadata(
             break;
         }
 
-        let key = match read_gguf_string(&mut file) {
+        let key = match reader.read_string() {
             Ok(k) => k,
             Err(_) => break,
         };
 
-        let mut buf4 = [0u8; 4];
-        if file.read_exact(&mut buf4).is_err() {
-            break;
-        }
-        let value_type = u32::from_le_bytes(buf4);
+        let value_type = match reader.read_u32() {
+            Ok(t) => t,
+            Err(_) => break,
+        };
 
-        if value_type == GGUF_TYPE_STRING {
-            let value = match read_gguf_string(&mut file) {
+        // If it's a string and we care about this key, read it; otherwise skip.
+        if value_type == 8 {
+            let value = match reader.read_string() {
                 Ok(v) => v,
                 Err(_) => break,
             };
@@ -184,9 +250,9 @@ pub fn extract_gguf_metadata(
                     name = value;
                     found_name = true;
                 }
-                _ => {}
+                _ => {} // string we don't need — already consumed, nothing to skip
             }
-        } else if skip_gguf_value(&mut file, value_type).is_err() {
+        } else if reader.skip_value(value_type).is_err() {
             break;
         }
     }
@@ -194,76 +260,8 @@ pub fn extract_gguf_metadata(
     Ok(GgufMetadata { architecture, name })
 }
 
-/// Read a GGUF length-prefixed string (8-byte len + UTF-8 bytes).
-fn read_gguf_string(file: &mut fs::File) -> Result<String, Box<dyn std::error::Error>> {
-    let mut buf8 = [0u8; 8];
-    file.read_exact(&mut buf8)?;
-    let len = u64::from_le_bytes(buf8);
-
-    if len > MAX_STRING_LEN {
-        return Err(format!("String length {} exceeds safety limit", len).into());
-    }
-
-    let mut bytes = vec![0u8; len as usize];
-    file.read_exact(&mut bytes)?;
-    Ok(String::from_utf8_lossy(&bytes).into_owned())
-}
-
-/// Skip a GGUF value of the given type, advancing the file cursor correctly.
-fn skip_gguf_value(
-    file: &mut fs::File,
-    value_type: u32,
-) -> Result<(), Box<dyn std::error::Error>> {
-    match value_type {
-        GGUF_TYPE_UINT8 | GGUF_TYPE_INT8 | GGUF_TYPE_BOOL => {
-            file.seek(SeekFrom::Current(1))?;
-        }
-        GGUF_TYPE_UINT16 | GGUF_TYPE_INT16 => {
-            file.seek(SeekFrom::Current(2))?;
-        }
-        GGUF_TYPE_UINT32 | GGUF_TYPE_INT32 | GGUF_TYPE_FLOAT32 => {
-            file.seek(SeekFrom::Current(4))?;
-        }
-        GGUF_TYPE_UINT64 | GGUF_TYPE_INT64 | GGUF_TYPE_FLOAT64 => {
-            file.seek(SeekFrom::Current(8))?;
-        }
-        GGUF_TYPE_STRING => {
-            // Read and discard the string
-            read_gguf_string(file)?;
-        }
-        GGUF_TYPE_ARRAY => {
-            // Array: element_type (u32) + count (u64) + count × element
-            let mut buf4 = [0u8; 4];
-            file.read_exact(&mut buf4)?;
-            let elem_type = u32::from_le_bytes(buf4);
-
-            let mut buf8 = [0u8; 8];
-            file.read_exact(&mut buf8)?;
-            let count = u64::from_le_bytes(buf8);
-
-            // Guard against absurdly large arrays
-            if count > MAX_KV_ENTRIES * 1024 {
-                return Err(format!("Array count {} exceeds safety limit", count).into());
-            }
-
-            for _ in 0..count {
-                skip_gguf_value(file, elem_type)?;
-            }
-        }
-        other => {
-            return Err(format!("Unknown GGUF value type: {}", other).into());
-        }
-    }
-    Ok(())
-}
-
 pub fn get_quantization_from_filename(filename: &str) -> String {
-    // Strip .gguf suffix if present, then take the last dash-separated token
-    let base = filename
-        .strip_suffix(".gguf")
-        .unwrap_or(filename);
-
-    // Try last '-' separator first, then last '.'
+    let base = filename.strip_suffix(".gguf").unwrap_or(filename);
     let separator = base.rfind('-').or_else(|| base.rfind('.'));
 
     if let Some(pos) = separator {
@@ -273,7 +271,6 @@ pub fn get_quantization_from_filename(filename: &str) -> String {
         }
     }
 
-    // Fallback: return the whole base name uppercased if no separator found
     base.to_uppercase()
 }
 
@@ -289,7 +286,6 @@ pub fn scan_mmproj_files(
 
     let mut files: Vec<serde_json::Value> = glob(&pattern)?
         .filter_map(|entry| entry.ok())
-        // Pre-filter by filename to avoid opening every GGUF
         .filter(|path| {
             path.file_name()
                 .and_then(|n| n.to_str())
