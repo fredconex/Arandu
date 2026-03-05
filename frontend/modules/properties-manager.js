@@ -132,7 +132,7 @@ class PropertiesManager {
 
                 // Find the default preset to use for initial content
                 const defaultPreset = presets.find(p => p.is_default) || presets[0];
-                
+
                 // Use the default preset's arguments for initial content generation
                 const initialConfig = {
                     ...config,
@@ -372,7 +372,7 @@ class PropertiesManager {
             const mostUsedSettings = settingsConfig.filter(s => mostUsedIds.includes(s.id));
             // Sort by usage count descending
             mostUsedSettings.sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
-            
+
             html += `
                 <div class="settings-category collapsed" data-category="Most Used">
                     <div class="settings-category-header" onclick="propertiesManager.toggleSettingsCategory(this.parentNode)">
@@ -587,6 +587,10 @@ class PropertiesManager {
         if (!propertyGroup) return;
 
         const modelPath = atob(propertyGroup.dataset.modelPath);
+
+        // Save current preset's arguments to temp storage before creating new one
+        await this.saveCurrentPresetToTemp(activeWindow, modelPath);
+
         // New presets should start empty
         const customArgs = '';
 
@@ -763,6 +767,9 @@ class PropertiesManager {
         try {
             const activeWindow = document.querySelector('.properties-window:not(.hidden)');
             if (!activeWindow) return;
+
+            // Save current preset's arguments to temp storage before duplicating
+            await this.saveCurrentPresetToTemp(activeWindow, modelPath);
 
             // Initialize working presets if not exists
             if (!activeWindow.workingPresets) {
@@ -1491,7 +1498,7 @@ class PropertiesManager {
 
             // Refresh the desktop to update the view
             await this.desktop.loadModels(false);
-            
+
             // Also refresh folder view if it's open
             this.desktop.refreshFolderViewIfOpen();
 
