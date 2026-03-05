@@ -1,6 +1,6 @@
 [package]
 name = "Arandu"
-version = "0.5.8-beta"
+version = "0.5.82-beta"
 description = "Arandu: Desktop UI for llama.cpp model management and server launching"
 authors = ["Alfredo Fernandes"]
 edition = "2021"
@@ -25,10 +25,10 @@ panic = "abort" # Higher performance by disabling panic handlers.
 strip = true # Ensures debug symbols are removed.
 
 [build-dependencies]
-tauri-build = { version = "2.5.5", features = [] }
+tauri-build = { version = "2.5.6", features = [] }
 
 [dependencies]
-tauri = { version = "2.10.2", features = ["tray-icon", "devtools"] }
+tauri = { version = "2.10.3", features = ["tray-icon", "devtools"] }
 tauri-plugin-opener = "2.5.3"
 tauri-plugin-fs = "2.4.5"
 tauri-plugin-dialog = "2.6.0"
