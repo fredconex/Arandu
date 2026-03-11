@@ -595,6 +595,7 @@
 	gap: 1px;
 }
 
+/* Enhanced Quantization Folder Styling */
 .quant-item {
 	display: flex;
 	align-items: center;
@@ -603,59 +604,155 @@
 	background: var(--theme-surface-light);
 	border: 1px solid var(--theme-border);
 	border-radius: 6px;
-	transition: all 0.2s ease;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .quant-item:hover {
 	border-color: var(--theme-primary);
 	background: var(--theme-bg-light);
+	transform: translateX(4px);
 }
 
 .quant-folder {
 	display: flex;
 	align-items: center;
-	padding: 6px 12px;
+	padding: 10px 14px;
 	cursor: pointer;
-	border-bottom: 1px solid var(--color-border);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	overflow: hidden;
 }
 
-.quant-folder:hover {
-	background-color: var(--color-background-hover);
+/* Subtle gradient overlay on hover */
+.quant-folder::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 100%;
+	background: linear-gradient(90deg,
+		transparent 0%,
+		rgba(255, 255, 255, 0.02) 50%,
+		transparent 100%);
+	opacity: 0;
+	transition: opacity 0.3s ease;
 }
 
+.quant-folder:hover::before {
+	opacity: 1;
+}
+
+/* Selected state highlighting */
+.quant-folder.selected {
+	background: linear-gradient(90deg,
+		rgba(100, 165, 255, 0.15) 0%,
+		rgba(100, 165, 255, 0.05) 100%);
+	border-left: 3px solid var(--theme-primary);
+	padding-left: 11px;
+}
+
+.quant-folder.selected .folder-icon {
+	filter: drop-shadow(0 0 8px var(--theme-primary));
+}
+
+.quant-folder.selected:hover {
+	background: linear-gradient(90deg,
+		rgba(100, 165, 255, 0.2) 0%,
+		rgba(100, 165, 255, 0.1) 100%);
+}
+
+/* Enhanced folder icon styling */
 .folder-icon {
 	margin-right: 8px;
-	width: 16px;
-	height: 16px;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='feather feather-folder'%3E%3Cpath d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E");
+	width: 24px;
+	height: 24px;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E");
 	background-size: contain;
 	background-repeat: no-repeat;
-	transition: transform 0.2s;
+	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+	transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
 }
 
-.quant-folder.open>.folder-icon {
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='feather feather-folder-minus'%3E%3Cpath d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'%3E%3C/path%3E%3Cline x1='9' y1='14' x2='15' y2='14'%3E%3C/line%3E%3C/svg%3E");
+/* Open state with 3D rotation effect */
+.quant-folder.open > .folder-icon {
+	transform: rotateY(180deg);
+	filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+}
+
+/* Chevron indicator for expand/collapse */
+.quant-folder {
+	padding-right: 36px;
+}
+
+.quant-folder .chevron {
+	position: absolute;
+	right: 12px;
+	width: 18px;
+	height: 18px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: transform 0.2s ease;
+}
+
+.quant-folder .chevron .material-icons {
+	font-size: 16px;
+	color: var(--theme-text-muted);
+}
+
+.quant-folder.open .chevron .material-icons {
+	transform: rotate(90deg);
+	color: var(--theme-text);
 }
 
 .folder-name {
 	font-weight: 500;
+	flex: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .folder-content {
 	display: none;
-	background-color: rgba(0, 0, 0, 0.2);
+	background: linear-gradient(180deg,
+		rgba(0, 0, 0, 0.15) 0%,
+		rgba(0, 0, 0, 0.08) 100%);
 	border-radius: 6px;
-	margin: 4px 0;
-	padding: 0;
+	margin: 0 10px 10px 10px;
+	padding: 8px 0;
 	overflow: hidden;
+	border: 1px solid rgba(255, 255, 255, 0.03);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+	transition: all 0.2s ease;
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.folder-content.open {
+	display: block;
+	animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .folder-content .quant-item {
 	background: transparent;
 	border: none;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 	border-radius: 0;
 	margin: 0;
+	padding: 10px 16px;
+	transition: all 0.2s ease;
 }
 
 .folder-content .quant-item:last-child {
@@ -663,13 +760,22 @@
 }
 
 .folder-content .quant-item:hover {
-	background: rgba(255, 255, 255, 0.05);
-	border-color: transparent;
-	transform: none;
+	background: rgba(255, 255, 255, 0.04);
+	transform: translateX(4px);
 }
 
 .quant-folder.open+.folder-content {
 	display: block;
+}
+
+/* Focus state for accessibility */
+.quant-folder:focus-visible {
+	outline: 2px solid var(--theme-primary);
+	outline-offset: -2px;
+}
+
+.quant-folder[aria-expanded="true"] {
+	border-left: 3px solid var(--theme-primary);
 }
 
 .quant-info {
@@ -752,6 +858,35 @@
 	transform: none;
 }
 
+/* Color coding for quantization types */
+.quant-folder.q4 .folder-icon {
+	filter: hue-rotate(0deg);
+}
+
+.quant-folder.q3 .folder-icon {
+	filter: hue-rotate(45deg);
+}
+
+.quant-folder.q2 .folder-icon {
+	filter: hue-rotate(90deg);
+}
+
+.quant-folder.q5 .folder-icon {
+	filter: hue-rotate(135deg);
+}
+
+.quant-folder.fp16 .folder-icon {
+	filter: hue-rotate(180deg);
+}
+
+.quant-folder.fp32 .folder-icon {
+	filter: hue-rotate(225deg);
+}
+
+.quant-folder.q8 .folder-icon {
+	filter: hue-rotate(270deg);
+}
+
 
 
 .download-controls {
@@ -831,5 +966,74 @@
 
 	.stat-compact {
 		min-width: 50px;
+	}
+}
+
+/* Responsive folder view improvements */
+@media (max-width: 768px) {
+	.quant-folder {
+		padding: 8px 10px;
+	}
+	
+	.folder-content .quant-item {
+		padding: 8px 12px;
+		font-size: 13px;
+	}
+	
+	.quant-info {
+		gap: 1px;
+	}
+	
+	.folder-icon {
+		width: 20px;
+		height: 20px;
+	}
+	
+	.quant-folder {
+		padding-right: 30px;
+	}
+	
+	.quant-folder .chevron {
+		right: 8px;
+	}
+	
+	.quant-folder .chevron .material-icons {
+		font-size: 14px;
+	}
+}
+
+/* Tablet optimizations */
+@media (max-width: 1024px) {
+	.quant-folder {
+		padding: 9px 12px;
+	}
+	
+	.folder-content .quant-item {
+		padding: 9px 14px;
+	}
+	
+	.folder-icon {
+		width: 22px;
+		height: 22px;
+	}
+}
+
+/* Large screen optimizations */
+@media (min-width: 1440px) {
+	.quant-folder {
+		padding: 12px 16px;
+	}
+	
+	.folder-content .quant-item {
+		padding: 12px 20px;
+	}
+	
+	.folder-icon {
+		width: 28px;
+		height: 28px;
+	}
+	
+	.quant-folder .chevron .material-icons {
+		font-size: 18px;
 	}
 }
