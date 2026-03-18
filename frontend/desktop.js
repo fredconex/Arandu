@@ -2947,7 +2947,7 @@ class DesktopManager {
         if (btn) {
             const icon = btn.querySelector('.material-icons');
             if (this.hideSuppressedModels) {
-                icon.textContent = 'visibility_off';
+                icon.textContent = 'visibility';
                 btn.title = 'CLIP models hidden - click to show';
             } else {
                 icon.textContent = 'visibility';
