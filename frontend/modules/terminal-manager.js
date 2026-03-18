@@ -243,6 +243,13 @@ class TerminalManager {
 
         const pollOutput = async () => {
             try {
+                // IMPORTANT: Check if this loop is still the active one for this window
+                // If the terminal has been restarted, terminalInfo.processId will be different
+                if (terminalInfo.processId !== processId) {
+                    console.log(`⏹️ [POLL STOP] Stopping loop for old process ${processId} (New: ${terminalInfo.processId})`);
+                    return;
+                }
+
                 console.log(`Polling output for process ${processId}...`);
                 // Use Tauri command instead of fetch
                 const invoke = this.getInvoke();
@@ -502,47 +509,33 @@ class TerminalManager {
         const terminalInfo = this.terminals.get(windowId);
         if (!terminalInfo) return;
 
+        console.log(`🚀 [START SERVER] Starting ${modelName} in window ${windowId}`);
+        
+        // Update status to starting immediately in UI
+        this.updateServerStatus(windowId, 'starting');
+
         try {
             // Use Tauri command instead of fetch
             const invoke = this.getInvoke();
             if (!invoke) {
                 console.error('Tauri invoke not available for model restart');
+                this.updateServerStatus(windowId, 'stopped');
                 return;
             }
             
-            // Use the same arguments that were used for the original launch
-            let result;
-            if (terminalInfo.launchArgs) {
-                console.log(`Restarting with stored arguments: ${terminalInfo.launchArgs}`);
-                // Temporarily update the model config with the stored arguments
-                const currentConfig = await invoke('get_model_settings', { modelPath: modelPath });
-                const originalArgs = currentConfig.custom_args;
-                
-                // Update config with launch args
-                await invoke('update_model_settings', { 
-                    modelPath: modelPath, 
-                    config: { ...currentConfig, custom_args: terminalInfo.launchArgs }
-                });
-                
-                // Launch the model
-                result = await invoke('launch_model', { modelPath: modelPath });
-                
-                // Restore original args
-                await invoke('update_model_settings', { 
-                    modelPath: modelPath, 
-                    config: { ...currentConfig, custom_args: originalArgs }
-                });
-            } else {
-                console.log('Restarting with default configuration');
-                result = await invoke('launch_model', { modelPath: modelPath });
-            }
+            // Launch the model with its current settings
+            console.log('Launching model with current configuration');
+            const result = await invoke('launch_model', { modelPath: modelPath });
 
-            if (result.success) {
+            if (result && result.success) {
+                console.log(`✅ [START SUCCESS] New Process ID: ${result.process_id}`);
+                
                 // Update terminal info with new process ID
                 terminalInfo.processId = result.process_id;
                 terminalInfo.host = result.server_host;
                 terminalInfo.port = result.server_port;
                 terminalInfo.status = 'starting';
+                this.terminals.set(windowId, terminalInfo);
 
                 // Update chat iframe URL with new host:port
                 const chatPanel = document.getElementById(`panel-chat-${windowId}`);
@@ -555,18 +548,12 @@ class TerminalManager {
                     }
                 }
 
-                // Update UI
+                // Update UI elements
                 const window = this.desktop.windows.get(windowId);
                 if (window) {
-                    const statusElement = window.querySelector('.server-status');
-                    const startBtn = window.querySelector('.start-btn');
                     const serverDetails = window.querySelector('.server-details');
                     const commandLine = window.querySelector('.server-command-line');
-
-                    if (statusElement) {
-                        statusElement.innerHTML = '<span class="material-icons" style="color: #ffc107; font-size: 14px;">circle</span> Starting';
-                        statusElement.className = 'server-status starting';
-                    }
+                    const stopBtn = window.querySelector('.stop-btn') || window.querySelector('.start-btn');
 
                     if (serverDetails) {
                         serverDetails.innerHTML = `${modelName} - <span class="clickable" style="cursor: pointer; text-decoration: underline;" onclick="terminalManager.openUrl('http://${result.server_host}:${result.server_port}')">${result.server_host}:${result.server_port}</span><button class="copy-link-btn" style="background: none; border: none; cursor: pointer; margin-left: 5px; padding: 0; font-size: 14px; vertical-align: middle;" onclick="terminalManager.copyToClipboard('http://${result.server_host}:${result.server_port}', this)" title="Copy link"><span class="material-icons" style="font-size: 14px; color: var(--theme-text-muted);">content_copy</span></button>`;
@@ -576,42 +563,42 @@ class TerminalManager {
                         commandLine.textContent = Array.isArray(result.command) ? result.command.join(' ') : result.command;
                     }
 
-                    // Change start button back to stop button
-                    if (startBtn) {
-                        startBtn.textContent = 'Stop';
-                        startBtn.className = 'server-btn stop-btn';
-                        startBtn.id = `stop-btn-${windowId}`;
-                        // Remove any existing event listeners
-                        const newStartBtn = startBtn.cloneNode(true);
-                        startBtn.parentNode.replaceChild(newStartBtn, startBtn);
-                        // Add event listener
-                        newStartBtn.addEventListener('click', () => {
+                    // Change button back to stop button if it was a start button
+                    if (stopBtn && stopBtn.classList.contains('start-btn')) {
+                        stopBtn.textContent = 'Stop';
+                        stopBtn.className = 'server-btn stop-btn';
+                        stopBtn.id = `stop-btn-${windowId}`;
+                        
+                        // Clone to remove old listener
+                        const newStopBtn = stopBtn.cloneNode(true);
+                        stopBtn.parentNode.replaceChild(newStopBtn, stopBtn);
+                        
+                        newStopBtn.addEventListener('click', () => {
+                            this.updateServerStatus(windowId, 'terminating');
                             this.stopServer(result.process_id, windowId, modelPath, modelName);
                         });
                     }
 
                     // Add restart message to output
-                    const outputDiv = window.querySelector(`[id^="server-output-"]`);
+                    const outputDiv = document.getElementById(`server-output-${windowId}`);
                     if (outputDiv) {
                         const separator = document.createElement('div');
                         separator.className = 'server-line server-separator';
+                        separator.style.borderTop = '1px dashed rgba(255,255,255,0.2)';
+                        separator.style.margin = '10px 0';
+                        separator.style.padding = '5px 0';
                         separator.textContent = '--- Restarting Server ---';
                         outputDiv.appendChild(separator);
 
                         const restartDiv = document.createElement('div');
                         restartDiv.className = 'server-line server-system';
-                        restartDiv.textContent = `Restarting ${modelName}...`;
+                        restartDiv.textContent = `[${new Date().toLocaleTimeString()}] Restarting ${modelName}...`;
                         outputDiv.appendChild(restartDiv);
 
                         const processDiv = document.createElement('div');
                         processDiv.className = 'server-line server-system';
                         processDiv.textContent = `New Process ID: ${result.process_id}`;
                         outputDiv.appendChild(processDiv);
-
-                        const serverDiv = document.createElement('div');
-                        serverDiv.className = 'server-line server-system';
-                        serverDiv.textContent = `Server: ${result.server_host}:${result.server_port}`;
-                        outputDiv.appendChild(serverDiv);
 
                         outputDiv.scrollTop = outputDiv.scrollHeight;
                     }
@@ -622,34 +609,26 @@ class TerminalManager {
                 
                 // Set up health check after restart
                 setTimeout(() => {
-                    console.log('Running server health check after restart...');
                     this.checkServerHealth(windowId, result.server_host, result.server_port, modelName);
-                    
-                    // Also refresh the chat iframe after health check to ensure it connects to the new server
-                    setTimeout(() => {
-                        const chatPanel = document.getElementById(`panel-chat-${windowId}`);
-                        if (chatPanel) {
-                            const iframe = chatPanel.querySelector('iframe');
-                            if (iframe) {
-                                console.log('Refreshing chat iframe after health check');
-                                // Force reload the iframe by setting src again
-                                const currentSrc = iframe.src;
-                                iframe.src = 'about:blank';
-                                setTimeout(() => {
-                                    iframe.src = currentSrc;
-                                }, 100);
-                            }
-                        }
-                    }, 1000); // Wait 1 second after health check
                 }, 3000);
                 
-                // this.desktop.showNotification(`${modelName} restarted`, 'success');
             } else {
-                throw new Error(result.error || 'Failed to launch model');
+                throw new Error(result?.error || 'Failed to launch model');
             }
         } catch (error) {
-            console.error('Error restarting server:', error);
-            // this.desktop.showNotification(`Failed to restart ${modelName}: ${error.message}`, 'error');
+            console.error('❌ [START ERROR] Error starting server:', error);
+            this.updateServerStatus(windowId, 'stopped');
+            
+            // Add error message to output
+            const outputDiv = document.getElementById(`server-output-${windowId}`);
+            if (outputDiv) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'server-line server-error';
+                errorDiv.style.color = '#f44336';
+                errorDiv.textContent = `Error starting server: ${error.message || error}`;
+                outputDiv.appendChild(errorDiv);
+                outputDiv.scrollTop = outputDiv.scrollHeight;
+            }
         }
     }
 
@@ -662,6 +641,12 @@ class TerminalManager {
             console.warn(`No terminal info found for window ${windowId}`);
             console.log(`🆕 [NEW SERVER START] No existing terminal, starting fresh server for ${modelName}`);
             return this.startServer(windowId, modelPath, modelName);
+        }
+
+        // Guard against multiple simultaneous restart attempts
+        if (terminalInfo.status === 'starting' || terminalInfo.status === 'terminating') {
+            console.log(`ℹ️ [RESTART GUARD] Server is already ${terminalInfo.status}, ignoring restart request`);
+            return;
         }
 
         try {

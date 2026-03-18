@@ -541,13 +541,14 @@ pub async fn terminate_process(
         }
     }
     
-    // Update process status and remove from tracking
+    // Update process status - do NOT remove from tracking immediately
+    // This allows the frontend to fetch the remaining logs before the entry is gone
     {
         let mut processes = state.running_processes.lock().await;
         if let Some(process_info) = processes.get_mut(&process_id) {
             process_info.status = ProcessStatus::Stopped;
+            process_info.output.push("--- Process terminated by user ---".to_string());
         }
-        processes.remove(&process_id);
     }
     
     Ok(())
