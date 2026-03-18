@@ -63,7 +63,7 @@ class TerminalManager {
                         <div class="server-output" id="server-output-${windowId}"><div class="server-line server-system">Starting ${modelName}...</div><div class="server-line server-system">Process ID: ${processId}</div><div class="server-line server-system">Server will be available at: ${host}:${port}</span></div><div class="server-line server-system">Waiting for server output...</div></div>
                     </div>
                     <div class="server-tab-panel" id="panel-chat-${windowId}" style="background: white;">
-                        <iframe src="http://${host}:${port}" frameBorder="0" style="width: 100%; height: 100%; border: none;"></iframe>
+                        <iframe src="http://${host}:${port}" frameBorder="0" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write"></iframe>
                     </div>
                 </div>
             </div>
@@ -738,7 +738,7 @@ class TerminalManager {
         // We use an iframe that takes up the full window content and ensure it has white background
         const content = `
             <div style="width: 100%; height: 100%; display: flex; flex-direction: column; background: white;">
-                <iframe src="${url}" frameBorder="0" style="flex: 1; border: none; width: 100%; height: 100%;"></iframe>
+                <iframe src="${url}" frameBorder="0" style="flex: 1; border: none; width: 100%; height: 100%;" allow="clipboard-read; clipboard-write"></iframe>
             </div>
         `;
 
@@ -1018,7 +1018,7 @@ class TerminalManager {
                         </div>
                     </div>
                     <div class="server-tab-panel" id="panel-chat-${windowId}" style="background: white;">
-                        <iframe src="http://${terminalData.host}:${terminalData.port}" frameBorder="0" style="width: 100%; height: 100%; border: none;"></iframe>
+                        <iframe src="http://${terminalData.host}:${terminalData.port}" frameBorder="0" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write"></iframe>
                     </div>
                 </div>
             </div>
