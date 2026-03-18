@@ -3768,7 +3768,7 @@ class DesktopManager {
         // Load settings configuration
         const settingsConfig = await this.loadSettingsConfig();
 
-        // Create argument to setting mapping (including aliases) - ensure comprehensive mapping
+        // Create argument to setting mapping (including aliases and argumentMap keys)
         const argToSetting = {};
         settingsConfig.forEach(setting => {
             // Map the main argument
@@ -3778,6 +3778,13 @@ class DesktopManager {
             if (setting.aliases && Array.isArray(setting.aliases)) {
                 setting.aliases.forEach(alias => {
                     argToSetting[alias] = setting;
+                });
+            }
+
+            // Map all keys from argumentMap if it exists (the CLI arguments themselves)
+            if (setting.argumentMap) {
+                Object.keys(setting.argumentMap).forEach(arg => {
+                    argToSetting[arg] = setting;
                 });
             }
         });
@@ -3800,7 +3807,23 @@ class DesktopManager {
             }
 
             if (settingConfig) {
-                if (settingConfig.isFlag || settingConfig.type === 'toggle') {
+                // Check if this setting uses argumentMap
+                if (settingConfig.argumentMap) {
+                    // For argumentMap, check if this argument is a key in argumentMap
+                    if (settingConfig.argumentMap[arg]) {
+                        // Get the internal value (on/off) from argumentMap
+                        const internalValue = settingConfig.argumentMap[arg];
+                        // Find the canonical CLI argument for this internal value
+                        // The canonical is the one that starts with "--" (not short form "-")
+                        const canonicalArg = Object.keys(settingConfig.argumentMap).find(key => 
+                            settingConfig.argumentMap[key] === internalValue && key.startsWith('--')
+                        ) || Object.keys(settingConfig.argumentMap).find(key => 
+                            settingConfig.argumentMap[key] === internalValue
+                        );
+                        settings[settingConfig.id] = canonicalArg || arg;
+                        settings[settingConfig.id + '_enabled'] = true;
+                    }
+                } else if (settingConfig.isFlag || settingConfig.type === 'toggle') {
                     settings[settingConfig.id] = true;
                     settings[settingConfig.id + '_enabled'] = true;
                 } else {
@@ -3958,7 +3981,24 @@ class DesktopManager {
             const aliases = await this.getSettingAliases(settingConfig);
 
             if (isEnabled) {
-                if (settingConfig.isFlag || settingConfig.type === 'toggle') {
+                // Check if this setting uses argumentMap (dynamic argument based on value)
+                if (settingConfig.argumentMap) {
+                    // For argumentMap, the option values are the CLI arguments themselves
+                    // So we use the value directly as the argument
+                    const selectedArg = value;
+                    if (selectedArg) {
+                        // Get all possible arguments from the map for removal purposes
+                        const mapKeys = Object.keys(settingConfig.argumentMap);
+                        // Add the selected argument
+                        result = await this.replaceOrAddArgument(result, selectedArg, true, true, []);
+                        // Remove other arguments from the map (only keep the selected one)
+                        for (const argToRemove of mapKeys) {
+                            if (argToRemove !== selectedArg) {
+                                result = await this.replaceOrAddArgument(result, argToRemove, false, true, []);
+                            }
+                        }
+                    }
+                } else if (settingConfig.isFlag || settingConfig.type === 'toggle') {
                     // For flags and toggles, just add the argument (no value needed)
                     result = await this.replaceOrAddArgument(result, settingConfig.argument, true, true, aliases);
                 } else {
@@ -3977,8 +4017,17 @@ class DesktopManager {
                 }
             } else {
                 // Remove the argument if it's disabled
-                const isFlag = settingConfig.isFlag || settingConfig.type === 'toggle';
-                result = await this.replaceOrAddArgument(result, settingConfig.argument, false, isFlag, aliases);
+                // Check if this setting uses argumentMap
+                if (settingConfig.argumentMap) {
+                    // Remove all arguments in the map keys
+                    const mapKeys = Object.keys(settingConfig.argumentMap);
+                    for (const argToRemove of mapKeys) {
+                        result = await this.replaceOrAddArgument(result, argToRemove, false, true, []);
+                    }
+                } else {
+                    const isFlag = settingConfig.isFlag || settingConfig.type === 'toggle';
+                    result = await this.replaceOrAddArgument(result, settingConfig.argument, false, isFlag, aliases);
+                }
             }
         }
 

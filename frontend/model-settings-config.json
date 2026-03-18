@@ -173,13 +173,24 @@
     {
       "id": "continuous_batching",
       "name": "Continuous Batching",
-      "type": "toggle",
-      "argument": "-cb",
-      "aliases": [
-        "--cont-batching"
+      "type": "select",
+      "argumentMap": {
+        "-cb": "on",
+        "--cont-batching": "on",
+        "-nocb": "off",
+        "--no-cont-batching": "off"
+      },
+      "options": [
+        {
+          "value": "--cont-batching",
+          "label": "On"
+        },
+        {
+          "value": "--no-cont-batching",
+          "label": "Off"
+        }
       ],
-      "isFlag": true,
-      "default": true,
+      "default": "--cont-batching",
       "category": "Context",
       "description": "Whether to enable continuous batching (a.k.a dynamic batching) (default: enabled)"
     },
@@ -199,6 +210,28 @@
       "unit": "MiB",
       "category": "Context",
       "description": "Set the maximum cache size in MiB (default: 8192, -1 - no limit, 0 - disable)"
+    },
+    {
+      "id": "cache_prompt",
+      "name": "Prompt Caching",
+      "type": "select",
+      "argumentMap": {
+        "--cache-prompt": "on",
+        "--no-cache-prompt": "off"
+      },
+      "options": [
+        {
+          "value": "--cache-prompt",
+          "label": "On"
+        },
+        {
+          "value": "--no-cache-prompt",
+          "label": "Off"
+        }
+      ],
+      "default": "--cache-prompt",
+      "category": "Context",
+      "description": "Cache the prompt for subsequent requests (default: enabled)"
     },
     {
       "id": "keep_tokens",
@@ -244,10 +277,24 @@
     {
       "id": "kv_unified",
       "name": "KV Unified",
-      "type": "toggle",
-      "argument": "--kv-unified",
-      "isFlag": true,
-      "default": true,
+      "type": "select",
+      "argumentMap": {
+        "-kvu": "on",
+        "--kv-unified": "on",
+        "-no-kvu": "off",
+        "--no-kv-unified": "off"
+      },
+      "options": [
+        {
+          "value": "--kv-unified",
+          "label": "On"
+        },
+        {
+          "value": "--no-kv-unified",
+          "label": "Off"
+        }
+      ],
+      "default": "--kv-unified",
       "category": "Context",
       "description": "Use single unified KV buffer shared across all sequences (default: enabled if number of slots is auto)"
     },
@@ -292,10 +339,22 @@
     {
       "id": "context_shift",
       "name": "Context Shift",
-      "type": "toggle",
-      "argument": "--context-shift",
-      "isFlag": true,
-      "default": false,
+      "type": "select",
+      "argumentMap": {
+        "--context-shift": "on",
+        "--no-context-shift": "off"
+      },
+      "options": [
+        {
+          "value": "--context-shift",
+          "label": "On"
+        },
+        {
+          "value": "--no-context-shift",
+          "label": "Off"
+        }
+      ],
+      "default": "--no-context-shift",
       "category": "Context",
       "description": "Whether to use context shift on infinite text generation (default: disabled)"
     },
@@ -765,10 +824,23 @@
     {
       "id": "escape",
       "name": "Process Escape Sequences",
-      "type": "toggle",
-      "argument": "--escape",
-      "isFlag": true,
-      "default": true,
+      "type": "select",
+      "argumentMap": {
+        "-e": "on",
+        "--escape": "on",
+        "--no-escape": "off"
+      },
+      "options": [
+        {
+          "value": "--escape",
+          "label": "On"
+        },
+        {
+          "value": "--no-escape",
+          "label": "Off"
+        }
+      ],
+      "default": "--escape",
       "category": "Generation",
       "description": "Whether to process escapes sequences (\\n, \\r, \\t, \\', \\\", \\\\) (default: true)"
     },
@@ -945,20 +1017,47 @@
     {
       "id": "offload_kv_cache",
       "name": "KV Cache Offload",
-      "type": "toggle",
-      "argument": "--kv-offload",
-      "isFlag": true,
-      "default": true,
+      "type": "select",
+      "argumentMap": {
+        "--kv-offload": "on",
+        "--kv-no-offload": "off",
+        "-kvo": "on",
+        "-nkvo": "off",
+        "--no-kv-offload": "off"
+      },
+      "options": [
+        {
+          "value": "--kv-offload",
+          "label": "On"
+        },
+        {
+          "value": "--kv-no-offload",
+          "label": "Off"
+        }
+      ],
+      "default": "--kv-offload",
       "category": "Hardware",
       "description": "Whether to enable KV cache offloading (default: enabled)"
     },
     {
       "id": "op_offload",
       "name": "Operation Offload",
-      "type": "toggle",
-      "argument": "--op-offload",
-      "isFlag": true,
-      "default": true,
+      "type": "select",
+      "argumentMap": {
+        "--op-offload": "on",
+        "--no-op-offload": "off"
+      },
+      "options": [
+        {
+          "value": "--op-offload",
+          "label": "On"
+        },
+        {
+          "value": "--no-op-offload",
+          "label": "Off"
+        }
+      ],
+      "default": "--op-offload",
       "category": "Hardware",
       "description": "Whether to offload host tensor operations to device (default: true)"
     },
@@ -975,10 +1074,22 @@
     {
       "id": "mmap",
       "name": "Memory Map",
-      "type": "toggle",
-      "argument": "--mmap",
-      "isFlag": true,
-      "default": true,
+      "type": "select",
+      "argumentMap": {
+        "--mmap": "on",
+        "--no-mmap": "off"
+      },
+      "options": [
+        {
+          "value": "--mmap",
+          "label": "On"
+        },
+        {
+          "value": "--no-mmap",
+          "label": "Off"
+        }
+      ],
+      "default": "--mmap",
       "category": "Hardware",
       "description": "Whether to memory-map model (default: enabled)"
     },
@@ -1013,12 +1124,48 @@
     {
       "id": "warmup",
       "name": "Warmup",
-      "type": "toggle",
-      "argument": "--warmup",
-      "isFlag": true,
-      "default": true,
+      "type": "select",
+      "argumentMap": {
+        "--warmup": "on",
+        "--no-warmup": "off"
+      },
+      "options": [
+        {
+          "value": "--warmup",
+          "label": "On"
+        },
+        {
+          "value": "--no-warmup",
+          "label": "Off"
+        }
+      ],
+      "default": "--warmup",
       "category": "Hardware",
       "description": "Whether to perform warmup with an empty run (default: enabled)"
+    },
+    {
+      "id": "direct_io",
+      "name": "Direct I/O",
+      "type": "select",
+      "argumentMap": {
+        "-dio": "on",
+        "--direct-io": "on",
+        "-ndio": "off",
+        "--no-direct-io": "off"
+      },
+      "options": [
+        {
+          "value": "--direct-io",
+          "label": "On"
+        },
+        {
+          "value": "--no-direct-io",
+          "label": "Off"
+        }
+      ],
+      "default": "--direct-io",
+      "category": "Hardware",
+      "description": "Use direct I/O for file access (default: enabled)"
     },
     {
       "id": "cpu_strict",
@@ -1081,10 +1228,23 @@
     {
       "id": "repack",
       "name": "Weight Repacking",
-      "type": "toggle",
-      "argument": "--repack",
-      "isFlag": true,
-      "default": true,
+      "type": "select",
+      "argumentMap": {
+        "--repack": "on",
+        "-nr": "off",
+        "--no-repack": "off"
+      },
+      "options": [
+        {
+          "value": "--repack",
+          "label": "On"
+        },
+        {
+          "value": "--no-repack",
+          "label": "Off"
+        }
+      ],
+      "default": "--repack",
       "category": "Hardware",
       "description": "Whether to enable weight repacking (default: enabled)"
     },
@@ -1815,10 +1975,22 @@
     {
       "id": "perf",
       "name": "Performance Timings",
-      "type": "toggle",
-      "argument": "--perf",
-      "isFlag": true,
-      "default": false,
+      "type": "select",
+      "argumentMap": {
+        "--perf": "on",
+        "--no-perf": "off"
+      },
+      "options": [
+        {
+          "value": "--perf",
+          "label": "On"
+        },
+        {
+          "value": "--no-perf",
+          "label": "Off"
+        }
+      ],
+      "default": "--no-perf",
       "category": "System",
       "description": "Whether to enable internal libllama performance timings (default: false)"
     },

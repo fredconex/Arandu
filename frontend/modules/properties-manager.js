@@ -1325,6 +1325,13 @@ class PropertiesManager {
             if (parsedSettings[settingId] === undefined || parsedSettings[settingId] === null) {
                 if (setting.isFlag || setting.type === 'toggle') {
                     parsedSettings[settingId] = true;
+                } else if (setting.type === 'select' && setting.argumentMap) {
+                    // For select settings with argumentMap, use the first option's value
+                    if (setting.options && setting.options.length > 0) {
+                        parsedSettings[settingId] = setting.options[0].value;
+                    } else {
+                        parsedSettings[settingId] = setting.default !== undefined ? setting.default : '';
+                    }
                 } else if (setting.type === 'model-select') {
                     parsedSettings[settingId] = ''; // Keep it empty, but we'll fix settingsToArguments to allow it
                 } else {
@@ -1557,6 +1564,13 @@ class PropertiesManager {
                     argToSetting[alias] = s;
                 });
             }
+
+            // Map all keys from argumentMap if it exists (the CLI arguments themselves)
+            if (s.argumentMap) {
+                Object.keys(s.argumentMap).forEach(arg => {
+                    argToSetting[arg] = s;
+                });
+            }
         });
 
         for (let i = 0; i < args.length; i++) {
@@ -1574,8 +1588,28 @@ class PropertiesManager {
                     value = val;
                 }
             } else if (setting) {
-                // Check if flag
-                if (setting.isFlag || setting.type === 'toggle') {
+                // Check if this setting uses argumentMap (e.g., --kv-offload vs --kv-no-offload)
+                if (setting.argumentMap) {
+                    // For argumentMap, check if this argument is a key in argumentMap
+                    if (setting.argumentMap[arg]) {
+                        // Get the internal value (on/off) from argumentMap
+                        const internalValue = setting.argumentMap[arg];
+                        // Find the canonical CLI argument for this internal value
+                        // The canonical is the one that starts with "--" (not short form "-")
+                        const canonicalArg = Object.keys(setting.argumentMap).find(key => 
+                            setting.argumentMap[key] === internalValue && key.startsWith('--')
+                        ) || Object.keys(setting.argumentMap).find(key => 
+                            setting.argumentMap[key] === internalValue
+                        );
+                        // Look up the display label from options using canonical arg
+                        if (setting.options && Array.isArray(setting.options)) {
+                            const option = setting.options.find(opt => opt.value === canonicalArg);
+                            value = option ? option.label : arg;
+                        } else {
+                            value = canonicalArg || arg;
+                        }
+                    }
+                } else if (setting.isFlag || setting.type === 'toggle') {
                     value = 'On';
                 } else {
                     // Next arg is value
