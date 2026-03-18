@@ -605,6 +605,11 @@
     border-color: var(--theme-error);
 }
 
+.model-card-action-tab .action-btn.tag:hover {
+    background: var(--theme-secondary);
+    border-color: var(--theme-secondary);
+}
+
 /* Context menu disabled state */
 .context-menu-item.disabled {
     opacity: 0.4;

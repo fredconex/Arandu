@@ -1414,6 +1414,101 @@ class DesktopManager {
         this.showArchitectureFolderView(arch);
     }
 
+    getModelColor(modelPath) {
+        try {
+            const colors = JSON.parse(localStorage.getItem('model_colors') || '{}');
+            return colors[modelPath];
+        } catch (e) {
+            console.error('Error reading model colors:', e);
+            return null;
+        }
+    }
+
+    setModelColor(modelPath, color) {
+        try {
+            const colors = JSON.parse(localStorage.getItem('model_colors') || '{}');
+            if (color) {
+                colors[modelPath] = color;
+            } else {
+                delete colors[modelPath];
+            }
+            localStorage.setItem('model_colors', JSON.stringify(colors));
+            
+            // Refresh the current view to show changes
+            const folderTitle = document.getElementById('search-folder-title');
+            if (folderTitle) {
+                const title = folderTitle.textContent;
+                this.refreshFolderViewIfOpen();
+            }
+        } catch (e) {
+            console.error('Error saving model color:', e);
+        }
+    }
+
+    showModelColorPicker(modelPath, buttonElement) {
+        // Remove existing picker if any
+        const existing = document.querySelector('.color-picker-popup');
+        if (existing) existing.remove();
+
+        const picker = document.createElement('div');
+        picker.className = 'color-picker-popup';
+        
+        const colors = [
+            { name: 'Red', value: '#ef5350' },
+            { name: 'Pink', value: '#e91e63' },
+            { name: 'Purple', value: '#9c27b0' },
+            { name: 'Deep Purple', value: '#673ab7' },
+            { name: 'Indigo', value: '#3f51b5' },
+            { name: 'Blue', value: '#2196f3' },
+            { name: 'Cyan', value: '#00bcd4' },
+            { name: 'Teal', value: '#009688' },
+            { name: 'Green', value: '#4caf50' },
+            { name: 'Lime', value: '#cddc39' },
+            { name: 'Yellow', value: '#ffeb3b' },
+            { name: 'Amber', value: '#ffc107' },
+            { name: 'Orange', value: '#ff9800' },
+            { name: 'Deep Orange', value: '#ff5722' },
+            { name: 'Brown', value: '#795548' },
+            { name: 'Gray', value: '#9e9e9e' },
+            { name: 'Blue Gray', value: '#607d8b' },
+            { name: 'None', value: '' }
+        ];
+
+        colors.forEach(c => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            if (c.value) {
+                swatch.style.backgroundColor = c.value;
+            } else {
+                swatch.classList.add('no-color');
+                swatch.textContent = 'X';
+            }
+            swatch.title = c.name;
+            swatch.onclick = (e) => {
+                e.stopPropagation();
+                this.setModelColor(modelPath, c.value);
+                picker.remove();
+            };
+            picker.appendChild(swatch);
+        });
+
+        // Close when clicking outside
+        const closeHandler = (e) => {
+            if (!picker.contains(e.target) && e.target !== buttonElement) {
+                picker.remove();
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeHandler), 0);
+
+        // Position
+        const rect = buttonElement.getBoundingClientRect();
+        picker.style.top = `${rect.bottom + 5}px`;
+        picker.style.left = `${rect.left}px`;
+        
+        document.body.appendChild(picker);
+    }
+
     async showArchitectureFolderView(arch, openWithSearchHistory = false) {
         // Close downloads folder view if open
         if (window.downloadManager) {
@@ -1484,12 +1579,19 @@ class DesktopManager {
                     ? `<span class="model-card-general-name">${modelName}</span>` 
                     : '';
 
+                // Get model color
+                const color = this.getModelColor(model.path);
+                const tagStyle = color ? `border-left: 4px solid ${color};` : '';
+
                 // Action buttons HTML based on model type
                 let actionButtonsHTML = '';
                 if (isClipModel) {
                     // Reduced options for CLIP/faint models - no divider needed
                     actionButtonsHTML = `
                         <div class="action-buttons-right no-divider">
+                            <button class="action-btn tag" data-action="tag" title="Tag with color">
+                                <span class="material-icons">label</span>
+                            </button>
                             <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
                                 <span class="material-icons">folder</span>
                             </button>
@@ -1513,6 +1615,9 @@ class DesktopManager {
                             </button>
                         </div>
                         <div class="action-buttons-right">
+                            <button class="action-btn tag" data-action="tag" title="Tag with color">
+                                <span class="material-icons">label</span>
+                            </button>
                             <button class="action-btn open-folder" data-action="open-folder" title="Open Folder">
                                 <span class="material-icons">folder</span>
                             </button>
@@ -1549,7 +1654,7 @@ class DesktopManager {
                         <div class="model-card-action-tab">
                             ${actionButtonsHTML}
                         </div>
-                        <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
+                        <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}" style="${tagStyle}">
                             <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
                         </button>
                     </div>
@@ -1643,6 +1748,8 @@ class DesktopManager {
                         this.deleteModelFile(tempIcon);
                     } else if (action === 'open-folder') {
                         this.openModelFolder(tempIcon);
+                    } else if (action === 'tag') {
+                        this.showModelColorPicker(card.dataset.path, actionBtn);
                     }
                     return;
                 }
@@ -2163,6 +2270,10 @@ class DesktopManager {
                     `;
                 }
 
+                // Get model color
+                const color = this.getModelColor(model.path);
+                const tagStyle = color ? `border-left: 4px solid ${color};` : '';
+
                 return `
                     <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
@@ -2189,7 +2300,7 @@ class DesktopManager {
                                     </span>
                                 </div>
                             </div>
-                            <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}">
+                            <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}" style="${tagStyle}">
                                 <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
                             </button>
                         </div>
