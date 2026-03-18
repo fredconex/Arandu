@@ -1597,6 +1597,24 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // This callback is called when a second instance is launched
+            // We need to bring the existing window to the foreground
+            println!("Second instance detected, bringing existing window to front");
+            
+            if let Some(window) = app.get_webview_window("main") {
+                // Show the window if it's hidden
+                window.show().ok();
+                
+                // Unminimize if minimized
+                if window.is_minimized().unwrap_or(false) {
+                    window.unminimize().ok();
+                }
+                
+                // Bring to front and focus
+                window.set_focus().ok();
+            }
+        }))
         .setup(|app| {
             // Initialize app state
             let rt = tokio::runtime::Runtime::new().unwrap();
