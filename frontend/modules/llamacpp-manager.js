@@ -133,11 +133,24 @@ class LlamaCppReleasesManager {
                 return aBackend.localeCompare(bBackend);
             });
             
+            const color = this.getReleaseColor(baseName);
+            const style = color ? `border-left: 4px solid ${color};` : '';
+
             return `
-                <div class="version-group">
+                <div class="version-group" style="${style}">
                     <div class="version-group-header">
-                        <h4>${baseName}</h4>
-                        <span class="version-count">${groupVersions.length} backend${groupVersions.length !== 1 ? 's' : ''}</span>
+                        <div class="version-group-title">
+                            <h4>${baseName}</h4>
+                            <span class="version-count">${groupVersions.length} backend${groupVersions.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="version-group-actions">
+                            <button 
+                                class="installed-tag" 
+                                onclick="llamacppReleasesManager.showColorPicker('${baseName}', this)"
+                                title="Tag release with color">
+                                <span class="material-icons">label</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="backend-list">
                         ${groupVersions.map(v => {
@@ -203,6 +216,96 @@ class LlamaCppReleasesManager {
             <div class="installed-list">${rows}</div>
         `;
     }
+
+    getReleaseColor(baseName) {
+        try {
+            const colors = JSON.parse(localStorage.getItem('llamacpp_release_colors') || '{}');
+            return colors[baseName];
+        } catch (e) {
+            console.error('Error reading release colors:', e);
+            return null;
+        }
+    }
+
+    setReleaseColor(baseName, color) {
+        try {
+            const colors = JSON.parse(localStorage.getItem('llamacpp_release_colors') || '{}');
+            if (color) {
+                colors[baseName] = color;
+            } else {
+                delete colors[baseName];
+            }
+            localStorage.setItem('llamacpp_release_colors', JSON.stringify(colors));
+            this.loadInstalledVersions(); // Re-render to show change
+        } catch (e) {
+            console.error('Error saving release color:', e);
+        }
+    }
+
+    showColorPicker(baseName, buttonElement) {
+        // Remove existing picker if any
+        const existing = document.querySelector('.color-picker-popup');
+        if (existing) existing.remove();
+
+        const picker = document.createElement('div');
+        picker.className = 'color-picker-popup';
+        
+        const colors = [
+            { name: 'Red', value: '#ef5350' },
+            { name: 'Pink', value: '#e91e63' },
+            { name: 'Purple', value: '#9c27b0' },
+            { name: 'Deep Purple', value: '#673ab7' },
+            { name: 'Indigo', value: '#3f51b5' },
+            { name: 'Blue', value: '#2196f3' },
+            { name: 'Cyan', value: '#00bcd4' },
+            { name: 'Teal', value: '#009688' },
+            { name: 'Green', value: '#4caf50' },
+            { name: 'Lime', value: '#cddc39' },
+            { name: 'Yellow', value: '#ffeb3b' },
+            { name: 'Amber', value: '#ffc107' },
+            { name: 'Orange', value: '#ff9800' },
+            { name: 'Deep Orange', value: '#ff5722' },
+            { name: 'Brown', value: '#795548' },
+            { name: 'Gray', value: '#9e9e9e' },
+            { name: 'Blue Gray', value: '#607d8b' },
+            { name: 'None', value: '' }
+        ];
+
+        colors.forEach(c => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            if (c.value) {
+                swatch.style.backgroundColor = c.value;
+            } else {
+                swatch.classList.add('no-color');
+                swatch.textContent = 'X';
+            }
+            swatch.title = c.name;
+            swatch.onclick = (e) => {
+                e.stopPropagation();
+                this.setReleaseColor(baseName, c.value);
+                picker.remove();
+            };
+            picker.appendChild(swatch);
+        });
+
+        // Close when clicking outside
+        const closeHandler = (e) => {
+            if (!picker.contains(e.target) && e.target !== buttonElement) {
+                picker.remove();
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeHandler), 0);
+
+        // Position
+        const rect = buttonElement.getBoundingClientRect();
+        picker.style.top = `${rect.bottom + 5}px`;
+        picker.style.left = `${rect.left}px`;
+        
+        document.body.appendChild(picker);
+    }
+
 
     getBackendDisplayName(backendType) {
         const displayNames = {

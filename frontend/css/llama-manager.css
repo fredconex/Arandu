@@ -724,6 +724,38 @@
     border-bottom: 1px solid var(--theme-border);
 }
 
+.version-group-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.version-group-actions {
+    display: flex;
+    align-items: center;
+}
+
+.version-group-actions .installed-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 4px;
+    border: 1px solid var(--theme-border);
+    background: var(--theme-surface);
+    color: var(--theme-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.version-group-actions .installed-tag:hover {
+    background: var(--theme-primary);
+    color: white;
+    border-color: var(--theme-primary);
+}
+
 .version-group-header h4 {
     margin: 0;
     font-size: 16px;
@@ -866,4 +898,44 @@
     .backend-actions-right {
         flex-wrap: wrap;
     }
+}
+
+.color-picker-popup {
+    position: absolute;
+    background: rgba(30, 32, 40, 0.6); /* More transparent for glass effect */
+    backdrop-filter: blur(4px);       /* Stronger blur for 'frosted' look */
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.15); /* Subtle white border */
+    border-radius: 10px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); /* Deep shadow for depth */
+    z-index: 10000;
+}
+
+.color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.2s;
+}
+
+.color-swatch:hover {
+    transform: scale(1.1);
+    border-color: var(--theme-text);
+}
+
+.color-swatch.no-color {
+    background: transparent;
+    border: 2px solid var(--theme-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--theme-text-muted);
+    font-size: 14px;
+    font-weight: bold;
 }
