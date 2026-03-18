@@ -1928,14 +1928,25 @@ class PropertiesManager {
         const currentValue = parsedSettings[setting.id] || setting.default || '';
 
         if (setting.type === 'slider') {
+            // Use normalized slider range to handle non-divisible min/max/step combinations
+            // For example: min=1, max=8192, step=256 -> 32 steps (0-32) 
+            // Values will be: 0, 256, 512, 768, ..., 8192 (multiples of step)
+            const sliderMin = setting.min || 0;
+            const sliderMax = setting.max || 100;
+            const sliderStep = setting.step || 1;
+            const numSteps = Math.ceil(sliderMax / sliderStep);
+            // Convert current value to normalized: position = value / step
+            const normalizedValue = currentValue ? Math.round(currentValue / sliderStep) : 0;
+            
             controlsHTML = `
                 <div class="popover-content">
                     <span class="value-display" contenteditable="true" data-setting-id="${setting.id}">${currentValue}</span>
                     <input type="range" class="setting-slider" data-setting="${setting.id}"
-                           min="${setting.min || 0}" max="${setting.max || 100}" step="${setting.step || 1}" value="${currentValue}">
+                           min="0" max="${numSteps}" step="1" value="${normalizedValue}"
+                           data-slider-min="${sliderMin}" data-slider-step="${sliderStep}" data-slider-max="${sliderMax}">
                     <div class="slider-labels">
-                        <span>${setting.min || 0}</span>
-                        <span>${(setting.max || 100) > 1000 ? Math.round((setting.max || 100) / 1000) + 'K' : (setting.max || 100)}</span>
+                        <span>${sliderMin}</span>
+                        <span>${sliderMax > 1000 ? Math.round(sliderMax / 1000) + 'K' : sliderMax}</span>
                     </div>
                 </div>
             `;
@@ -2071,13 +2082,26 @@ class PropertiesManager {
             const eventType = input.tagName.toLowerCase() === 'select' ? 'change' : 'input';
 
             input.addEventListener(eventType, async (e) => {
-                // Update value display
+                // Update value display and convert normalized value back to actual value
                 if (input.type === 'range') {
                     const display = popover.querySelector('.value-display');
-                    if (display) display.textContent = input.value;
+                    const sliderMin = parseFloat(input.dataset.sliderMin) || 0;
+                    const sliderStep = parseFloat(input.dataset.sliderStep) || 1;
+                    const sliderMax = parseFloat(input.dataset.sliderMax) || (sliderMin + (parseInt(input.max) * sliderStep));
+                    const normalizedValue = parseFloat(input.value);
+                    // Calculate actual value: multiply normalized position by step
+                    // This gives multiples of step: 0, 256, 512, 768, 1024...
+                    let actualValue = normalizedValue * sliderStep;
+                    // Clamp to max
+                    actualValue = Math.min(actualValue, sliderMax);
+                    // Also ensure we don't go below min
+                    actualValue = Math.max(actualValue, sliderMin);
+                    if (display) display.textContent = actualValue;
+                    
+                    await this.updateSettingValue(setting.id, actualValue);
+                } else {
+                    await this.updateSettingValue(setting.id, input.value || input.checked);
                 }
-
-                await this.updateSettingValue(setting.id, input.value || input.checked);
 
                 // Close popover after selecting from dropdown
                 if (input.tagName.toLowerCase() === 'select') {
@@ -2122,11 +2146,21 @@ class PropertiesManager {
         const valueDisplays = popover.querySelectorAll('.value-display[contenteditable="true"]');
         valueDisplays.forEach(display => {
             display.addEventListener('blur', async (e) => {
-                const newValue = e.target.textContent;
+                const newValue = parseFloat(e.target.textContent);
                 const rangeInput = popover.querySelector('input[type="range"]');
                 if (rangeInput) {
-                    rangeInput.value = newValue;
-                    await this.updateSettingValue(setting.id, newValue);
+                    // Get slider bounds
+                    const sliderMin = parseFloat(rangeInput.dataset.sliderMin) || 0;
+                    const sliderStep = parseFloat(rangeInput.dataset.sliderStep) || 1;
+                    const sliderMax = parseFloat(rangeInput.dataset.sliderMax) || (sliderMin + (parseInt(rangeInput.max) * sliderStep));
+                    
+                    // Clamp the value to valid range
+                    const clampedValue = Math.max(sliderMin, Math.min(newValue, sliderMax));
+                    
+                    // Convert to normalized value for the slider: position = value / step
+                    const normalizedValue = Math.round(clampedValue / sliderStep);
+                    rangeInput.value = normalizedValue;
+                    await this.updateSettingValue(setting.id, clampedValue);
                 }
             });
             display.addEventListener('keydown', async (e) => {
@@ -2136,11 +2170,21 @@ class PropertiesManager {
                     e.stopImmediatePropagation();
 
                     // Update the value first
-                    const newValue = e.target.textContent;
+                    const newValue = parseFloat(e.target.textContent);
                     const rangeInput = popover.querySelector('input[type="range"]');
                     if (rangeInput) {
-                        rangeInput.value = newValue;
-                        await this.updateSettingValue(setting.id, newValue);
+                        // Get slider bounds
+                        const sliderMin = parseFloat(rangeInput.dataset.sliderMin) || 0;
+                        const sliderStep = parseFloat(rangeInput.dataset.sliderStep) || 1;
+                        const sliderMax = parseFloat(rangeInput.dataset.sliderMax) || (sliderMin + (parseInt(rangeInput.max) * sliderStep));
+                        
+                        // Clamp the value to valid range
+                        const clampedValue = Math.max(sliderMin, Math.min(newValue, sliderMax));
+                        
+                        // Convert to normalized value for the slider: position = value / step
+                        const normalizedValue = Math.round(clampedValue / sliderStep);
+                        rangeInput.value = normalizedValue;
+                        await this.updateSettingValue(setting.id, clampedValue);
                     }
 
                     // Then close the popover
