@@ -16,6 +16,7 @@ class DesktopManager {
         this.folderSortType = null;
         this.folderSortDirection = 'asc';
         this.folderSortFavoritesFirst = true; // Toggle to keep favorites on top
+        this.hideSuppressedModels = true; // Hide CLIP models from All Models view by default
         this.isLoaded = false;
         this.sessionData = null; // Store session data for deferred restoration
         this.restorationInProgress = false; // Flag to prevent duplicate restoration
@@ -217,6 +218,7 @@ class DesktopManager {
         this.folderSortType = localStorage.getItem('folderSortType') || null;
         this.folderSortDirection = localStorage.getItem('folderSortDirection') || 'asc';
         this.folderSortFavoritesFirst = localStorage.getItem('folderSortFavoritesFirst') !== 'false';
+        this.hideSuppressedModels = localStorage.getItem('hideSuppressedModels') !== 'false'; // Load suppressed models preference
         
         // Load session state first to restore desktop settings
         await this.loadSessionState();
@@ -1433,7 +1435,15 @@ class DesktopManager {
             Object.values(this.modelsByArchitecture).forEach(m => {
                 // Avoid duplicates if 'All' was already in modelsByArchitecture
                 // (though we expect to filter it out or not have it)
-                models.push(...m);
+                // Filter out CLIP models if hideSuppressedModels is enabled
+                if (this.hideSuppressedModels) {
+                    m.filter(model => {
+                        const modelArch = (model.architecture || '').toLowerCase();
+                        return modelArch !== 'clip';
+                    }).forEach(model => models.push(model));
+                } else {
+                    models.push(...m);
+                }
             });
         } else {
             models = this.modelsByArchitecture[arch] || [];
@@ -1568,6 +1578,7 @@ class DesktopManager {
 
         // Update sort button states
         this.updateFolderSortButtons();
+        this.updateHideSuppressedButton();
 
         // Add click handlers for model cards
         folderGrid.querySelectorAll('.model-card').forEach(card => {
@@ -1849,8 +1860,19 @@ class DesktopManager {
                 e.stopPropagation();
                 const sortType = btn.dataset.sort;
                 const isFavoritesToggle = btn.dataset.action === 'toggle-favorites';
+                const isHideSuppressedToggle = btn.id === 'hide-suppressed-btn';
                 
-                if (isFavoritesToggle) {
+                if (isHideSuppressedToggle) {
+                    // Toggle hiding of suppressed (CLIP) models
+                    this.hideSuppressedModels = !this.hideSuppressedModels;
+                    localStorage.setItem('hideSuppressedModels', this.hideSuppressedModels);
+                    // Update button icon and refresh the view if showing All Models
+                    this.updateHideSuppressedButton();
+                    const folderTitle = document.getElementById('search-folder-title');
+                    if (folderTitle && folderTitle.textContent === 'Models') {
+                        this.showArchitectureFolderView('All');
+                    }
+                } else if (isFavoritesToggle) {
                     // Toggle favorites on top
                     this.folderSortFavoritesFirst = !this.folderSortFavoritesFirst;
                     localStorage.setItem('folderSortFavoritesFirst', this.folderSortFavoritesFirst);
@@ -2060,7 +2082,11 @@ class DesktopManager {
         const matchingModels = [];
         Object.keys(this.modelsByArchitecture).forEach(arch => {
             const archModels = this.modelsByArchitecture[arch];
-            archModels.forEach(model => {
+            // Filter out CLIP models if hideSuppressedModels is enabled
+            const filteredModels = this.hideSuppressedModels 
+                ? archModels.filter(model => (model.architecture || '').toLowerCase() !== 'clip')
+                : archModels;
+            filteredModels.forEach(model => {
                 const modelName = (model.name || '').toLowerCase();
                 const cleanModelName = modelName.replace(/[^a-z0-9]/g, '');
                 if (cleanModelName.includes(cleanTerm)) {
@@ -2196,6 +2222,7 @@ class DesktopManager {
 
         // Update sort button states
         this.updateFolderSortButtons();
+        this.updateHideSuppressedButton();
 
         // Add click handlers for model cards
         folderGrid.querySelectorAll('.model-card').forEach(card => {
@@ -2897,6 +2924,7 @@ class DesktopManager {
         sortButtons.forEach(btn => {
             const sortType = btn.dataset.sort;
             const isFavoritesToggle = btn.dataset.action === 'toggle-favorites';
+            const isHideSuppressedToggle = btn.id === 'hide-suppressed-btn';
             
             btn.classList.remove('active');
             
@@ -2907,7 +2935,26 @@ class DesktopManager {
             if (isFavoritesToggle) {
                 btn.classList.toggle('active', this.folderSortFavoritesFirst);
             }
+            
+            if (isHideSuppressedToggle) {
+                btn.classList.toggle('active', this.hideSuppressedModels);
+            }
         });
+    }
+
+    updateHideSuppressedButton() {
+        const btn = document.getElementById('hide-suppressed-btn');
+        if (btn) {
+            const icon = btn.querySelector('.material-icons');
+            if (this.hideSuppressedModels) {
+                icon.textContent = 'visibility_off';
+                btn.title = 'CLIP models hidden - click to show';
+            } else {
+                icon.textContent = 'visibility';
+                btn.title = 'CLIP models shown - click to hide';
+            }
+            btn.classList.toggle('active', this.hideSuppressedModels);
+        }
     }
 
     formatNumber(num) {
@@ -5337,6 +5384,9 @@ class DesktopManager {
             // Load folder view sort state
             this.folderSortType = localStorage.getItem('folderSortType');
             this.folderSortDirection = localStorage.getItem('folderSortDirection') || 'asc';
+
+            // Initialize hide suppressed button state
+            this.updateHideSuppressedButton();
 
             console.log('Restored sorting state:', { sortType: this.sortType, sortDirection: this.sortDirection });
             console.log('Restored folder sorting state:', { folderSortType: this.folderSortType, folderSortDirection: this.folderSortDirection });
