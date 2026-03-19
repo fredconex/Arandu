@@ -929,6 +929,11 @@
     border-color: var(--theme-text);
 }
 
+.color-swatch.no-color:hover {
+    transform: none;
+    border-color: var(--theme-primary);
+}
+
 .color-swatch.no-color {
     background: transparent;
     border: 2px solid var(--theme-text-muted);
