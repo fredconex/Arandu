@@ -2182,19 +2182,16 @@ class PropertiesManager {
             display.addEventListener('blur', async (e) => {
                 const newValue = parseFloat(e.target.textContent);
                 const rangeInput = popover.querySelector('input[type="range"]');
-                if (rangeInput) {
+                if (rangeInput && !isNaN(newValue)) {
                     // Get slider bounds
                     const sliderMin = parseFloat(rangeInput.dataset.sliderMin) || 0;
                     const sliderStep = parseFloat(rangeInput.dataset.sliderStep) || 1;
-                    const sliderMax = parseFloat(rangeInput.dataset.sliderMax) || (sliderMin + (parseInt(rangeInput.max) * sliderStep));
                     
-                    // Clamp the value to valid range
-                    const clampedValue = Math.max(sliderMin, Math.min(newValue, sliderMax));
-                    
-                    // Convert to normalized value for the slider: position = value / step
-                    const normalizedValue = Math.round(clampedValue / sliderStep);
+                    // Don't clamp - allow user-entered values outside limits
+                    // Update slider position for visual feedback
+                    const normalizedValue = Math.round(newValue / sliderStep);
                     rangeInput.value = normalizedValue;
-                    await this.updateSettingValue(setting.id, clampedValue);
+                    await this.updateSettingValue(setting.id, newValue);
                 }
             });
             display.addEventListener('keydown', async (e) => {
@@ -2203,22 +2200,20 @@ class PropertiesManager {
                     e.stopPropagation();
                     e.stopImmediatePropagation();
 
-                    // Update the value first
+                    // Update the value - don't clamp when user explicitly enters a value
                     const newValue = parseFloat(e.target.textContent);
                     const rangeInput = popover.querySelector('input[type="range"]');
-                    if (rangeInput) {
+                    if (rangeInput && !isNaN(newValue)) {
                         // Get slider bounds
                         const sliderMin = parseFloat(rangeInput.dataset.sliderMin) || 0;
                         const sliderStep = parseFloat(rangeInput.dataset.sliderStep) || 1;
                         const sliderMax = parseFloat(rangeInput.dataset.sliderMax) || (sliderMin + (parseInt(rangeInput.max) * sliderStep));
                         
-                        // Clamp the value to valid range
-                        const clampedValue = Math.max(sliderMin, Math.min(newValue, sliderMax));
-                        
-                        // Convert to normalized value for the slider: position = value / step
-                        const normalizedValue = Math.round(clampedValue / sliderStep);
+                        // Don't clamp - allow user-entered values outside limits
+                        // Only update slider position for visual feedback
+                        const normalizedValue = Math.round(newValue / sliderStep);
                         rangeInput.value = normalizedValue;
-                        await this.updateSettingValue(setting.id, clampedValue);
+                        await this.updateSettingValue(setting.id, newValue);
                     }
 
                     // Then close the popover
