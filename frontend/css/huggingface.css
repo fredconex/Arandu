@@ -610,7 +610,6 @@
 .quant-item:hover {
 	border-color: var(--theme-primary);
 	background: var(--theme-bg-light);
-	transform: translateX(4px);
 }
 
 .quant-folder {
@@ -761,7 +760,6 @@
 
 .folder-content .quant-item:hover {
 	background: rgba(255, 255, 255, 0.04);
-	transform: translateX(4px);
 }
 
 .quant-folder.open+.folder-content {
@@ -807,14 +805,15 @@
 }
 
 .quant-download-btn {
-	padding: 6px 12px;
+	padding: 8px 12px;
 	border: none;
 	border-radius: 4px;
 	font-size: 12px;
 	font-weight: 600;
 	cursor: pointer;
 	transition: all 0.2s ease;
-	min-width: 80px;
+	white-space: nowrap;
+	min-width: fit-content;
 	text-align: center;
 }
 

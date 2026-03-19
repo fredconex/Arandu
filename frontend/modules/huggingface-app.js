@@ -820,10 +820,9 @@ class HuggingFaceApp {
                     <div class="quant-item" data-filename="${fileData.filename}" data-model-id="${model.id}" style="padding-left: ${(level * 20) + 12}px;">
                         <div class="quant-info">
                             <span class="quant-name">${displayName}</span>
-                            <span class="quant-size">${sizeText}</span>
                         </div>
-                        <button class="quant-download-btn" onclick="huggingFaceApp.downloadFile('${model.id}', '${fileData.filename}', ${index})" data-status="unknown">
-                            Download
+                        <button class="quant-download-btn" onclick="huggingFaceApp.downloadFile('${model.id}', '${fileData.filename}', ${index})" data-status="unknown" data-size="${size}">
+                            <span class="material-icons">download</span> Download ${size !== 'Unknown size' ? `(${size})` : ''}
                         </button>
                     </div>
                 `;
@@ -875,7 +874,9 @@ class HuggingFaceApp {
                 this.desktop.showNotification('File already exists', 'info');
                 // Update button state
                 if (downloadBtn) {
-                    downloadBtn.innerHTML = 'Downloaded';
+                    const size = downloadBtn.dataset.size;
+                    const sizeStr = size && size !== 'Unknown size' ? ` (${size})` : '';
+                    downloadBtn.innerHTML = '<span class="material-icons">download</span> Downloaded' + sizeStr;
                     downloadBtn.dataset.status = 'downloaded';
                     downloadBtn.disabled = true;
                     downloadBtn.classList.add('downloaded');
@@ -892,7 +893,9 @@ class HuggingFaceApp {
         if (downloadBtn) {
             // Disable the button and show downloading state
             downloadBtn.disabled = true;
-            downloadBtn.innerHTML = 'Downloading...';
+            const size = downloadBtn.dataset.size;
+            const sizeStr = size && size !== 'Unknown size' ? ` (${size})` : '';
+            downloadBtn.innerHTML = '<span class="material-icons">download</span> Downloading...' + sizeStr;
             downloadBtn.dataset.status = 'downloading';
         }
 
@@ -925,7 +928,9 @@ class HuggingFaceApp {
             // Reset button on error
             if (downloadBtn) {
                 downloadBtn.disabled = false;
-                downloadBtn.innerHTML = 'Download';
+                const size = downloadBtn.dataset.size;
+                const sizeStr = size && size !== 'Unknown size' ? ` (${size})` : '';
+                downloadBtn.innerHTML = '<span class="material-icons">download</span> Download' + sizeStr;
                 downloadBtn.dataset.status = 'available';
                 downloadBtn.classList.remove('downloaded');
             }
@@ -1059,12 +1064,16 @@ class HuggingFaceApp {
                     });
 
                     if (fileExists) {
-                        downloadBtn.innerHTML = 'Downloaded';
+                        const size = downloadBtn.dataset.size;
+                        const sizeStr = size && size !== 'Unknown size' ? ` (${size})` : '';
+                        downloadBtn.innerHTML = '<span class="material-icons">download</span> Downloaded' + sizeStr;
                         downloadBtn.dataset.status = 'downloaded';
                         downloadBtn.disabled = true;
                         downloadBtn.classList.add('downloaded');
                     } else {
-                        downloadBtn.innerHTML = 'Download';
+                        const size = downloadBtn.dataset.size;
+                        const sizeStr = size && size !== 'Unknown size' ? ` (${size})` : '';
+                        downloadBtn.innerHTML = '<span class="material-icons">download</span> Download' + sizeStr;
                         downloadBtn.dataset.status = 'available';
                         downloadBtn.disabled = false;
                         downloadBtn.classList.remove('downloaded');
@@ -1072,7 +1081,9 @@ class HuggingFaceApp {
                 } catch (error) {
                     console.error('Error checking file existence:', error);
                     // If check fails, assume available for download
-                    downloadBtn.innerHTML = 'Download';
+                    const size = downloadBtn.dataset.size;
+                    const sizeStr = size && size !== 'Unknown size' ? ` (${size})` : '';
+                    downloadBtn.innerHTML = '<span class="material-icons">download</span> Download' + sizeStr;
                     downloadBtn.dataset.status = 'available';
                     downloadBtn.disabled = false;
                     downloadBtn.classList.remove('downloaded');
@@ -1112,10 +1123,12 @@ class HuggingFaceApp {
 
                 if (!downloadBtn) return;
 
+                const btnSize = downloadBtn.dataset.size;
+                const btnSizeStr = btnSize && btnSize !== 'Unknown size' ? ` (${btnSize})` : '';
                 switch (status.status) {
                     case 'Downloading':
                     case 'Starting':
-                        downloadBtn.innerHTML = `Downloading... ${status.progress}%`;
+                        downloadBtn.innerHTML = '<span class="material-icons">download</span> Downloading... ' + status.progress + '%' + btnSizeStr;
                         downloadBtn.dataset.status = 'downloading';
                         downloadBtn.disabled = true;
                         // Continue monitoring
@@ -1123,7 +1136,7 @@ class HuggingFaceApp {
                         break;
 
                     case 'Completed':
-                        downloadBtn.innerHTML = 'Downloaded';
+                        downloadBtn.innerHTML = '<span class="material-icons">download</span> Downloaded' + btnSizeStr;
                         downloadBtn.dataset.status = 'downloaded';
                         downloadBtn.disabled = true;
                         downloadBtn.classList.add('downloaded');
@@ -1131,7 +1144,7 @@ class HuggingFaceApp {
 
                     case 'Failed':
                     case 'Cancelled':
-                        downloadBtn.innerHTML = 'Download';
+                        downloadBtn.innerHTML = '<span class="material-icons">download</span> Download' + btnSizeStr;
                         downloadBtn.dataset.status = 'available';
                         downloadBtn.disabled = false;
                         downloadBtn.classList.remove('downloaded');
@@ -1161,7 +1174,9 @@ class HuggingFaceApp {
                     const fileItem = window.querySelector(`[data-filename="${filename}"][data-model-id="${modelId}"]`);
                     const downloadBtn = fileItem?.querySelector('.quant-download-btn');
                     if (downloadBtn) {
-                        downloadBtn.innerHTML = 'Download';
+                        const size = downloadBtn.dataset.size;
+                        const sizeStr = size && size !== 'Unknown size' ? ` (${size})` : '';
+                        downloadBtn.innerHTML = '<span class="material-icons">download</span> Download' + sizeStr;
                         downloadBtn.dataset.status = 'available';
                         downloadBtn.disabled = false;
                         downloadBtn.classList.remove('downloaded');
