@@ -26,26 +26,37 @@ class HuggingFaceApp {
     }
 
     generateSuggestionsHTML() {
-        // Split suggestions into two rows: 4 in first row, remaining in second row
-        const firstRow = this.suggestions.slice(0, 4);
-        const secondRow = this.suggestions.slice(4);
+        // Create a pyramid layout
+        // Row 1: Trending alone
+        const trendingItem = this.suggestions.find(s => s === 'trending');
+        const others = this.suggestions.filter(s => s !== 'trending');
         
         let html = '';
         
-        if (firstRow.length > 0) {
-            html += '<div class="suggestions-row">\n';
-            html += firstRow.map(term => 
-                `                        <button class="suggestion-btn" onclick="huggingFaceApp.quickSearch('${term}')">${term}</button>`
-            ).join('\n');
-            html += '\n                    </div>';
+        // Add Trending row
+        if (trendingItem) {
+            html += `
+                <div class="suggestions-row">
+                    <button class="suggestion-btn trending-btn" onclick="huggingFaceApp.quickSearch('${trendingItem}')">${trendingItem}</button>
+                </div>`;
         }
         
-        if (secondRow.length > 0) {
-            html += '\n                    <div class="suggestions-row">\n';
-            html += secondRow.map(term => 
-                `                        <button class="suggestion-btn" onclick="huggingFaceApp.quickSearch('${term}')">${term}</button>`
-            ).join('\n');
-            html += '\n                    </div>';
+        // Split others into rows for pyramid effect (e.g., 3, 4, 5...)
+        let currentIndex = 0;
+        let itemsPerRow = 3;
+        
+        while (currentIndex < others.length) {
+            const rowItems = others.slice(currentIndex, currentIndex + itemsPerRow);
+            if (rowItems.length > 0) {
+                html += `
+                <div class="suggestions-row">
+                    ${rowItems.map(term => 
+                        `<button class="suggestion-btn" onclick="huggingFaceApp.quickSearch('${term}')">${term}</button>`
+                    ).join('\n                    ')}
+                </div>`;
+            }
+            currentIndex += itemsPerRow;
+            itemsPerRow++; // Increase number of items in each subsequent row
         }
         
         return html;
@@ -472,11 +483,15 @@ class HuggingFaceApp {
         const sortBySelect = window.querySelector('#hf-sort-by');
         const limitSelect = window.querySelector('#hf-limit');
 
-        const query = searchInput.value.trim();
+        let query = searchInput.value.trim();
         if (!query) {
             this.desktop.showNotification('Please enter a search term', 'error');
             return;
         }
+
+        const isTrendingSearch = query.toLowerCase() === 'trending';
+        const displayQuery = isTrendingSearch ? 'Trending Models' : query;
+        const searchBackendQuery = isTrendingSearch ? '' : query;
 
         // Save to search history
         if (typeof searchHistory !== 'undefined') {
@@ -488,7 +503,7 @@ class HuggingFaceApp {
         resultsContainer.innerHTML = `
             <div class="search-loading">
                 <div class="loading-spinner"></div>
-                <p>Searching Hugging Face for "${query}"...</p>
+                <p>Searching Hugging Face for "${displayQuery}"...</p>
             </div>
         `;
 
@@ -499,12 +514,12 @@ class HuggingFaceApp {
             }
 
             const result = await invoke('search_huggingface', {
-                query: query,
+                query: searchBackendQuery,
                 limit: parseInt(limitSelect.value),
                 sortBy: sortBySelect.value
             });
 
-            this.displayHuggingFaceResults(result.models, query);
+            this.displayHuggingFaceResults(result.models, displayQuery);
 
         } catch (error) {
             console.error('Search error:', error);
