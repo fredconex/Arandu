@@ -351,7 +351,7 @@ pub async fn launch_model_external(
         cmd.spawn()?;
     }
     
-    #[cfg(not(windows))]
+    #[cfg(target_os = "linux")]
     {
         let mut cmd = TokioCommand::new("x-terminal-emulator");
         cmd.args(["-e"])
@@ -372,6 +372,28 @@ pub async fn launch_model_external(
                    .args(&cmd_args);
                 cmd.spawn()?;
             }
+        }
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        // Try Terminal.app first
+        let mut cmd = TokioCommand::new("open");
+        cmd.args(["-a", "Terminal"])
+           .arg("-n") // Open in new window
+           .arg("--args")
+           .arg(executable_path.to_string_lossy().to_string())
+           .args(&cmd_args);
+        
+        // If Terminal.app fails, try iTerm2
+        if cmd.spawn().is_err() {
+            let mut cmd = TokioCommand::new("open");
+            cmd.args(["-a", "iTerm"])
+               .arg("-n") // Open in new window
+               .arg("--args")
+               .arg(executable_path.to_string_lossy().to_string())
+               .args(&cmd_args);
+            cmd.spawn()?;
         }
     }
     

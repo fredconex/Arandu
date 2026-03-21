@@ -24,7 +24,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "nsis",
+    "targets": ["nsis", "deb", "rpm", "appimage", "dmg"],
     "icon": [
       "icons/icon.ico"
     ],
@@ -33,6 +33,17 @@
         "installerIcon": "icons/icon.ico",
         "sidebarImage": "icons/nsis-sidebar.bmp",
         "installMode": "currentUser"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.13",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "entitlements": null
+    },
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": false
       }
     }
   }

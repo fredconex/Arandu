@@ -184,4 +184,28 @@ mod tests {
         let result = make_path_absolute(relative, base);
         assert_eq!(result, relative); // Should return original path
     }
+
+    #[test]
+    fn test_make_path_relative_unix() {
+        // Test with Unix-style paths
+        let absolute = "/home/user/models/llama-3.gguf";
+        let base = "/home/user/models";
+        let result = make_path_relative(absolute, base);
+        assert_eq!(result, "llama-3.gguf");
+        
+        // Test with nested paths
+        let absolute = "/home/user/models/subfolder/model.gguf";
+        let base = "/home/user/models";
+        let result = make_path_relative(absolute, base);
+        assert_eq!(result, "subfolder/model.gguf");
+    }
+
+    #[test]
+    fn test_make_path_absolute_unix() {
+        // Test with Unix absolute path
+        let absolute = "/home/other/model.gguf";
+        let base = "/home/user/models";
+        let result = make_path_absolute(absolute, base);
+        assert_eq!(result, absolute); // Should return original path
+    }
 }

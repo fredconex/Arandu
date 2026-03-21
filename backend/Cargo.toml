@@ -7,6 +7,12 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["nvml", "unix"]
+nvml = []
+metal = []
+unix = ["dep:nix"]
+
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
@@ -60,4 +66,5 @@ tower = "0.5.3"
 tower-http = { version = "0.6.8", features = ["cors"] }
 hyper = { version = "1.0", features = ["full"] }
 http-body-util = "0.1"
+nix = { version = "0.31", features = ["signal"], optional = true }
 
