@@ -250,3 +250,116 @@ pub struct DownloadStartResult {
     pub download_id: String,
     pub message: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_global_config_default() {
+        let config = GlobalConfig::default();
+        
+        assert!(!config.models_directory.is_empty());
+        assert!(!config.executable_folder.is_empty());
+        assert_eq!(config.theme_color, "dark-gray");
+        assert_eq!(config.background_color, "dark-gray");
+        assert!(config.theme_is_synced);
+    }
+
+    #[test]
+    fn test_global_config_serialization() {
+        let config = GlobalConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: GlobalConfig = serde_json::from_str(&json).unwrap();
+        
+        assert_eq!(config.models_directory, deserialized.models_directory);
+        assert_eq!(config.executable_folder, deserialized.executable_folder);
+    }
+
+    #[test]
+    fn test_model_config_new() {
+        let config = ModelConfig::new("test/model.gguf".to_string());
+        
+        assert_eq!(config.model_path, "test/model.gguf");
+        assert!(config.custom_args.is_empty());
+        assert_eq!(config.server_host, "127.0.0.1");
+        assert_eq!(config.server_port, 8080);
+        assert!(config.presets.is_empty());
+        assert!(config.default_preset_id.is_none());
+    }
+
+    #[test]
+    fn test_model_config_serialization() {
+        let config = ModelConfig::new("test/model.gguf".to_string());
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: ModelConfig = serde_json::from_str(&json).unwrap();
+        
+        assert_eq!(config.model_path, deserialized.model_path);
+        assert_eq!(config.server_port, deserialized.server_port);
+    }
+
+    #[test]
+    fn test_model_preset() {
+        let preset = ModelPreset {
+            id: "test-preset".to_string(),
+            name: "Test Preset".to_string(),
+            custom_args: "-c 4096".to_string(),
+            is_default: true,
+        };
+        
+        assert_eq!(preset.id, "test-preset");
+        assert!(preset.is_default);
+    }
+
+    #[test]
+    fn test_process_status_variants() {
+        let _ = ProcessStatus::Starting;
+        let _ = ProcessStatus::Running;
+        let _ = ProcessStatus::Stopped;
+        let _ = ProcessStatus::Failed;
+    }
+
+    #[test]
+    fn test_position_default() {
+        let pos = Position { x: 0, y: 0 };
+        assert_eq!(pos.x, 0);
+        assert_eq!(pos.y, 0);
+    }
+
+    #[test]
+    fn test_size_default() {
+        let size = Size { width: 800, height: 600 };
+        assert_eq!(size.width, 800);
+        assert_eq!(size.height, 600);
+    }
+
+    #[test]
+    fn test_desktop_state_default() {
+        let state = DesktopState::default();
+        
+        assert!(state.icon_positions.is_empty());
+        assert_eq!(state.sort_direction, "asc");
+        assert_eq!(state.theme, "dark-gray");
+    }
+
+    #[test]
+    fn test_session_state_default() {
+        let state = SessionState::default();
+        
+        assert!(state.windows.is_empty());
+        assert!(state.terminals.is_empty());
+    }
+
+    #[test]
+    fn test_gguf_file_info() {
+        let info = GgufFileInfo {
+            filename: "model-Q4_K_M.gguf".to_string(),
+            path: "/models/model-Q4_K_M.gguf".to_string(),
+            size: 4_000_000_000,
+            quantization_type: Some("Q4_K_M".to_string()),
+        };
+        
+        assert!(info.quantization_type.is_some());
+        assert_eq!(info.quantization_type.unwrap(), "Q4_K_M");
+    }
+}

@@ -329,3 +329,90 @@ fn extract_quantization_type(filename: &str) -> Option<String> {
     
     Some("UNKNOWN".to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_quantization_type() {
+        // Test standard quantization types
+        assert_eq!(extract_quantization_type("model-Q4_K_M.gguf"), Some("Q4_K_M".to_string()));
+        assert_eq!(extract_quantization_type("model-Q5_K_S.gguf"), Some("Q5_K_S".to_string()));
+        assert_eq!(extract_quantization_type("model-Q8_0.gguf"), Some("Q8_0".to_string()));
+        assert_eq!(extract_quantization_type("model-Q6_K.gguf"), Some("Q6_K".to_string()));
+        
+        // Test IQ formats
+        assert_eq!(extract_quantization_type("model-IQ4_NL.gguf"), Some("IQ4_NL".to_string()));
+        assert_eq!(extract_quantization_type("model-iq3_xxs.gguf"), Some("IQ3_XXS".to_string()));
+        
+        // Test float formats
+        assert_eq!(extract_quantization_type("model-FP16.gguf"), Some("FP16".to_string()));
+        assert_eq!(extract_quantization_type("model-f32.gguf"), Some("F32".to_string()));
+        assert_eq!(extract_quantization_type("model-bf16.gguf"), Some("BF16".to_string()));
+        
+        // Test with path
+        assert_eq!(extract_quantization_type("author/model-Q4_K_M.gguf"), Some("Q4_K_M".to_string()));
+        
+        // Test unknown (returns lowercase base name)
+        assert_eq!(extract_quantization_type("model.gguf"), Some("model".to_string()));
+    }
+
+    #[test]
+    fn test_is_gguf_download_file() {
+        use std::path::PathBuf;
+        
+        // Valid download files
+        assert!(is_gguf_download_file(&PathBuf::from("model.gguf.download")));
+        assert!(is_gguf_download_file(&PathBuf::from("model.Q4_K_M.gguf.download")));
+        assert!(is_gguf_download_file(&PathBuf::from("/path/to/model.gguf.download")));
+        
+        // Case insensitive
+        assert!(is_gguf_download_file(&PathBuf::from("model.GGUF.DOWNLOAD")));
+        
+        // Invalid - not ending with .gguf.download
+        assert!(!is_gguf_download_file(&PathBuf::from("model.gguf")));
+        assert!(!is_gguf_download_file(&PathBuf::from("model.download")));
+        assert!(!is_gguf_download_file(&PathBuf::from("model.gguf.backup")));
+        assert!(!is_gguf_download_file(&PathBuf::from("model.gguf.download.bak")));
+    }
+
+    #[test]
+    fn test_parse_model_basic() {
+        let json = serde_json::json!({
+            "id": "meta/llama-3-8b",
+            "downloads": 1000,
+            "likes": 500,
+            "lastModified": "2024-01-15"
+        });
+        
+        let model = parse_model_basic(&json).unwrap();
+        assert_eq!(model.id, "meta/llama-3-8b");
+        assert_eq!(model.author, "meta");
+        assert_eq!(model.downloads, 1000);
+        assert_eq!(model.likes, 500);
+    }
+
+    #[test]
+    fn test_parse_model_basic_with_underscore_fields() {
+        let json = serde_json::json!({
+            "id": "test/model",
+            "downloads": 100,
+            "likes": 50,
+            "last_modified": "2024-01-15"
+        });
+        
+        let model = parse_model_basic(&json).unwrap();
+        assert_eq!(model.last_modified, Some("2024-01-15".to_string()));
+    }
+
+    #[test]
+    fn test_parse_model_basic_invalid() {
+        // Missing id field
+        let json = serde_json::json!({
+            "downloads": 100
+        });
+        
+        assert!(parse_model_basic(&json).is_none());
+    }
+}

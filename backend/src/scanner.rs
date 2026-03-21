@@ -317,3 +317,42 @@ pub fn scan_mmproj_files(
 
     Ok(files)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_quantization_from_filename() {
+        // Test standard quantization suffixes
+        assert_eq!(get_quantization_from_filename("model-Q4_K_M.gguf"), "Q4_K_M");
+        assert_eq!(get_quantization_from_filename("model-Q5_K_S.gguf"), "Q5_K_S");
+        assert_eq!(get_quantization_from_filename("model-Q8_0.gguf"), "Q8_0");
+        assert_eq!(get_quantization_from_filename("model-F16.gguf"), "F16");
+        assert_eq!(get_quantization_from_filename("model-F32.gguf"), "F32");
+        
+        // Test with dot separator
+        assert_eq!(get_quantization_from_filename("model.Q4.gguf"), "Q4");
+        
+        // Test without known quantization suffix
+        assert_eq!(get_quantization_from_filename("model.gguf"), "MODEL");
+        
+        // Test edge cases
+        assert_eq!(get_quantization_from_filename("model-.gguf"), "MODEL-");
+        assert_eq!(get_quantization_from_filename("model.gguf"), "MODEL");
+    }
+
+    #[test]
+    fn test_scan_models_empty_directory() {
+        let result = scan_models("");
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_scan_models_nonexistent_directory() {
+        let result = scan_models("/nonexistent/path/that/does/not/exist");
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+}
