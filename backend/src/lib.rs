@@ -1182,6 +1182,13 @@ async fn get_app_version() -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn get_platform() -> Result<String, String> {
+    // Return the target OS: "windows", "linux", or "macos"
+    let platform = std::env::consts::OS;
+    Ok(platform.to_string())
+}
+
+#[tauri::command]
 async fn check_file_exists(
     model_id: String,
     filename: String,
@@ -1778,6 +1785,7 @@ pub fn run() {
             restart_application,
             graceful_exit,
             get_app_version,
+            get_platform,
             check_file_exists,
             get_system_stats,
             scan_mmproj_files_command,

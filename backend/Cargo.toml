@@ -60,6 +60,8 @@ urlencoding = "2.1"
 sysinfo = { version = "0.38.4", features = ["serde"] }
 gfxinfo = "0.1.2"
 zip = "8.1.0"
+flate2 = "1.1"
+tar = "0.4"
 url = "2.5.8"
 axum = "0.8.8"
 tower = "0.5.3"

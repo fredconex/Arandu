@@ -8,8 +8,53 @@ class LlamaCppReleasesManager {
         this.initTauriAPI();
 
         // UI state
-        this.hideOtherPlatforms = true; // default ON: emphasize Windows assets
+        this.hideOtherPlatforms = true; // Will be updated based on detected platform
+        this.preferredPlatform = 'windows'; // Will be set based on detected platform
         this.lastReleases = null; // cache latest fetched releases for re-rendering
+        
+        // Detect platform and set filter
+        this.detectPlatform();
+    }
+    
+    async detectPlatform() {
+        try {
+            const platform = await this.getInvoke()('get_platform');
+            console.log('Detected platform:', platform);
+            this.preferredPlatform = platform;
+            
+            // Set hideOtherPlatforms based on detected platform
+            // For now, default to showing platform-specific assets
+            this.hideOtherPlatforms = true; // Keep filter on by default
+            
+            // Update any UI elements that need the platform name
+            this.updatePlatformDisplay();
+        } catch (error) {
+            console.warn('Failed to detect platform, using default (Windows):', error);
+            this.preferredPlatform = 'windows';
+            this.hideOtherPlatforms = true;
+        }
+    }
+    
+    getPlatformDisplayName() {
+        const platform = this.preferredPlatform;
+        if (platform === 'windows') return 'Windows';
+        if (platform === 'linux') return 'Linux';
+        if (platform === 'macos') return 'macOS';
+        return 'Windows'; // default
+    }
+    
+    updatePlatformDisplay() {
+        const platformName = this.getPlatformDisplayName();
+        
+        // Update button if it exists
+        const btn = document.getElementById('llamacpp-platform-toggle-ctrl');
+        if (btn) {
+            btn.innerHTML = `<span class="material-icons">layers</span> ${this.hideOtherPlatforms ? platformName + ' only' : 'All platforms'}`;
+        }
+        const badge = document.getElementById('llamacpp-platform-badge');
+        if (badge) {
+            badge.textContent = this.hideOtherPlatforms ? platformName + ' only' : 'All platforms';
+        }
     }
     
     initTauriAPI() {
@@ -653,7 +698,7 @@ class LlamaCppReleasesManager {
                             <span class="material-icons">refresh</span> Refresh Releases
                         </button>
                         <button class="llamacpp-refresh platform-toggle" id="llamacpp-platform-toggle-ctrl" style="display: none;" onclick="llamacppReleasesManager.togglePlatformFilter()" title="Toggle platform visibility">
-                            <span class="material-icons">layers</span> Windows only
+                            <span class="material-icons">layers</span> ${this.getPlatformDisplayName()} only
                         </button>
                     </div>
                 </div>
@@ -741,10 +786,20 @@ class LlamaCppReleasesManager {
         };
         const isMacAsset = (name) => /mac|darwin|osx|apple|macos/i.test(name);
         const isLinuxAsset = (name) => /linux|ubuntu|debian|arch|fedora/i.test(name);
+        
+        // Check if asset matches the preferred platform
+        const isPreferredAsset = (name) => {
+            const platform = this.preferredPlatform;
+            if (platform === 'windows') return isWindowsAsset(name);
+            if (platform === 'linux') return isLinuxAsset(name);
+            if (platform === 'macos') return isMacAsset(name);
+            return isWindowsAsset(name); // default
+        };
+        
         const shouldShowAsset = (name) => {
             if (!this.hideOtherPlatforms) return true;
-            // Default to Windows filter for this app
-            return isWindowsAsset(name);
+            // Show only assets matching the detected platform
+            return isPreferredAsset(name);
         };
 
         const releasesHTML = releases.map(release => {
@@ -756,11 +811,11 @@ class LlamaCppReleasesManager {
             const installedBadge = isInstalled ? '<span class="badge installed">Installed</span>' : '';
 
             // Preserve expansion state by not altering release-item class outside
-            // Sort assets: preferred platform (Windows) first when filter is on; keep stable otherwise
+            // Sort assets: preferred platform first when filter is on; keep stable otherwise
             const assetsSorted = [...release.assets].sort((a, b) => {
-                const aWin = isWindowsAsset(a.name || '');
-                const bWin = isWindowsAsset(b.name || '');
-                if (this.hideOtherPlatforms && aWin !== bWin) return aWin ? -1 : 1;
+                const aPreferred = isPreferredAsset(a.name || '');
+                const bPreferred = isPreferredAsset(b.name || '');
+                if (this.hideOtherPlatforms && aPreferred !== bPreferred) return aPreferred ? -1 : 1;
                 return String(a.name || '').localeCompare(String(b.name || ''));
             });
 
@@ -769,8 +824,8 @@ class LlamaCppReleasesManager {
                     const name = asset.name || '';
                     const warnCuda = /cudart/i.test(name);
                     const warningHTML = warnCuda ? '<span class="asset-note" style="margin-left: 8px; color: rgba(255,255,255,0.6);">Required for CUDA</span>' : '';
-                    const isWin = isWindowsAsset(name);
-                    const grayClass = this.hideOtherPlatforms && !isWin ? ' dim-asset' : '';
+                    const isPreferred = isPreferredAsset(name);
+                    const grayClass = this.hideOtherPlatforms && !isPreferred ? ' dim-asset' : '';
                     return `
                         <div class="release-asset${grayClass}">
                             <div class="asset-info">
@@ -836,11 +891,12 @@ class LlamaCppReleasesManager {
         });
         const scrollY = content.scrollTop;
 
+        const platformName = this.getPlatformDisplayName();
         content.innerHTML = `
             <div class="releases-header">
                 <p>Found ${releases.length} llama.cpp releases</p>
                 <button class="platform-badge" id="llamacpp-platform-badge" onclick="llamacppReleasesManager.togglePlatformFilter()" title="Toggle platform visibility">
-                    ${this.hideOtherPlatforms ? 'Windows only' : 'All platforms'}
+                    ${this.hideOtherPlatforms ? platformName + ' only' : 'All platforms'}
                 </button>
             </div>
             ${releasesHTML}
@@ -866,13 +922,14 @@ class LlamaCppReleasesManager {
 
     togglePlatformFilter() {
         this.hideOtherPlatforms = !this.hideOtherPlatforms;
+        const platformName = this.getPlatformDisplayName();
         const btn = document.getElementById('llamacpp-platform-toggle-ctrl');
         if (btn) {
-            btn.innerHTML = `<span class="material-icons">layers</span> ${this.hideOtherPlatforms ? 'Windows only' : 'All platforms'}`;
+            btn.innerHTML = `<span class="material-icons">layers</span> ${this.hideOtherPlatforms ? platformName + ' only' : 'All platforms'}`;
         }
         const badge = document.getElementById('llamacpp-platform-badge');
         if (badge) {
-            badge.textContent = this.hideOtherPlatforms ? 'Windows only' : 'All platforms';
+            badge.textContent = this.hideOtherPlatforms ? platformName + ' only' : 'All platforms';
         }
         if (this.lastReleases) {
             // Re-render with cached releases and newly fetched installed versions

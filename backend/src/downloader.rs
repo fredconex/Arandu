@@ -425,8 +425,13 @@ async fn execute_download(
                         }
                     }
                 }
-        // Extract if requested and file is a zip
-        if config.auto_extract && file_name.to_lowercase().ends_with(".zip") {
+        // Extract if requested and file is a zip, tar.gz, or gz
+        let lower_name = file_name.to_lowercase();
+        let is_zip = lower_name.ends_with(".zip");
+        let is_tar_gz = lower_name.ends_with(".tar.gz") || lower_name.ends_with(".tgz");
+        let is_gz = lower_name.ends_with(".gz") && !is_tar_gz;
+        
+        if config.auto_extract && (is_zip || is_tar_gz || is_gz) {
             // Update status to extracting
             {
                 let mut download_manager = state.download_manager.lock().await;
@@ -437,22 +442,29 @@ async fn execute_download(
             }
             
             // Emit extraction start event
-            //println!("Emitting extraction start event for {}", download_id);
             let download_manager = state.download_manager.lock().await;
             if let Some(status) = download_manager.downloads.get(&download_id) {
                 let _ = app_handle.emit("download-progress", status.clone());
             }
             
-            if let Err(e) = extract_zip(&final_path, &destination_folder, &download_id, &app_handle).await {
+            let extraction_result = if is_zip {
+                extract_zip(&final_path, &destination_folder, &download_id, &app_handle).await
+            } else if is_tar_gz {
+                extract_tar_gz(&final_path, &destination_folder, &download_id, &app_handle).await
+            } else {
+                extract_gz(&final_path, &destination_folder, &download_id, &app_handle).await
+            };
+            
+            if let Err(e) = extraction_result {
                 // Don't fail the download, just log the extraction error
                 let mut download_manager = state.download_manager.lock().await;
                 if let Some(status) = download_manager.downloads.get_mut(&download_id) {
                     status.message = Some(format!("Downloaded but extraction failed: {}", e));
                 }
             } else {
-                // Remove the zip file after successful extraction
+                // Remove the archive file after successful extraction
                 if let Err(e) = tokio::fs::remove_file(&final_path).await {
-                    eprintln!("Warning: Failed to remove zip file after extraction: {}", e);
+                    eprintln!("Warning: Failed to remove archive file after extraction: {}", e);
                 }
             }
         }
@@ -600,6 +612,190 @@ async fn extract_zip(zip_path: &Path, destination: &str, download_id: &str, app_
             "current_extracting_file": file.name()
         }));
     }
+
+    Ok(())
+}
+
+// Extract tar.gz files
+async fn extract_tar_gz(tar_gz_path: &Path, destination: &str, download_id: &str, app_handle: &tauri::AppHandle) -> Result<(), String> {
+    use std::fs::File;
+    use flate2::read::GzDecoder;
+    use tar::Archive;
+
+    // Open the tar.gz file
+    let file = File::open(tar_gz_path).map_err(|e| format!("Failed to open tar.gz file: {}", e))?;
+    
+    // Create a Gzip decoder
+    let decoder = GzDecoder::new(file);
+    
+    // Create a tar archive from the decoder
+    let mut archive = Archive::new(decoder);
+    
+    // Get list of entries to count files and detect root folder
+    let entries: Vec<_> = archive.entries()
+        .map_err(|e| format!("Failed to read tar entries: {}", e))?
+        .collect();
+    
+    let total_files = entries.len();
+    
+    // Detect if there's a common root folder (common in llama.cpp releases)
+    // Look for a single top-level directory that contains all other files
+    let root_folder = if total_files > 0 {
+        let mut paths: Vec<String> = entries.iter()
+            .filter_map(|e| e.as_ref().ok())
+            .filter_map(|e| e.path().ok())
+            .map(|p| p.to_string_lossy().to_string())
+            .collect();
+        
+        // Sort paths to ensure consistent ordering
+        paths.sort();
+        
+        if !paths.is_empty() {
+            // Get the first path component (the root folder)
+            if let Some(first_slash) = paths[0].find('/') {
+                let first_component = paths[0][..first_slash].to_string();
+                
+                // Check if ALL entries start with this component (with a / after it)
+                let all_in_same_folder = paths.iter().all(|p| {
+                    p.starts_with(&first_component) && p.len() > first_component.len()
+                });
+                
+                if all_in_same_folder {
+                    Some(first_component)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    
+    // Emit extraction start event with total file count
+    let _ = app_handle.emit("extraction-progress", serde_json::json!({
+        "download_id": download_id,
+        "extraction_progress": 0,
+        "extraction_total_files": total_files,
+        "extraction_completed_files": 0,
+        "current_extracting_file": "Starting extraction..."
+    }));
+
+    // Re-open the archive for extraction
+    let file = File::open(tar_gz_path).map_err(|e| format!("Failed to open tar.gz file: {}", e))?;
+    let decoder = GzDecoder::new(file);
+    let mut archive = Archive::new(decoder);
+    
+    let mut completed_files = 0;
+    
+    for entry in archive.entries().map_err(|e| format!("Failed to read tar entries: {}", e))? {
+        let mut entry = entry.map_err(|e| format!("Failed to read tar entry: {}", e))?;
+        
+        // Get entry path as String first to avoid borrow issues
+        let entry_path_string = entry.path()
+            .map_err(|e| format!("Failed to get entry path: {}", e))?
+            .to_string_lossy()
+            .to_string();
+        
+        // Strip root folder if detected
+        let final_path = if let Some(ref root) = root_folder {
+            // Only strip if the entry is inside the root folder (has a slash after root)
+            if entry_path_string.starts_with(root) && entry_path_string.len() > root.len() && entry_path_string.as_bytes()[root.len()] == b'/' {
+                entry_path_string[root.len() + 1..].to_string()
+            } else {
+                entry_path_string
+            }
+        } else {
+            entry_path_string
+        };
+        
+        let outpath = Path::new(destination).join(&final_path);
+        
+        // Ensure parent directory exists
+        if let Some(p) = outpath.parent() {
+            if !p.exists() {
+                std::fs::create_dir_all(p).map_err(|e| format!("Failed to create parent directory: {}", e))?;
+            }
+        }
+        
+        // Skip directories (they'll be created automatically when extracting files)
+        if entry.header().entry_type().is_dir() {
+            continue;
+        }
+        
+        // Extract the entry
+        entry.unpack(&outpath).map_err(|e| format!("Failed to extract entry: {}", e))?;
+        
+        completed_files += 1;
+        
+        // Calculate and emit progress
+        let progress = ((completed_files as f64 / total_files as f64) * 100.0) as u8;
+        
+        let _ = app_handle.emit("extraction-progress", serde_json::json!({
+            "download_id": download_id,
+            "extraction_progress": progress,
+            "extraction_total_files": total_files,
+            "extraction_completed_files": completed_files,
+            "current_extracting_file": final_path
+        }));
+    }
+
+    Ok(())
+}
+
+// Extract .gz files (single file gunzip)
+async fn extract_gz(gz_path: &Path, destination: &str, download_id: &str, app_handle: &tauri::AppHandle) -> Result<(), String> {
+    use std::fs::File;
+    use std::io::Read;
+    use flate2::read::GzDecoder;
+
+    // Open the .gz file
+    let file = File::open(gz_path).map_err(|e| format!("Failed to open gz file: {}", e))?;
+    
+    // Create a Gzip decoder
+    let mut decoder = GzDecoder::new(file);
+    
+    // Determine output filename - remove .gz extension
+    let out_file_name = gz_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("extracted_file");
+    
+    let outpath = Path::new(destination).join(out_file_name);
+    
+    // Ensure parent directory exists
+    if let Some(p) = outpath.parent() {
+        if !p.exists() {
+            std::fs::create_dir_all(p).map_err(|e| format!("Failed to create parent directory: {}", e))?;
+        }
+    }
+    
+    // Emit extraction start event
+    let _ = app_handle.emit("extraction-progress", serde_json::json!({
+        "download_id": download_id,
+        "extraction_progress": 0,
+        "extraction_total_files": 1,
+        "extraction_completed_files": 0,
+        "current_extracting_file": out_file_name
+    }));
+
+    // Read decompressed data and write to file
+    let mut contents = Vec::new();
+    decoder.read_to_end(&mut contents).map_err(|e| format!("Failed to decompress gz file: {}", e))?;
+    
+    std::fs::write(&outpath, &contents).map_err(|e| format!("Failed to write extracted file: {}", e))?;
+    
+    // Emit completion
+    let _ = app_handle.emit("extraction-progress", serde_json::json!({
+        "download_id": download_id,
+        "extraction_progress": 100,
+        "extraction_total_files": 1,
+        "extraction_completed_files": 1,
+        "current_extracting_file": out_file_name
+    }));
 
     Ok(())
 }
