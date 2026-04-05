@@ -2036,9 +2036,17 @@ class PropertiesManager {
                                 <option value="">None Selected</option>
                                 ${files.map(file => {
                             const filePath = file.path;
-                            const fileName = file.name || '';
-                            const filename = filePath.split(/[\\/]/).pop();
-                            const displayText = fileName ? `${filename} (${fileName})` : filename;
+                            const parts = this.desktop.getPathParts(filePath);
+                            
+                            let displayText = '';
+                            if (parts.repo && parts.author) {
+                                displayText = `${parts.repo} · ${parts.author} (${parts.file})`;
+                            } else if (parts.repo) {
+                                displayText = `${parts.repo} (${parts.file})`;
+                            } else {
+                                displayText = parts.file;
+                            }
+                            
                             return `<option value="${filePath}" ${currentValue === filePath ? 'selected' : ''} title="${filePath}">${displayText}</option>`;
                         }).join('')}
                             </select>

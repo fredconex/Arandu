@@ -489,6 +489,23 @@
     font-style: italic;
 }
 
+.model-card-folder-name {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--theme-text-muted);
+    opacity: 0.5;
+    margin-left: 0;
+    display: inline-flex;
+    align-items: center;
+}
+
+.model-card-folder-name::before {
+    content: "·";
+    margin: 0 8px 0 0;
+    opacity: 0.5;
+    font-weight: normal;
+}
+
 .model-card-details {
     display: flex;
     align-items: center;

@@ -520,7 +520,7 @@ class DownloadManager {
         }
         if (this.isActiveDownload(download) && download.total_bytes > 0) {
             let info = `${this.formatFileSize(download.downloaded_bytes || 0)} / ${this.formatFileSize(download.total_bytes)}`;
-            if (download.speed > 0) info += ` • ${this.formatFileSize(download.speed)}/s`;
+            if (download.speed > 0) info += ` · ${this.formatFileSize(download.speed)}/s`;
             return info;
         }
         if (download.status === 'Completed' && download.total_bytes > 0) {
@@ -605,7 +605,7 @@ class DownloadManager {
         const completedCount = this.downloads.filter(d => d.status === 'Completed').length;
 
         if (this.downloads.length === 0)  statsEl.textContent = 'No downloads';
-        else if (activeCount > 0)         statsEl.textContent = `${activeCount} active • ${completedCount} completed`;
+        else if (activeCount > 0)         statsEl.textContent = `${activeCount} active · ${completedCount} completed`;
         else                              statsEl.textContent = `${completedCount} completed`;
     }
 

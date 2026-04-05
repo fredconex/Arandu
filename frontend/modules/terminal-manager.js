@@ -37,6 +37,12 @@ class TerminalManager {
     async openServerTerminal(processId, modelName, host, port, modelPath, activeVersion, launchArgs = null) {
         console.log('OpenServerTerminal called with:', { processId, modelName, host, port, modelPath, activeVersion, launchArgs });
 
+        // Get model parts for consistent display
+        const parts = this.desktop.getPathParts(modelPath);
+        const displayName = parts.repo || parts.file || modelName;
+        const authorName = parts.author;
+        const fullModelDisplayName = authorName ? `${displayName} · ${authorName}` : displayName;
+
         const windowId = `server_${processId}`;
         console.log('Creating terminal window with ID:', windowId);
 
@@ -53,14 +59,14 @@ class TerminalManager {
                     <div class="server-tab-panel active" id="panel-terminal-${windowId}">
                         <div class="server-info">
                             <span class="server-status starting"><span class="material-icons" style="color: #ffc107; font-size: 14px;">circle</span> Starting</span>
-                            <span class="server-details">${modelName} - <span class="clickable" style="cursor: pointer; text-decoration: underline;" onclick="terminalManager.openUrl('http://${host}:${port}')">${host}:${port}</span><button class="copy-link-btn" style="background: none; border: none; cursor: pointer; margin-left: 5px; padding: 0; font-size: 14px; vertical-align: middle;" onclick="terminalManager.copyToClipboard('http://${host}:${port}', this)" title="Copy link"><span class="material-icons" style="font-size: 14px; color: var(--theme-text-muted);">content_copy</span></button></span>
+                            <span class="server-details">${fullModelDisplayName} - <span class="clickable" style="cursor: pointer; text-decoration: underline;" onclick="terminalManager.openUrl('http://${host}:${port}')">${host}:${port}</span><button class="copy-link-btn" style="background: none; border: none; cursor: pointer; margin-left: 5px; padding: 0; font-size: 14px; vertical-align: middle;" onclick="terminalManager.copyToClipboard('http://${host}:${port}', this)" title="Copy link"><span class="material-icons" style="font-size: 14px; color: var(--theme-text-muted);">content_copy</span></button></span>
                             <div class="server-controls">
                                 <button class="server-btn auto-switch-btn ${this.autoSwitchEnabled ? 'active' : ''}" id="auto-switch-btn-${windowId}" onclick="terminalManager.toggleAutoSwitch('${windowId}')" title="${this.autoSwitchEnabled ? 'Auto-switch to chat: ON' : 'Auto-switch to chat: OFF'}"><span class="material-icons">${this.autoSwitchEnabled ? 'toggle_on' : 'toggle_off'}</span></button>
                                 <button class="server-btn stop-btn" id="stop-btn-${windowId}"><span class="material-icons">stop</span> Stop</button>
                             </div>
                             ${launchCommandHtml}
                         </div>
-                        <div class="server-output" id="server-output-${windowId}"><div class="server-line server-system">Starting ${modelName}...</div><div class="server-line server-system">Process ID: ${processId}</div><div class="server-line server-system">Server will be available at: ${host}:${port}</span></div><div class="server-line server-system">Waiting for server output...</div></div>
+                        <div class="server-output" id="server-output-${windowId}"><div class="server-line server-system">Starting ${fullModelDisplayName}...</div><div class="server-line server-system">Process ID: ${processId}</div><div class="server-line server-system">Server will be available at: ${host}:${port}</span></div><div class="server-line server-system">Waiting for server output...</div></div>
                     </div>
                     <div class="server-tab-panel" id="panel-chat-${windowId}" style="background: white;">
                         <iframe src="http://${host}:${port}" frameBorder="0" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write"></iframe>
@@ -70,7 +76,7 @@ class TerminalManager {
         `;
 
         console.log('Calling desktop.createWindow...');
-        const window = this.desktop.createWindow(windowId, `Server - ${modelName} (Build: ${activeVersion})`, 'server-terminal-window', content);
+        const window = this.desktop.createWindow(windowId, `Server - ${fullModelDisplayName} (Build: ${activeVersion})`, 'server-terminal-window', content);
         console.log('Desktop.createWindow returned:', window);
 
         // Ensure the window is visible and not hidden
@@ -147,7 +153,7 @@ class TerminalManager {
         // Store model info for this terminal
         this.terminals.set(windowId, {
             processId,
-            modelName,
+            modelName: fullModelDisplayName,
             modelPath,
             host,
             port,
@@ -159,7 +165,7 @@ class TerminalManager {
 
         console.log('Adding taskbar item...');
         // Add to taskbar
-        this.desktop.addTaskbarItem(`Server - ${modelName}`, windowId, '<span class="material-icons">computer</span>');
+        this.desktop.addTaskbarItem(`Server - ${fullModelDisplayName}`, windowId, '<span class="material-icons">computer</span>');
 
         // Set up event listeners for buttons
         setTimeout(() => {
@@ -981,6 +987,12 @@ class TerminalManager {
         console.log('Restoring terminal window with data:', terminalData);
         console.log('Terminal output length:', terminalData.output ? terminalData.output.length : 'no output');
 
+        // Get model parts for consistent display
+        const parts = this.desktop.getPathParts(terminalData.modelPath);
+        const displayName = parts.repo || parts.file || terminalData.modelName;
+        const authorName = parts.author;
+        const fullModelDisplayName = authorName ? `${displayName} · ${authorName}` : displayName;
+
         // Format launch command if available
         let launchCommandHtml = '';
         if (terminalData.launchArgs) {
@@ -991,13 +1003,12 @@ class TerminalManager {
         const content = `
             <div class="server-terminal-container">
                 <div class="server-main-content">
-                    <div class="server-tab-panel active" id="panel-terminal-${windowId}">
-                        <div class="server-info">
-                            <span class="server-status ${terminalData.status}">
+                    <div class="server-tab-panel active" id="panel-terminal-${windowId}">                             <span class="server-status ${terminalData.status}">
                                 <span class="material-icons" style="color: ${terminalData.status === 'running' ? '#4caf50' : terminalData.status === 'starting' ? '#ffc107' : '#f44336'}; font-size: 14px;">circle</span>
                                 ${terminalData.status}
                             </span>
-                            <span class="server-details">${terminalData.modelName} - <span class="clickable" style="cursor: pointer; text-decoration: underline;" onclick="terminalManager.openUrl('http://${terminalData.host}:${terminalData.port}')">${terminalData.host}:${terminalData.port}</span><button class="copy-link-btn" style="background: none; border: none; cursor: pointer; margin-left: 5px; padding: 0; font-size: 14px; vertical-align: middle;" onclick="terminalManager.copyToClipboard('http://${terminalData.host}:${terminalData.port}', this)" title="Copy link"><span class="material-icons" style="font-size: 14px; color: var(--theme-text-muted);">content_copy</span></button></span>
+                            <span class="server-details">${fullModelDisplayName} - <span class="clickable" style="cursor: pointer; text-decoration: underline;" onclick="terminalManager.openUrl('http://${terminalData.host}:${terminalData.port}')">${terminalData.host}:${terminalData.port}</span><button class="copy-link-btn" style="background: none; border: none; cursor: pointer; margin-left: 5px; padding: 0; font-size: 14px; vertical-align: middle;" onclick="terminalManager.copyToClipboard('http://${terminalData.host}:${terminalData.port}', this)" title="Copy link"><span class="material-icons" style="font-size: 14px; color: var(--theme-text-muted);">content_copy</span></button></span>
+e-text-muted);">content_copy</span></button></span>
                             <div class="server-controls">
                                 <button class="server-btn auto-switch-btn ${this.autoSwitchEnabled ? 'active' : ''}" id="auto-switch-btn-${windowId}" onclick="terminalManager.toggleAutoSwitch('${windowId}')" title="${this.autoSwitchEnabled ? 'Auto-switch to chat: ON' : 'Auto-switch to chat: OFF'}"><span class="material-icons">${this.autoSwitchEnabled ? 'toggle_on' : 'toggle_off'}</span></button>
                                 ${terminalData.status === 'running' || terminalData.status === 'starting' ?
@@ -1008,7 +1019,7 @@ class TerminalManager {
                             ${launchCommandHtml}
                         </div>
                         <div class="server-output" id="server-output-${windowId}">
-                            <div class="server-line">Restored ${terminalData.modelName} session</div>
+                            <div class="server-line">Restored ${fullModelDisplayName} session</div>
                             <div class="server-line">Process ID: ${terminalData.processId}</div>
                             <div class="server-line">Server: <span class="clickable" style="cursor: pointer; text-decoration: underline;" onclick="terminalManager.openUrl('http://${terminalData.host}:${terminalData.port}')">${terminalData.host}:${terminalData.port}</span><button class="copy-link-btn" style="background: none; border: none; cursor: pointer; margin-left: 5px; padding: 0; font-size: 14px; vertical-align: middle;" onclick="terminalManager.copyToClipboard('http://${terminalData.host}:${terminalData.port}', this)" title="Copy link"><span class="material-icons" style="font-size: 14px; color: var(--theme-text-muted);">content_copy</span></button></div>
                             <div class="server-line">Output lines: ${terminalData.output ? terminalData.output.length : 0}</div>
@@ -1024,7 +1035,7 @@ class TerminalManager {
             </div>
         `;
 
-        const window = this.desktop.createWindow(windowId, `Server - ${terminalData.modelName}`, 'server-terminal-window', content);
+        const window = this.desktop.createWindow(windowId, `Server - ${fullModelDisplayName}`, 'server-terminal-window', content);
 
         // Inject tabs into header
         const header = window.querySelector('.window-header');
@@ -1045,7 +1056,7 @@ class TerminalManager {
             }
         }
 
-        this.desktop.addTaskbarItem(`Server - ${terminalData.modelName}`, windowId, '<span class="material-icons">computer</span>');
+        this.desktop.addTaskbarItem(`Server - ${fullModelDisplayName}`, windowId, '<span class="material-icons">computer</span>');
 
         // Restore window position and size
         if (windowData.position) {

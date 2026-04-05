@@ -219,7 +219,7 @@ class DesktopManager {
         this.folderSortDirection = localStorage.getItem('folderSortDirection') || 'asc';
         this.folderSortFavoritesFirst = localStorage.getItem('folderSortFavoritesFirst') !== 'false';
         this.hideSuppressedModels = localStorage.getItem('hideSuppressedModels') !== 'false'; // Load suppressed models preference
-        
+
         // Load session state first to restore desktop settings
         await this.loadSessionState();
 
@@ -238,6 +238,7 @@ class DesktopManager {
     async loadConfiguration() {
         try {
             const config = await invoke('get_config');
+            this.config = config;
             if (config) {
                 this.updateConfigUI(config);
             }
@@ -317,7 +318,7 @@ class DesktopManager {
     handleGlobalClickInteraction() {
         this.hideContextMenu();
         this.hideDockContextMenu();
-        
+
         // Close downloads folder view if clicking on the overlay
         const downloadsFolderView = document.getElementById('downloads-folder-view');
         const downloadsOverlay = downloadsFolderView?.querySelector('.search-folder-overlay');
@@ -631,7 +632,7 @@ class DesktopManager {
         if (searchDockIcon) {
             searchDockIcon.addEventListener('click', (e) => {
                 e.stopPropagation();
-                
+
                 // Toggle folder view - if already open, close it
                 const folderView = document.getElementById('search-folder-view');
                 if (folderView && !folderView.classList.contains('hidden')) {
@@ -641,13 +642,13 @@ class DesktopManager {
                     this.hideSearchFolderView(isAllModels);
                     return;
                 }
-                
+
                 // Close search balloon if open (folder view takes priority)
                 const searchBalloon = document.getElementById('search-balloon');
                 if (searchBalloon && !searchBalloon.classList.contains('hidden')) {
                     searchBalloon.classList.add('hidden');
                 }
-                
+
                 // Don't auto-display recent searches when opening All Models
                 this.showArchitectureFolderView('All', false);
             });
@@ -950,7 +951,7 @@ class DesktopManager {
         if (modelCard) modelCard.classList.add('menu-open');
 
         this.selectedIcon = icon;
-        
+
         // Sort presets to move default to top
         const sortedPresets = [...presets].sort((a, b) => {
             if (a.is_default && !b.is_default) return -1;
@@ -962,7 +963,7 @@ class DesktopManager {
         let menuItems = `
             <div class="context-menu-title" style="padding: 8px 12px; font-size: 11px; color: var(--theme-text-muted); text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8;">Select Preset</div>
         `;
-        
+
         sortedPresets.forEach(preset => {
             // If it's a default preset, show the home icon
             const iconName = preset.is_default ? 'home' : 'tune';
@@ -984,7 +985,7 @@ class DesktopManager {
 
         const rect = button.getBoundingClientRect();
         const menuRect = contextMenu.getBoundingClientRect();
-        
+
         let left = rect.left;
         let top = rect.bottom + 5;
 
@@ -1018,11 +1019,11 @@ class DesktopManager {
             let presetsHTML = '';
             let presetsHTMLExternal = '';
             let hasMultiplePresets = false;
-            
+
             // Check if this is a clip model - clip models cannot be launched or have properties edited
-            const isClipModel = this.selectedIcon && this.selectedIcon.dataset.architecture && 
-                               this.selectedIcon.dataset.architecture.toLowerCase() === 'clip';
-            
+            const isClipModel = this.selectedIcon && this.selectedIcon.dataset.architecture &&
+                this.selectedIcon.dataset.architecture.toLowerCase() === 'clip';
+
             if (this.selectedIcon && !isClipModel) {
                 const modelPath = this.selectedIcon.dataset.path;
                 try {
@@ -1048,7 +1049,7 @@ class DesktopManager {
 
             // Build menu items - hide launch and properties for clip models
             let menuItemsContent = '';
-            
+
             if (!isClipModel) {
                 // Show launch options for non-clip models
                 menuItemsContent = `
@@ -1071,7 +1072,7 @@ class DesktopManager {
                     <div class="context-menu-separator"></div>
                 `;
             }
-            
+
             menuItems = menuItemsContent + `
                 <div class="context-menu-item" data-action="delete">
                     <div class="menu-item-content">
@@ -1169,29 +1170,29 @@ class DesktopManager {
         const updateSubmenuPosition = () => {
             const contextMenu = document.getElementById('context-menu');
             if (!contextMenu) return;
-            
+
             const contextMenuRect = contextMenu.getBoundingClientRect();
             const menuItemRect = menuItem.getBoundingClientRect();
-            
+
             // Calculate position relative to the context menu
             const left = menuItemRect.right - contextMenuRect.left;
             let top = menuItemRect.top - contextMenuRect.top;
-            
+
             const submenuHeight = submenu.offsetHeight || 150;
-            
+
             // Check if submenu would go below the context menu
             if (top + submenuHeight > contextMenu.offsetHeight) {
                 top = contextMenu.offsetHeight - submenuHeight;
             }
-            
+
             // Ensure minimum top position
             top = Math.max(0, top);
-            
+
             submenu.style.position = 'absolute';
             submenu.style.left = left + 'px';
             submenu.style.top = top + 'px';
         };
-        
+
         menuItem.addEventListener('mouseenter', () => {
             updateSubmenuPosition();
             submenu.classList.add('show');
@@ -1213,7 +1214,7 @@ class DesktopManager {
     hideContextMenu() {
         const contextMenu = document.getElementById('context-menu');
         if (contextMenu) contextMenu.classList.add('hidden');
-        
+
         // Remove menu-open class from all model cards
         document.querySelectorAll('.model-card.menu-open').forEach(card => {
             card.classList.remove('menu-open');
@@ -1433,7 +1434,7 @@ class DesktopManager {
                 delete colors[modelPath];
             }
             localStorage.setItem('model_colors', JSON.stringify(colors));
-            
+
             // Refresh the current view to show changes
             const folderTitle = document.getElementById('search-folder-title');
             if (folderTitle) {
@@ -1452,7 +1453,7 @@ class DesktopManager {
 
         const picker = document.createElement('div');
         picker.className = 'color-picker-popup';
-        
+
         const colors = [
             { name: 'Red', value: '#ef5350' },
             { name: 'Pink', value: '#e91e63' },
@@ -1505,8 +1506,44 @@ class DesktopManager {
         const rect = buttonElement.getBoundingClientRect();
         picker.style.top = `${rect.bottom + 5}px`;
         picker.style.left = `${rect.left}px`;
-        
+
         document.body.appendChild(picker);
+    }
+
+    getParentFolderName(path) {
+        const parts = this.getPathParts(path);
+        if (parts.author && parts.repo) return `${parts.author}\\${parts.repo}`;
+        return parts.repo || parts.author || '';
+    }
+
+    getPathParts(path) {
+        if (!path || !this.config || !this.config.models_directory) return { author: '', repo: '', file: '' };
+
+        const modelsDir = this.config.models_directory.replace(/\\/g, '/').toLowerCase();
+        const fullPath = path.replace(/\\/g, '/');
+        const fullPathLower = fullPath.toLowerCase();
+
+        let relativePath = '';
+        if (fullPathLower.startsWith(modelsDir)) {
+            relativePath = fullPath.substring(modelsDir.length);
+            if (relativePath.startsWith('/')) relativePath = relativePath.substring(1);
+        } else {
+            relativePath = fullPath;
+        }
+
+        const pathParts = relativePath.split('/');
+        const fileName = pathParts[pathParts.length - 1].replace(/.gguf$/i, '');
+
+        if (pathParts.length >= 3) {
+            // Author/Repo/file.gguf
+            return { author: pathParts[0], repo: pathParts[1], file: fileName };
+        } else if (pathParts.length === 2) {
+            // Repo/file.gguf
+            return { author: '', repo: pathParts[0], file: fileName };
+        } else {
+            // file.gguf
+            return { author: '', repo: '', file: fileName };
+        }
     }
 
     async showArchitectureFolderView(arch, openWithSearchHistory = false) {
@@ -1514,7 +1551,7 @@ class DesktopManager {
         if (window.downloadManager) {
             window.downloadManager.hideDownloadManager();
         }
-        
+
         const folderView = document.getElementById('search-folder-view');
         const folderGrid = document.getElementById('search-folder-grid');
         const folderTitle = document.getElementById('search-folder-title');
@@ -1550,7 +1587,7 @@ class DesktopManager {
 
         // Update header
         folderTitle.textContent = arch === 'All' ? 'Models' : arch;
-        folderStats.textContent = `${modelCount} model${modelCount !== 1 ? 's' : ''} • ${totalSize.toFixed(2)} GB`;
+        folderStats.textContent = `${modelCount} model${modelCount !== 1 ? 's' : ''} · ${totalSize.toFixed(2)} GB`;
 
         // Build model cards
         const buildCardsHTML = async () => {
@@ -1573,11 +1610,11 @@ class DesktopManager {
 
                 // Get model_name (general.name from GGUF) if available
                 // Only show if it's different from the filename
-                const fileName = model.name.replace('.gguf', '');
-                const modelName = model.model_name || '';
-                const displayModelName = (modelName && modelName !== fileName && modelName !== model.name) 
-                    ? `<span class="model-card-general-name">${modelName}</span>` 
-                    : '';
+                const modelParts = this.getPathParts(model.path);
+                const displayName = modelParts.repo || modelParts.file;
+                const secondaryDisplayName = modelParts.author || (modelParts.repo ? modelParts.file : '');
+
+                const parentFolderHtml = secondaryDisplayName ? `<span class="model-card-folder-name">${secondaryDisplayName}</span>` : '';
 
                 // Get model color
                 const color = this.getModelColor(model.path);
@@ -1631,22 +1668,19 @@ class DesktopManager {
                 return `
                     <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
-                         data-quantization="${model.quantization}" data-date="${model.date}">
+                         data-quantization="${model.quantization}" data-date="${model.date}" data-folder="${modelParts.author}\\${modelParts.repo}">
                         <div class="model-card-content">
                             <div class="model-card-icon">
                                 <img src="./assets/gguf.png">
                                 ${customArgsIndicator}
                             </div>
                             <div class="model-card-info">
-                                <h3 class="model-card-name">
-                                    ${fileName}
-                                    ${displayModelName}
-                                </h3>
+                                <h3 class="model-card-name">${displayName}${parentFolderHtml}</h3>
                                 <div class="model-card-details">
                                     <span class="model-card-tag">${model.architecture}</span>
                                     <span class="model-card-tag">${model.quantization}</span>
                                     <span class="model-card-tag">${sizeGB} GB</span>
-                                    <span class="model-card-detail-separator">•</span>
+                                    <span class="model-card-detail-separator">·</span>
                                     <span class="model-card-detail-value date-modified">${formattedDate}</span>
                                 </div>
                             </div>
@@ -1691,7 +1725,7 @@ class DesktopManager {
                 // Hide any open context/preset menus
                 this.hideContextMenu();
                 e.stopPropagation();
-                
+
                 // Check if clicking on action tab buttons
                 const actionBtn = e.target.closest('.action-btn');
                 if (actionBtn) {
@@ -1703,7 +1737,7 @@ class DesktopManager {
                     tempIcon.dataset.architecture = card.dataset.architecture;
                     tempIcon.dataset.quantization = card.dataset.quantization;
                     tempIcon.dataset.date = card.dataset.date;
-                    
+
                     if (action === 'launch-internal') {
                         // Check for presets and launch
                         const modelPath = card.dataset.path;
@@ -1753,12 +1787,12 @@ class DesktopManager {
                     }
                     return;
                 }
-                
+
                 // Don't show tab if clicking on the favorite button
                 if (e.target.closest('.model-card-favorite-btn')) return;
 
                 // Selection is now handled by hover in CSS
-                });
+            });
             // Add click handler for favorite button
             const favBtn = card.querySelector('.model-card-favorite-btn');
             if (favBtn) {
@@ -1968,7 +2002,7 @@ class DesktopManager {
                 const sortType = btn.dataset.sort;
                 const isFavoritesToggle = btn.dataset.action === 'toggle-favorites';
                 const isHideSuppressedToggle = btn.id === 'hide-suppressed-btn';
-                
+
                 if (isHideSuppressedToggle) {
                     // Toggle hiding of suppressed (CLIP) models
                     this.hideSuppressedModels = !this.hideSuppressedModels;
@@ -2010,9 +2044,10 @@ class DesktopManager {
         cards.forEach(card => {
             const name = card.dataset.name.toLowerCase();
             const arch = card.dataset.architecture.toLowerCase();
+            const folder = (card.dataset.folder || '').toLowerCase();
 
             // Use fuzzy search for better matching
-            if (lowerTerm === '' || this.fuzzyMatch(lowerTerm, name) || this.fuzzyMatch(lowerTerm, arch)) {
+            if (lowerTerm === '' || this.fuzzyMatch(lowerTerm, name) || this.fuzzyMatch(lowerTerm, arch) || this.fuzzyMatch(lowerTerm, folder)) {
                 card.style.display = 'flex';
             } else {
                 card.style.display = 'none';
@@ -2145,14 +2180,14 @@ class DesktopManager {
     fuzzyMatch(searchTerm, target) {
         const searchLower = searchTerm.toLowerCase().replace(/\s+/g, '');
         const targetLower = target.toLowerCase();
-        
+
         let searchIndex = 0;
         for (let i = 0; i < targetLower.length && searchIndex < searchLower.length; i++) {
             if (targetLower[i] === searchLower[searchIndex]) {
                 searchIndex++;
             }
         }
-        
+
         return searchIndex === searchLower.length;
     }
 
@@ -2176,7 +2211,7 @@ class DesktopManager {
         if (window.downloadManager) {
             window.downloadManager.hideDownloadManager();
         }
-        
+
         const folderView = document.getElementById('search-folder-view');
         const folderGrid = document.getElementById('search-folder-grid');
         const folderTitle = document.getElementById('search-folder-title');
@@ -2190,7 +2225,7 @@ class DesktopManager {
         Object.keys(this.modelsByArchitecture).forEach(arch => {
             const archModels = this.modelsByArchitecture[arch];
             // Filter out CLIP models if hideSuppressedModels is enabled
-            const filteredModels = this.hideSuppressedModels 
+            const filteredModels = this.hideSuppressedModels
                 ? archModels.filter(model => (model.architecture || '').toLowerCase() !== 'clip')
                 : archModels;
             filteredModels.forEach(model => {
@@ -2274,27 +2309,33 @@ class DesktopManager {
                 const color = this.getModelColor(model.path);
                 const tagStyle = color ? `border-left: 4px solid ${color};` : '';
 
+                const modelParts = this.getPathParts(model.path);
+                const displayName = modelParts.repo || modelParts.file;
+                const secondaryDisplayName = modelParts.author || (modelParts.repo ? modelParts.file : '');
+
+                const parentFolderHtml = secondaryDisplayName ? `<span class="model-card-folder-name">${secondaryDisplayName}</span>` : '';
+
                 return `
                     <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
-                         data-quantization="${model.quantization}" data-date="${model.date}">
+                         data-quantization="${model.quantization}" data-date="${model.date}" data-folder="${modelParts.author}\\${modelParts.repo}">
                         <div class="model-card-content">
                             <div class="model-card-icon">
                                 <img src="./assets/gguf.png">
                                 ${customArgsIndicator}
                             </div>
                             <div class="model-card-info">
-                                <h3 class="model-card-name">${model.name.replace('.gguf', '')}</h3>
+                                <h3 class="model-card-name">${displayName}${parentFolderHtml}</h3>
                                 <div class="model-card-details">
                                     <span class="model-card-detail-item">
                                         <span class="model-card-detail-label">Quant:</span>
                                         <span class="model-card-detail-value">${model.quantization}</span>
                                     </span>
-                                    <span class="model-card-detail-separator">•</span>
+                                    <span class="model-card-detail-separator">·</span>
                                     <span class="model-card-detail-item">
                                         <span class="model-card-detail-value">${sizeGB} GB</span>
                                     </span>
-                                    <span class="model-card-detail-separator">•</span>
+                                    <span class="model-card-detail-separator">·</span>
                                     <span class="model-card-detail-item">
                                         <span class="model-card-detail-value date-modified">${formattedDate}</span>
                                     </span>
@@ -2341,7 +2382,7 @@ class DesktopManager {
                 // Hide any open context/preset menus
                 this.hideContextMenu();
                 e.stopPropagation();
-                
+
                 // Check if clicking on action tab buttons
                 const actionBtn = e.target.closest('.action-btn');
                 if (actionBtn) {
@@ -2353,7 +2394,7 @@ class DesktopManager {
                     tempIcon.dataset.architecture = card.dataset.architecture;
                     tempIcon.dataset.quantization = card.dataset.quantization;
                     tempIcon.dataset.date = card.dataset.date;
-                    
+
                     if (action === 'launch-internal') {
                         // Check for presets and launch
                         const modelPath = card.dataset.path;
@@ -2401,12 +2442,12 @@ class DesktopManager {
                     }
                     return;
                 }
-                
+
                 // Don't show tab if clicking on the favorite button
                 if (e.target.closest('.model-card-favorite-btn')) return;
 
                 // Selection is now handled by hover in CSS
-                });
+            });
             // Add click handler for favorite button
             const favBtn = card.querySelector('.model-card-favorite-btn');
             if (favBtn) {
@@ -2427,7 +2468,7 @@ class DesktopManager {
 
         // Show the folder view
         folderView.classList.remove('hidden');
-        
+
         // Ensure search folder view is always on top of all windows
         folderView.style.zIndex = ++this.windowZIndex;
 
@@ -2906,7 +2947,7 @@ class DesktopManager {
         if (event) {
             event.stopPropagation();
         }
-        
+
         const index = this.favorites.indexOf(modelPath);
         if (index === -1) {
             this.favorites.push(modelPath);
@@ -2914,19 +2955,19 @@ class DesktopManager {
             this.favorites.splice(index, 1);
         }
         this.saveFavorites();
-        
+
         // Update the UI
         const card = document.querySelector(`.model-card[data-path="${CSS.escape(modelPath)}"]`);
         if (card) {
             const favBtn = card.querySelector('.model-card-favorite-btn');
             const isFav = this.isFavorite(modelPath);
-            
+
             if (favBtn) {
                 favBtn.classList.toggle('active', isFav);
                 favBtn.innerHTML = isFav ? '<span class="material-icons">star</span>' : '<span class="material-icons">star_border</span>';
             }
         }
-        
+
         // Re-sort the folder view based on current settings
         const folderGrid = document.getElementById('search-folder-grid');
         if (folderGrid && !folderGrid.classList.contains('hidden')) {
@@ -2939,13 +2980,13 @@ class DesktopManager {
         if (!folderGrid) return;
 
         const cards = Array.from(folderGrid.querySelectorAll('.model-card'));
-        
+
         cards.sort((a, b) => {
             const aPath = a.dataset.path;
             const bPath = b.dataset.path;
             const aFav = this.isFavorite(aPath);
             const bFav = this.isFavorite(bPath);
-            
+
             // Favorites first (only if enabled)
             if (this.folderSortFavoritesFirst) {
                 if (aFav && !bFav) return -1;
@@ -3036,17 +3077,17 @@ class DesktopManager {
             const sortType = btn.dataset.sort;
             const isFavoritesToggle = btn.dataset.action === 'toggle-favorites';
             const isHideSuppressedToggle = btn.id === 'hide-suppressed-btn';
-            
+
             btn.classList.remove('active');
-            
+
             if (sortType && sortType === this.folderSortType) {
                 btn.classList.add('active');
             }
-            
+
             if (isFavoritesToggle) {
                 btn.classList.toggle('active', this.folderSortFavoritesFirst);
             }
-            
+
             if (isHideSuppressedToggle) {
                 btn.classList.toggle('active', this.hideSuppressedModels);
             }
@@ -3263,7 +3304,7 @@ class DesktopManager {
 
         if (windowElement) {
             const isHidden = windowElement.classList.contains('hidden') || windowElement.style.display === 'none';
-            
+
             if (isHidden) {
                 // Restore window
                 windowElement.classList.remove('hidden');
@@ -3787,10 +3828,10 @@ class DesktopManager {
 
             // If we get here, the deletion was successful
             this.showNotification(`Successfully deleted "${filename}"`, 'success');
-            
+
             // Refresh the desktop to update the view
             await this.loadModels(false);
-            
+
 
         } catch (error) {
             console.error('Error deleting file:', error);
@@ -3926,9 +3967,9 @@ class DesktopManager {
                         const internalValue = settingConfig.argumentMap[arg];
                         // Find the canonical CLI argument for this internal value
                         // The canonical is the one that starts with "--" (not short form "-")
-                        const canonicalArg = Object.keys(settingConfig.argumentMap).find(key => 
+                        const canonicalArg = Object.keys(settingConfig.argumentMap).find(key =>
                             settingConfig.argumentMap[key] === internalValue && key.startsWith('--')
-                        ) || Object.keys(settingConfig.argumentMap).find(key => 
+                        ) || Object.keys(settingConfig.argumentMap).find(key =>
                             settingConfig.argumentMap[key] === internalValue
                         );
                         settings[settingConfig.id] = canonicalArg || arg;
@@ -4615,7 +4656,7 @@ class DesktopManager {
                     taskbarItem.classList.remove('active');
                     taskbarItem.classList.add('minimized');
                 }
-                
+
                 // Also update permanent dock icons
                 if (id === 'settings-window') {
                     const settingsDockIcon = document.getElementById('settings-dock-icon');
@@ -4636,7 +4677,7 @@ class DesktopManager {
                         llamacppDockIcon.classList.add('minimized');
                     }
                 }
-                
+
                 this.updateDockAutoHidingStatus();
             }
         }
@@ -5001,7 +5042,7 @@ class DesktopManager {
 
             if (result.success && result.models) {
                 this.refreshDesktopIcons(result.models, true); // Use animations for manual refresh
-                
+
                 // If folder view is open, refresh it too
                 this.refreshFolderViewIfOpen();
             } else {
@@ -5012,19 +5053,19 @@ class DesktopManager {
             this.showNotification('Error refreshing desktop: ' + error.message, 'error');
         }
     }
-    
+
     refreshFolderViewIfOpen() {
         const folderView = document.getElementById('search-folder-view');
         if (!folderView || folderView.classList.contains('hidden')) {
             return;
         }
-        
+
         // Get the current folder title to know which view to refresh
         const folderTitle = document.getElementById('search-folder-title');
         if (!folderTitle) return;
-        
+
         const title = folderTitle.textContent;
-        
+
         if (title === 'Search Results') {
             // Re-run the search with current filter
             const searchInput = document.getElementById('search-folder-input');
@@ -5096,7 +5137,7 @@ class DesktopManager {
                     } else {
                         iconContainer.classList.remove('has-custom-args');
                     }
-                    
+
                     const existingIndicator = iconContainer.querySelector('.model-card-custom-indicator');
                     if (hasCustomArgs && !existingIndicator) {
                         const indicator = document.createElement('div');
@@ -5118,7 +5159,7 @@ class DesktopManager {
     // Check if a model is currently running in a terminal
     isModelRunning(modelPath) {
         if (!terminalManager || !modelPath) return false;
-        
+
         // Check if there's an existing terminal for this model
         const existingTerminal = terminalManager.getExistingTerminal ? terminalManager.getExistingTerminal(modelPath) : null;
         if (existingTerminal) {
@@ -5132,14 +5173,14 @@ class DesktopManager {
     // Update running model indicators for folder view cards
     async updateRunningModelIndicators() {
         const cards = document.querySelectorAll('.model-card');
-        
+
         cards.forEach(card => {
             const modelPath = card.dataset.path;
             const iconContainer = card.querySelector('.model-card-icon');
             if (!iconContainer || !modelPath) return;
 
             const isRunning = this.isModelRunning(modelPath);
-            
+
             if (isRunning) {
                 iconContainer.classList.add('running');
             } else {
