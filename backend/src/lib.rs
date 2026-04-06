@@ -274,9 +274,14 @@ async fn save_config(
         }));
     }
     
-    // Cleanup leftover download files in the new models directory
-    if let Err(e) = huggingface::cleanup_leftover_downloads(&models_directory).await {
-        eprintln!("Warning: Failed to cleanup leftover downloads: {}", e);
+    // Cleanup leftover download files in the new models directory - ONLY if we're the only instance
+    // to avoid interrupting active downloads in other instances
+    if !is_another_instance_running() {
+        if let Err(e) = huggingface::cleanup_leftover_downloads(&models_directory).await {
+            eprintln!("Warning: Failed to cleanup leftover downloads: {}", e);
+        }
+    } else {
+        println!("Another instance detected, skipping download cleanup during config change to avoid interrupting active downloads");
     }
     
     // Scan models with new directory
@@ -1545,6 +1550,34 @@ async fn delete_llamacpp_version(path: String, state: tauri::State<'_, AppState>
     save_settings(&state).await.map_err(|e| format!("Failed to save settings: {}", e))
 }
 
+/// Check if another instance of the application is already running
+fn is_another_instance_running() -> bool {
+    let mut sys = sysinfo::System::new_all();
+    sys.refresh_all();
+    
+    let our_pid = sysinfo::get_current_pid().ok();
+    
+    // Get our executable name
+    let our_exe_name = std::env::current_exe().ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()));
+    
+    if let Some(exe_name) = our_exe_name {
+        let count = sys.processes().values()
+            .filter(|p| {
+                // Check if process name matches our executable name
+                // and it's not our own process
+                let name = p.name().to_string_lossy();
+                (name == exe_name || name == "Arandu" || name == "Arandu.exe") 
+                && our_pid.map_or(true, |pid| p.pid() != pid)
+            })
+            .count();
+        
+        return count > 0;
+    }
+    
+    false
+}
+
 // Initialize and load settings
 async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error>> {
     let state = AppState::new();
@@ -1574,14 +1607,17 @@ async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error>> 
         }
     }
     
-    // Cleanup leftover download files from previous sessions
-    {
+    // Cleanup leftover download files from previous sessions - ONLY if we're the only instance
+    // to avoid interrupting active downloads in other instances
+    if !is_another_instance_running() {
         let config = state.config.lock().await;
         if !config.models_directory.is_empty() {
             if let Err(e) = huggingface::cleanup_leftover_downloads(&config.models_directory).await {
                 eprintln!("Warning: Failed to cleanup leftover downloads: {}", e);
             }
         }
+    } else {
+        println!("Another instance detected, skipping startup downloads cleanup to avoid interrupting active downloads");
     }
     
     Ok(state)
