@@ -493,8 +493,8 @@ class HuggingFaceApp {
         const displayQuery = isTrendingSearch ? 'Trending Models' : query;
         const searchBackendQuery = isTrendingSearch ? '' : query;
 
-        // Save to search history
-        if (typeof searchHistory !== 'undefined') {
+        // Save to search history (skip built-in trending shortcut)
+        if (typeof searchHistory !== 'undefined' && !isTrendingSearch) {
             searchHistory.addSearch(query);
         }
 
