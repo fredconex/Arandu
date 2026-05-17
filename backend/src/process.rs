@@ -405,14 +405,6 @@ async fn handle_process_output(
     let mut stdout_buf = Vec::new();
     let mut stderr_buf = Vec::new();
     
-    // Update status to running
-    {
-        let mut processes = state.running_processes.lock().await;
-        if let Some(process_info) = processes.get_mut(&process_id) {
-            process_info.status = ProcessStatus::Running;
-        }
-    }
-    
     loop {
         tokio::select! {
             read_stdout = stdout_reader.read_until(b'\n', &mut stdout_buf) => {
@@ -482,6 +474,10 @@ async fn handle_process_output(
 async fn add_output_line(state: &AppState, process_id: &str, line: String) {
     let mut processes = state.running_processes.lock().await;
     if let Some(process_info) = processes.get_mut(process_id) {
+        // Transition from Starting → Running on first output line
+        if matches!(process_info.status, ProcessStatus::Starting) {
+            process_info.status = ProcessStatus::Running;
+        }
         process_info.output.push(line);
         // Keep only last 1000 lines to prevent memory issues
         if process_info.output.len() > 1000 {

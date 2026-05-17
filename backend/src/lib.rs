@@ -552,7 +552,7 @@ async fn launch_model_with_preset(
             .cloned()
             .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
         
-        config.custom_args = custom_args;
+        config.custom_args = custom_args.clone();
         model_configs.insert(model_path.clone(), config);
     } // Release the lock here
     
@@ -576,7 +576,8 @@ async fn launch_model_with_preset(
         "model_name": result.model_name,
         "server_host": result.server_host,
         "server_port": result.server_port,
-        "command": result.command
+        "command": result.command,
+        "custom_args_used": custom_args
     }))
 }
 
@@ -625,7 +626,7 @@ async fn launch_model(
             .cloned()
             .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
         
-        config.custom_args = custom_args;
+        config.custom_args = custom_args.clone();
         model_configs.insert(model_path.clone(), config);
     }
     
@@ -643,6 +644,58 @@ async fn launch_model(
         model_configs.insert(model_path, config);
     }
     
+    Ok(serde_json::json!({
+        "success": true,
+        "process_id": result.process_id,
+        "model_name": result.model_name,
+        "server_host": result.server_host,
+        "server_port": result.server_port,
+        "command": result.command,
+        "custom_args_used": custom_args
+    }))
+}
+
+/// Relaunch a model with an explicit custom_args string.
+/// Used by the Stop/Start button to guarantee the same arguments as the original launch.
+#[tauri::command]
+async fn launch_model_with_custom_args(
+    model_path: String,
+    custom_args: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    // Store original args so we can restore after launch
+    let original_args = {
+        let model_configs = state.model_configs.lock().await;
+        let config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        config.custom_args.clone()
+    };
+
+    // Temporarily override with the explicit args
+    {
+        let mut model_configs = state.model_configs.lock().await;
+        let mut config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        config.custom_args = custom_args;
+        model_configs.insert(model_path.clone(), config);
+    }
+
+    // Launch the model
+    let result = launch_model_server(model_path.clone(), &state).await
+        .map_err(|e| format!("Failed to launch model: {}", e))?;
+
+    // Restore original args
+    {
+        let mut model_configs = state.model_configs.lock().await;
+        let mut config = model_configs.get(&model_path)
+            .cloned()
+            .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
+        config.custom_args = original_args;
+        model_configs.insert(model_path, config);
+    }
+
     Ok(serde_json::json!({
         "success": true,
         "process_id": result.process_id,
@@ -1780,6 +1833,7 @@ pub fn run() {
             set_default_preset,
             launch_model_with_preset,
             launch_model,
+            launch_model_with_custom_args,
             launch_model_external,
             launch_model_with_preset_external,
             delete_model_file,

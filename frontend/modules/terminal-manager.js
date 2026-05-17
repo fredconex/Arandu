@@ -34,7 +34,7 @@ class TerminalManager {
         return this.invoke;
     }
 
-    async openServerTerminal(processId, modelName, host, port, modelPath, activeVersion, launchArgs = null) {
+    async openServerTerminal(processId, modelName, host, port, modelPath, activeVersion, launchArgs = null, customArgsUsed = null) {
         console.log('OpenServerTerminal called with:', { processId, modelName, host, port, modelPath, activeVersion, launchArgs });
 
         // Get model parts for consistent display
@@ -160,7 +160,8 @@ class TerminalManager {
             status: 'starting',
             output: [], // Store terminal output lines
             activeVersion: activeVersion,
-            launchArgs: launchArgs // Store the actual arguments used for launch
+            launchArgs: launchArgs, // Store the actual command array used for display
+            customArgsUsed: customArgsUsed // Store the exact custom args string for restart
         });
 
         console.log('Adding taskbar item...');
@@ -341,6 +342,11 @@ class TerminalManager {
                     // Continue polling if process is still running - faster polling for better responsiveness
                     setTimeout(pollOutput, 100);
                 } else if (data.is_running === false) {
+                    // Guard: only mark as stopped if this loop is still for the active process
+                    if (terminalInfo.processId !== processId) {
+                        console.log(`⏹️ [POLL STOP] Old process ${processId} stopped, but active process is now ${terminalInfo.processId}. Not updating status.`);
+                        return;
+                    }
                     console.log('Process has stopped, finalizing output');
                     // Process has stopped, flush any remaining output
                     if (updateTimer) {
@@ -350,8 +356,15 @@ class TerminalManager {
                     this.updateServerStatus(windowId, 'stopped', data.return_code || 0);
                 }
             } catch (error) {
+                // Guard: if a new process has taken over this window, this loop is stale.
+                // Do not mark the window as stopped — just exit silently.
+                const currentTerminalInfo = this.terminals.get(windowId);
+                if (currentTerminalInfo && currentTerminalInfo.processId !== processId) {
+                    console.log(`⏹️ [POLL STOP] Stale loop for old process ${processId} caught error (new process: ${currentTerminalInfo.processId}). Stopping silently.`);
+                    return;
+                }
+
                 console.error('Error polling server output:', error);
-                const terminalInfo = this.terminals.get(windowId);
 
                 // If the server is gone or another error, stop polling.
                 this.updateServerStatus(windowId, 'stopped', -1);
@@ -529,18 +542,33 @@ class TerminalManager {
                 return;
             }
             
-            // Launch the model with its current settings
-            console.log('Launching model with current configuration');
-            const result = await invoke('launch_model', { modelPath: modelPath });
+            // Launch the model - reuse the exact same custom args that were originally used,
+            // so that presets (MTP, custom flags, etc.) are preserved across Stop/Start cycles.
+            let result;
+            const savedCustomArgs = terminalInfo.customArgsUsed;
+            if (savedCustomArgs !== null && savedCustomArgs !== undefined) {
+                console.log('Relaunching with saved custom args:', savedCustomArgs);
+                result = await invoke('launch_model_with_custom_args', {
+                    modelPath: modelPath,
+                    customArgs: savedCustomArgs
+                });
+            } else {
+                console.log('No saved custom args, using default launch_model');
+                result = await invoke('launch_model', { modelPath: modelPath });
+            }
 
             if (result && result.success) {
                 console.log(`✅ [START SUCCESS] New Process ID: ${result.process_id}`);
                 
-                // Update terminal info with new process ID
+                // Update terminal info with new process ID (keep customArgsUsed intact)
                 terminalInfo.processId = result.process_id;
                 terminalInfo.host = result.server_host;
                 terminalInfo.port = result.server_port;
                 terminalInfo.status = 'starting';
+                // Preserve or update customArgsUsed if the new launch returned one
+                if (result.custom_args_used !== undefined && result.custom_args_used !== null) {
+                    terminalInfo.customArgsUsed = result.custom_args_used;
+                }
                 this.terminals.set(windowId, terminalInfo);
 
                 // Update chat iframe URL with new host:port

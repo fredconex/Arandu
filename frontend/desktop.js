@@ -3569,7 +3569,8 @@ class DesktopManager {
                     result.server_port,
                     modelPath,
                     activeVersion,
-                    result.command
+                    result.command,
+                    result.custom_args_used ?? null
                 );
 
                 console.log('Terminal created:', terminal ? 'success' : 'failed');
@@ -3720,7 +3721,8 @@ class DesktopManager {
                     result.server_port,
                     modelPath,
                     activeVersion,
-                    result.command
+                    result.command,
+                    result.custom_args_used ?? null
                 );
 
                 if (!terminal) {
