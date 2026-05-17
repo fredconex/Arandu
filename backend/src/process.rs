@@ -681,18 +681,47 @@ fn filter_port_args(args: &mut Vec<String>) {
 fn parse_custom_args(custom_args: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut current_arg = String::new();
-    let mut in_quotes = false;
-    let mut chars = custom_args.chars().peekable();
+    let mut in_single_quotes = false;
+    let mut in_double_quotes = false;
     
+    let mut chars = custom_args.chars().peekable();
     while let Some(ch) = chars.next() {
         match ch {
-            '"' | '\'' if !in_quotes => {
-                in_quotes = true;
+            '\\' => {
+                // Peek at the next character to see if it's special
+                if let Some(&next_ch) = chars.peek() {
+                    if next_ch == '"' || next_ch == '\'' || next_ch == '\\' || next_ch == ' ' {
+                        // It's escaping a special character, so consume the backslash and push the next char
+                        current_arg.push(next_ch);
+                        chars.next(); // consume it
+                    } else {
+                        // It's just a normal backslash (e.g., in a Windows path)
+                        current_arg.push('\\');
+                    }
+                } else {
+                    // Trailing backslash
+                    current_arg.push('\\');
+                }
             },
-            '"' | '\'' if in_quotes => {
-                in_quotes = false;
+            '\'' if !in_double_quotes => {
+                if current_arg.is_empty() || current_arg.ends_with('=') {
+                    in_single_quotes = true;
+                } else if in_single_quotes {
+                    in_single_quotes = false;
+                } else {
+                    current_arg.push('\'');
+                }
             },
-            ' ' if !in_quotes => {
+            '"' if !in_single_quotes => {
+                if current_arg.is_empty() || current_arg.ends_with('=') {
+                    in_double_quotes = true;
+                } else if in_double_quotes {
+                    in_double_quotes = false;
+                } else {
+                    current_arg.push('"');
+                }
+            },
+            ' ' | '\t' | '\n' | '\r' if !in_single_quotes && !in_double_quotes => {
                 if !current_arg.is_empty() {
                     args.push(current_arg.clone());
                     current_arg.clear();

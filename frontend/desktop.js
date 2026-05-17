@@ -4016,9 +4016,11 @@ class DesktopManager {
             if ((char === '"' || char === "'") && !inQuotes) {
                 inQuotes = true;
                 quoteChar = char;
+                current += char;
             } else if (char === quoteChar && inQuotes) {
                 inQuotes = false;
                 quoteChar = '';
+                current += char;
             } else if (char === ' ' && !inQuotes) {
                 if (current.trim()) {
                     args.push(current.trim());

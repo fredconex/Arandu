@@ -27,6 +27,11 @@ class PropertiesManager {
         return this.invoke;
     }
 
+    escapeHTML(str) {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     // LocalStorage methods for tracking setting usage (tracks setting IDs, not values)
     getSettingUsageCounts() {
         try {
@@ -1637,16 +1642,25 @@ class PropertiesManager {
                     rawArgument = arg;
                 }
 
+                const escapeAttr = (str) => {
+                    if (str === null || str === undefined) return '';
+                    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                };
+                
+                const escapedRawArgument = escapeAttr(rawArgument);
+                const escapedValue = escapeAttr(value);
+                const displayValue = value !== null && value !== undefined ? escapeAttr(value) : '';
+
                 html += `
                     <div class="arg-chip" 
-                         title="${rawArgument}" 
+                         title="${escapedRawArgument}" 
                          data-setting-id="${setting.id}" 
-                         data-value="${value !== null && value !== undefined ? value : ''}" 
-                         data-raw-arg="${rawArgument}"
+                         data-value="${escapedValue}" 
+                         data-raw-arg="${escapedRawArgument}"
                          draggable="true"
                          onclick="propertiesManager.openSettingPopover(this, '${setting.id}')">
-                        <span class="arg-label">${setting.name}</span>
-                        <span class="arg-value">${value !== null && value !== undefined ? value : ''}</span>
+                        <span class="arg-label">${escapeAttr(setting.name)}</span>
+                        <span class="arg-value">${displayValue}</span>
                     </div>
                 `;
             } else {
@@ -1658,18 +1672,27 @@ class PropertiesManager {
                     i++;
                 }
 
+                const escapeAttr = (str) => {
+                    if (str === null || str === undefined) return '';
+                    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                };
+
+                const escapedDisplayArg = escapeAttr(displayArg);
+                const escapedArg = escapeAttr(arg);
+
                 html += `
                     <div class="arg-chip unknown" 
-                         title="${displayArg}" 
-                         data-unknown-arg="${arg}"
-                         data-raw-arg="${displayArg}"
+                         title="${escapedDisplayArg}" 
+                         data-unknown-arg="${escapedArg}"
+                         data-raw-arg="${escapedDisplayArg}"
                          draggable="true"
                          onclick="propertiesManager.openUnknownArgPopover(this, '${encodeURIComponent(displayArg)}')">
-                        <span class="arg-value">${displayArg}</span>
+                        <span class="arg-value">${escapedDisplayArg}</span>
                     </div>
                 `;
             }
         }
+
 
         return html;
     }
@@ -1960,6 +1983,7 @@ class PropertiesManager {
         // Generate content (slider/input)
         let controlsHTML = '';
         const currentValue = parsedSettings[setting.id] || setting.default || '';
+        const escapedCurrentValue = this.escapeHTML(currentValue);
 
         if (setting.type === 'slider') {
             // Use normalized slider range to handle non-divisible min/max/step combinations
@@ -1974,7 +1998,7 @@ class PropertiesManager {
             
             controlsHTML = `
                 <div class="popover-content">
-                    <span class="value-display" contenteditable="true" data-setting-id="${setting.id}">${currentValue}</span>
+                    <span class="value-display" contenteditable="true" data-setting-id="${setting.id}">${escapedCurrentValue}</span>
                     <input type="range" class="setting-slider" data-setting="${setting.id}"
                            min="0" max="${numSteps}" step="1" value="${normalizedValue}"
                            data-slider-min="${sliderMin}" data-slider-step="${sliderStep}" data-slider-max="${sliderMax}">
@@ -1989,7 +2013,7 @@ class PropertiesManager {
                 <div class="popover-content">
                     <select class="property-select" data-setting="${setting.id}" style="width: 100%; padding: 8px;">
                         ${setting.options.map(opt =>
-                `<option value="${opt.value}" ${currentValue == opt.value ? 'selected' : ''}>${opt.label}</option>`
+                `<option value="${this.escapeHTML(opt.value)}" ${currentValue == opt.value ? 'selected' : ''}>${this.escapeHTML(opt.label)}</option>`
             ).join('')}
                     </select>
                 </div>
@@ -1998,7 +2022,7 @@ class PropertiesManager {
             controlsHTML = `
                 <div class="popover-content">
                     <input type="number" class="property-input" data-setting="${setting.id}"
-                           value="${currentValue}" placeholder="${setting.placeholder || ''}"
+                           value="${escapedCurrentValue}" placeholder="${this.escapeHTML(setting.placeholder || '')}"
                            style="font-size: 16px; padding: 8px;">
                 </div>
             `;
@@ -2006,7 +2030,7 @@ class PropertiesManager {
             controlsHTML = `
                 <div class="popover-content">
                     <input type="text" class="property-input" data-setting="${setting.id}"
-                           value="${currentValue}" placeholder="${setting.placeholder || ''}"
+                           value="${escapedCurrentValue}" placeholder="${this.escapeHTML(setting.placeholder || '')}"
                            style="font-size: 16px; padding: 8px; width: 100%;">
                 </div>
             `;
@@ -2382,6 +2406,7 @@ class PropertiesManager {
         this.closePopover();
 
         const currentArg = decodeURIComponent(encodedArg);
+        const escapedCurrentArg = this.escapeHTML(currentArg);
 
         // Create popover element
         const popover = document.createElement('div');
@@ -2396,7 +2421,7 @@ class PropertiesManager {
                 </button>
             </div>
             <div class="popover-content">
-                <input type="text" class="custom-arg-input" value="${currentArg}" placeholder="--argument value" style="width: 100%; padding: 8px; font-size: 14px;">
+                <input type="text" class="custom-arg-input" value="${escapedCurrentArg}" placeholder="--argument value" style="width: 100%; padding: 8px; font-size: 14px;">
             </div>
         `;
 
