@@ -527,11 +527,11 @@ class HuggingFaceApp {
                 <div class="search-error">
                     <div class="error-icon">Error</div>
                     <h4>Search Failed</h4>
-                    <p>${error.message}</p>
+                    <p>${error.message || error}</p>
                     <button onclick="huggingFaceApp.performHuggingFaceSearch()" class="retry-btn">Try Again</button>
                 </div>
             `;
-            this.desktop.showNotification('Search failed: ' + error.message, 'error');
+            this.desktop.showNotification('Search failed: ' + (error.message || error), 'error');
         } finally {
             searchInput.disabled = false;
         }
@@ -689,7 +689,7 @@ class HuggingFaceApp {
                     detailsContent.innerHTML = `
                         <div class="model-detail-error">
                             <h3>${basicModel.name}</h3>
-                            <p>Error loading model details: ${error.message}</p>
+                            <p>Error loading model details: ${error.message || error}</p>
                             <p>This model may not have GGUF files available.</p>
                             <button onclick="huggingFaceApp.selectModel(${index})" class="retry-btn">Retry</button>
                         </div>

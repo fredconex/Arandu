@@ -104,17 +104,27 @@ pub async fn search_models(
     let client = reqwest::Client::new();
     
     // Build search URL with parameters - add full parameter to get complete model information
-     let url = format!(
-        "https://huggingface.co/api/models?search={}&filter=gguf,conversational&sort={}&limit={}",
-        urlencoding::encode(&query),
-         match sort_by.as_str() {
-             "downloads" => "downloads",
-             "likes" => "likes",
-             "updated" => "lastModified",
-             _ => "" // relevance - default
-         },
-         limit
-     );
+    let sort_param = match sort_by.as_str() {
+        "downloads" => "downloads",
+        "likes" => "likes",
+        "updated" => "lastModified",
+        _ => "" // relevance - default
+    };
+
+    let url = if sort_param.is_empty() {
+        format!(
+            "https://huggingface.co/api/models?search={}&filter=gguf,conversational&limit={}",
+            urlencoding::encode(&query),
+            limit
+        )
+    } else {
+        format!(
+            "https://huggingface.co/api/models?search={}&filter=gguf,conversational&sort={}&limit={}",
+            urlencoding::encode(&query),
+            sort_param,
+            limit
+        )
+    };
     
     println!("Searching with URL: {}", url);
     
