@@ -288,10 +288,12 @@ class TerminalManager {
                     outputBuffer.push(...data.output);
 
                     // Check for server ready message and update status
-                    const serverReadyMessage = "main: server is listening on http://";
-                    const hasServerReadyMessage = data.output.some(line =>
-                        line && line.toString().includes(serverReadyMessage)
-                    );
+                    const hasServerReadyMessage = data.output.some(line => {
+                        if (!line) return false;
+                        const lineStr = line.toString();
+                        return lineStr.includes("server is listening on") || 
+                               lineStr.includes("server is listening on http://");
+                    });
 
                     if (hasServerReadyMessage && terminalInfo.status === 'starting') {
                         console.log('Server ready message detected, updating status to running');
