@@ -63,7 +63,7 @@ select.property-input {
 
 .property-textarea {
 	width: 100%;
-	min-height: 60px;
+	min-height: 120px;
 	padding: 8px;
 	background: var(--theme-surface-light);
 	border: 1px solid var(--theme-border);
@@ -95,7 +95,8 @@ select.property-input {
 	box-shadow: 0 0 0 2px rgba(41, 182, 246, 0.2);
 }
 
-.property-input:disabled, .property-select:disabled {
+.property-input:disabled,
+.property-select:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 	background: var(--theme-surface-light);
@@ -113,7 +114,8 @@ select.property-input {
 	padding-bottom: 140px;
 	overflow-y: auto;
 	position: relative;
-	min-width: 0; /* Allow flex item to shrink */
+	min-width: 0;
+	/* Allow flex item to shrink */
 }
 
 .setting-item {
@@ -190,11 +192,11 @@ select.property-input {
 }
 
 .setting-value .value-display[contenteditable="true"]:focus {
-    background-color: var(--theme-surface);
-    color: var(--theme-text);
-    outline: 1px solid var(--theme-accent);
-    border-radius: 3px;
-    padding: 0 4px;
+	background-color: var(--theme-surface);
+	color: var(--theme-text);
+	outline: 1px solid var(--theme-accent);
+	border-radius: 3px;
+	padding: 0 4px;
 }
 
 .setting-actions {
@@ -232,7 +234,8 @@ select.property-input {
 
 .setting-slider {
 	width: 100%;
-	height: 20px; /* Increased height to accommodate thumb */
+	height: 20px;
+	/* Increased height to accommodate thumb */
 	background: transparent;
 	outline: none;
 	-webkit-appearance: none;
@@ -260,7 +263,8 @@ select.property-input {
 	cursor: pointer;
 	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 	transition: all 0.2s ease;
-	margin-top: -5px; /* Center thumb: (4px - 14px) / 2 */
+	margin-top: -5px;
+	/* Center thumb: (4px - 14px) / 2 */
 }
 
 .setting-slider::-webkit-slider-thumb:hover {
@@ -393,7 +397,7 @@ select.property-input {
 .toggle-btn.active {
 	background: var(--theme-surface);
 	color: var(--theme-text);
-	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 	font-weight: 500;
 }
 
@@ -414,7 +418,8 @@ select.property-input {
 	gap: 8px;
 }
 
-.copy-args-btn, .paste-args-btn {
+.copy-args-btn,
+.paste-args-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -428,13 +433,15 @@ select.property-input {
 	transition: all 0.2s ease;
 }
 
-.copy-args-btn:hover, .paste-args-btn:hover {
+.copy-args-btn:hover,
+.paste-args-btn:hover {
 	background: var(--theme-hover);
 	border-color: var(--theme-border);
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.copy-args-btn .material-icons, .paste-args-btn .material-icons {
+.copy-args-btn .material-icons,
+.paste-args-btn .material-icons {
 	font-size: 18px;
 }
 
@@ -801,7 +808,7 @@ select.property-input {
 	background: var(--theme-hover);
 	border-color: var(--theme-accent);
 	transform: translateY(-1px);
-	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .arg-chip.unknown {
@@ -839,15 +846,22 @@ select.property-input {
 	border: 1px solid var(--theme-border);
 	border-radius: 8px;
 	padding: 16px;
-	box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 	z-index: 10000;
 	min-width: 280px;
 	animation: popoverFadeIn 0.2s ease;
 }
 
 @keyframes popoverFadeIn {
-	from { opacity: 0; transform: translateY(5px); }
-	to { opacity: 1; transform: translateY(0); }
+	from {
+		opacity: 0;
+		transform: translateY(5px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .popover-header {
@@ -990,10 +1004,14 @@ select.property-input {
 .custom-arg-item {
 	font-weight: 500;
 	color: var(--theme-primary);
-	padding: 4px 16px; /* Remove left indent */
-	font-size: 12px; /* Smaller font */
-	text-align: center; /* Center the text */
-	justify-content: center; /* Center when using flex */
+	padding: 4px 16px;
+	/* Remove left indent */
+	font-size: 12px;
+	/* Smaller font */
+	text-align: center;
+	/* Center the text */
+	justify-content: center;
+	/* Center when using flex */
 }
 
 .custom-arg-item:hover {
@@ -1034,7 +1052,8 @@ select.property-input {
 	transform: scale(1.05);
 	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 	border-color: var(--theme-primary);
-	transition: none; /* Remove transition for smoother dragging */
+	transition: none;
+	/* Remove transition for smoother dragging */
 }
 
 .drag-placeholder {
@@ -1049,8 +1068,13 @@ select.property-input {
 }
 
 @keyframes placeholderPulse {
-	from { opacity: 0.4; }
-	to { opacity: 0.8; }
+	from {
+		opacity: 0.4;
+	}
+
+	to {
+		opacity: 0.8;
+	}
 }
 
 .arg-chip.add-arg-btn {
