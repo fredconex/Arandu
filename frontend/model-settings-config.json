@@ -2017,6 +2017,86 @@
       "default": false,
       "category": "System",
       "description": "Print a verbose prompt before generation (default: false)"
+    },
+    {
+      "id": "spec_type",
+      "name": "Speculative Decoding Type",
+      "type": "text",
+      "argument": "--spec-type",
+      "isFlag": false,
+      "default": "",
+      "category": "Generation",
+      "description": "Comma-separated list of types of speculative decoding to use (e.g., draft-mtp,ngram-mod)"
+    },
+    {
+      "id": "spec_draft_n_max",
+      "name": "Spec Draft N Max",
+      "type": "slider",
+      "argument": "--spec-draft-n-max",
+      "isFlag": false,
+      "min": 0,
+      "max": 64,
+      "step": 1,
+      "default": 3,
+      "unit": "tokens",
+      "category": "Generation",
+      "description": "Number of tokens to draft for speculative decoding (default: 3)"
+    },
+    {
+      "id": "spec_draft_p_min",
+      "name": "Spec Draft P Min",
+      "type": "slider",
+      "argument": "--spec-draft-p-min",
+      "isFlag": false,
+      "min": 0.0,
+      "max": 1.0,
+      "step": 0.01,
+      "default": 0.0,
+      "unit": "",
+      "category": "Generation",
+      "description": "Minimum speculative decoding probability (greedy) (default: 0.0)"
+    },
+    {
+      "id": "spec_ngram_mod_n_match",
+      "name": "Spec Ngram Mod N Match",
+      "type": "slider",
+      "argument": "--spec-ngram-mod-n-match",
+      "isFlag": false,
+      "min": 0,
+      "max": 128,
+      "step": 1,
+      "default": 24,
+      "unit": "",
+      "category": "Generation",
+      "description": "Ngram-mod lookup length (default: 24)"
+    },
+    {
+      "id": "spec_ngram_mod_n_min",
+      "name": "Spec Ngram Mod N Min",
+      "type": "slider",
+      "argument": "--spec-ngram-mod-n-min",
+      "isFlag": false,
+      "min": 0,
+      "max": 128,
+      "step": 1,
+      "default": 48,
+      "unit": "tokens",
+      "category": "Generation",
+      "description": "Minimum number of ngram tokens to use for ngram-based speculative decoding (default: 48)"
+    },
+    {
+      "id": "spec_ngram_mod_n_max",
+      "name": "Spec Ngram Mod N Max",
+      "type": "slider",
+      "argument": "--spec-ngram-mod-n-max",
+      "isFlag": false,
+      "min": 0,
+      "max": 128,
+      "step": 1,
+      "default": 64,
+      "unit": "tokens",
+      "category": "Generation",
+      "description": "Maximum number of ngram tokens to use for ngram-based speculative decoding (default: 64)"
     }
   ]
 }
