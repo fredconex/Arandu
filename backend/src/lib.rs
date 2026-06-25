@@ -308,9 +308,14 @@ async fn scan_models_command(
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let config = state.config.lock().await;
-    let models = scan_models(&config.models_directory)
+    let models_directory = config.models_directory.clone();
+    drop(config); // release lock before blocking
+
+    let models = tokio::task::spawn_blocking(move || scan_models(&models_directory))
+        .await
+        .map_err(|e| format!("Scan task panicked: {}", e))?
         .map_err(|e| format!("Failed to scan models: {}", e))?;
-    
+
     Ok(serde_json::json!({
         "success": true,
         "models": models
@@ -322,9 +327,14 @@ async fn scan_mmproj_files_command(
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let config = state.config.lock().await;
-    let files = scan_mmproj_files(&config.models_directory)
+    let models_directory = config.models_directory.clone();
+    drop(config); // release lock before blocking
+
+    let files = tokio::task::spawn_blocking(move || scan_mmproj_files(&models_directory))
+        .await
+        .map_err(|e| format!("Scan task panicked: {}", e))?
         .map_err(|e| format!("Failed to scan mmproj files: {}", e))?;
-    
+
     Ok(serde_json::json!({
         "success": true,
         "files": files

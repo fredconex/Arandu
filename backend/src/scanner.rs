@@ -1,5 +1,6 @@
+use anyhow::Result;
 use std::fs;
-use std::io::{Read};
+use std::io::{BufReader, Read};
 use std::path::Path;
 use glob::glob;
 use regex::Regex;
@@ -8,7 +9,7 @@ use crate::models::*;
 const MAX_KV_ENTRIES: u64 = 1024;
 const MAX_STRING_LEN: u64 = 1024 * 1024; // 1MB guard
 
-pub fn scan_models(directory: &str) -> Result<Vec<ModelInfo>, Box<dyn std::error::Error>> {
+pub fn scan_models(directory: &str) -> Result<Vec<ModelInfo>> {
     if directory.is_empty() || !Path::new(directory).is_dir() {
         return Ok(Vec::new());
     }
@@ -103,15 +104,14 @@ fn process_model_group(
 
 /// A lightweight reader that mirrors the Pascal TGGUFModel approach:
 /// parse every KV value properly instead of skipping unknown types.
+/// Uses a BufReader to amortize the many tiny read_exact calls (1–8 bytes each)
+/// into large buffered reads, avoiding a syscall per field.
 struct GgufReader {
-    file: fs::File,
+    file: BufReader<fs::File>,
     version: u32,
 }
 
 impl GgufReader {
-    fn new(file: fs::File, version: u32) -> Self {
-        Self { file, version }
-    }
 
     fn read_u8(&mut self) -> Result<u8, Box<dyn std::error::Error>> {
         let mut buf = [0u8; 1];
@@ -185,16 +185,20 @@ impl GgufReader {
 pub fn extract_gguf_metadata(
     file_path: &Path,
 ) -> Result<GgufMetadata, Box<dyn std::error::Error>> {
-    let mut file = fs::File::open(file_path)?;
+    let file = fs::File::open(file_path)?;
     let fallback_name = file_path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("Unknown")
         .to_string();
 
+    // Wrap immediately in a BufReader so the magic + version reads are also buffered.
+    // The buffer is large enough to pull the entire header in one OS read.
+    let mut buffered = BufReader::with_capacity(65536, file);
+
     // Magic
     let mut magic = [0u8; 4];
-    file.read_exact(&mut magic)?;
+    buffered.read_exact(&mut magic)?;
     if &magic != b"GGUF" {
         return Ok(GgufMetadata {
             architecture: "Unknown".to_string(),
@@ -204,10 +208,13 @@ pub fn extract_gguf_metadata(
 
     // Version
     let mut buf4 = [0u8; 4];
-    file.read_exact(&mut buf4)?;
+    buffered.read_exact(&mut buf4)?;
     let version = u32::from_le_bytes(buf4);
 
-    let mut reader = GgufReader::new(file, version);
+    // Convert the BufReader<File> into a GgufReader (which wraps its own BufReader).
+    // To avoid double-buffering, consume the inner file and re-wrap it.
+    // Simpler: pass the buffered reader directly by changing GgufReader to accept it.
+    let mut reader = GgufReader { file: buffered, version };
 
     // Tensor count (skip)
     reader.read_size()?;
@@ -276,7 +283,7 @@ pub fn get_quantization_from_filename(filename: &str) -> String {
 
 pub fn scan_mmproj_files(
     directory: &str,
-) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+) -> Result<Vec<serde_json::Value>> {
     if directory.is_empty() || !Path::new(directory).is_dir() {
         return Ok(Vec::new());
     }
