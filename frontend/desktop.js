@@ -910,6 +910,10 @@ class DesktopManager {
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('reload-active-chat'));
+            }
             if (e.key === 'Escape') {
                 this.hideContextMenu();
                 this.hideDockContextMenu();
@@ -922,6 +926,39 @@ class DesktopManager {
                     return;
                 }
                 this.launchModel(this.selectedIcon);
+            }
+        });
+
+        // Handler to reload the active chat iframe
+        window.addEventListener('reload-active-chat', () => {
+            console.log('reload-active-chat event triggered');
+            const activeWindow = document.querySelector('.window.active');
+            if (activeWindow) {
+                // Scenario 1: Active server window with active Native Chat tab
+                const activeChatTab = activeWindow.querySelector('.server-tab.active[id^="tab-chat-"]');
+                if (activeChatTab) {
+                    const windowId = activeWindow.id;
+                    const chatPanel = activeWindow.querySelector(`#panel-chat-${windowId}`);
+                    const iframe = chatPanel?.querySelector('iframe');
+                    if (iframe) {
+                        const url = iframe.src && iframe.src !== 'about:blank' ? iframe.src : iframe.dataset.src;
+                        if (url) {
+                            console.log(`Reloading active server chat iframe: ${url}`);
+                            iframe.src = url;
+                        }
+                    }
+                }
+                // Scenario 2: Active standalone Native Chat window
+                else if (activeWindow.id.startsWith('native_chat_')) {
+                    const iframe = activeWindow.querySelector('iframe');
+                    if (iframe) {
+                        const url = iframe.src && iframe.src !== 'about:blank' ? iframe.src : iframe.dataset.src;
+                        if (url) {
+                            console.log(`Reloading standalone native chat iframe: ${url}`);
+                            iframe.src = url;
+                        }
+                    }
+                }
             }
         });
     }

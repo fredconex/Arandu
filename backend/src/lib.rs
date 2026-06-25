@@ -1712,6 +1712,120 @@ pub fn run() {
             
             println!("Application started, process tracking enabled with kill_on_drop");
             
+            // Programmatically create the main window with the initialization script
+            let my_script = r#"
+                // Intercept F5 / Ctrl+R in all frames
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+                        e.preventDefault();
+                        if (window !== window.top) {
+                            window.location.reload();
+                        } else {
+                            window.dispatchEvent(new CustomEvent('reload-active-chat'));
+                        }
+                    }
+                });
+
+                // Inside iframes only: replace the native context menu with a custom one.
+                // The native "Refresh" would reload the whole app; our "Reload Page"
+                // only reloads the iframe. Clipboard operations are preserved.
+                if (window !== window.top) {
+                    window.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+
+                        // Remove any existing custom menu
+                        const existing = document.getElementById('__arandu_ctx_menu__');
+                        if (existing) existing.remove();
+
+                        const menu = document.createElement('div');
+                        menu.id = '__arandu_ctx_menu__';
+                        menu.style.cssText = [
+                            'position:fixed',
+                            'left:' + e.clientX + 'px',
+                            'top:' + e.clientY + 'px',
+                            'background:#2b2b2b',
+                            'border:1px solid #444',
+                            'border-radius:6px',
+                            'padding:4px 0',
+                            'z-index:2147483647',
+                            'box-shadow:0 4px 16px rgba(0,0,0,0.6)',
+                            'font-family:system-ui,sans-serif',
+                            'font-size:13px',
+                            'min-width:170px',
+                            'color:#e0e0e0',
+                            'user-select:none'
+                        ].join(';');
+
+                        const addItem = (label, action, disabled) => {
+                            const el = document.createElement('div');
+                            el.style.cssText = [
+                                'padding:7px 20px',
+                                'cursor:' + (disabled ? 'default' : 'pointer'),
+                                'opacity:' + (disabled ? '0.4' : '1')
+                            ].join(';');
+                            el.textContent = label;
+                            if (!disabled) {
+                                el.addEventListener('mouseover', () => el.style.background = '#3d3d3d');
+                                el.addEventListener('mouseout',  () => el.style.background = 'transparent');
+                                el.addEventListener('mousedown', (ev) => ev.preventDefault());
+                                el.addEventListener('click', () => { menu.remove(); action(); });
+                            }
+                            menu.appendChild(el);
+                        };
+
+                        const addSep = () => {
+                            const sep = document.createElement('div');
+                            sep.style.cssText = 'border-top:1px solid #444;margin:4px 0';
+                            menu.appendChild(sep);
+                        };
+
+                        const sel = window.getSelection();
+                        const hasSelection = sel && sel.toString().length > 0;
+                        const activeEl = document.activeElement;
+                        const isEditable = activeEl && (
+                            activeEl.tagName === 'INPUT' ||
+                            activeEl.tagName === 'TEXTAREA' ||
+                            activeEl.isContentEditable
+                        );
+
+                        addItem('Cut',        () => document.execCommand('cut'),       !hasSelection || !isEditable);
+                        addItem('Copy',       () => { if (hasSelection) navigator.clipboard.writeText(sel.toString()).catch(() => document.execCommand('copy')); }, !hasSelection);
+                        addItem('Paste',      () => navigator.clipboard.readText().then(t => document.execCommand('insertText', false, t)).catch(() => document.execCommand('paste')), !isEditable);
+                        addItem('Select All', () => document.execCommand('selectAll'), false);
+                        addSep();
+                        addItem('Reload Page', () => window.location.reload(), false);
+
+                        document.body.appendChild(menu);
+
+                        // Adjust position if near screen edge
+                        const r = menu.getBoundingClientRect();
+                        if (r.right  > window.innerWidth)  menu.style.left = (e.clientX - r.width)  + 'px';
+                        if (r.bottom > window.innerHeight) menu.style.top  = (e.clientY - r.height) + 'px';
+
+                        // Dismiss on any click outside the menu
+                        const dismiss = (ev) => {
+                            if (!menu.contains(ev.target)) {
+                                menu.remove();
+                                document.removeEventListener('click', dismiss, true);
+                            }
+                        };
+                        setTimeout(() => document.addEventListener('click', dismiss, true), 0);
+                    });
+                }
+            "#;
+            
+            let _main_window = tauri::webview::WebviewWindowBuilder::new(
+                app,
+                "main",
+                tauri::WebviewUrl::App("index.html".into()),
+            )
+            .title(&format!("Arandu v{}", env!("CARGO_PKG_VERSION")))
+            .inner_size(1400.0, 900.0)
+            .min_inner_size(1000.0, 700.0)
+            .resizable(true)
+            .initialization_script(my_script)
+            .build()?;
+            
             // Build the tray icon with menu
             let restore = MenuItemBuilder::with_id("restore", "Restore").build(app)?;
             let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;

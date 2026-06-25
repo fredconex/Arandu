@@ -7,17 +7,7 @@
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "title": "Arandu",
-        "width": 1400,
-        "height": 900,
-        "minWidth": 1000,
-        "minHeight": 700,
-        "resizable": true,
-        "fullscreen": false
-      }
-    ],
+
     "security": {
       "csp": null
     }
