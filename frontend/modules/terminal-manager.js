@@ -69,7 +69,7 @@ class TerminalManager {
                         <div class="server-output" id="server-output-${windowId}"><div class="server-line server-system">Starting ${fullModelDisplayName}...</div><div class="server-line server-system">Process ID: ${processId}</div><div class="server-line server-system">Server will be available at: ${host}:${port}</span></div><div class="server-line server-system">Waiting for server output...</div></div>
                     </div>
                     <div class="server-tab-panel" id="panel-chat-${windowId}" style="background: white;">
-                        <iframe src="http://${host}:${port}" frameBorder="0" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write"></iframe>
+                        <iframe src="about:blank" data-src="http://${host === '127.0.0.1' ? 'localhost' : host}:${port}" frameBorder="0" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write"></iframe>
                     </div>
                 </div>
             </div>
@@ -446,6 +446,16 @@ class TerminalManager {
                     statusElement.innerHTML = '<span class="material-icons" style="color: #4caf50; font-size: 14px;">circle</span> Running';
                     statusElement.className = 'server-status running';
                     terminalInfo.status = 'running';
+                    
+                    // Delay setting iframe src until server is fully running to avoid WebView2 503 gzip issue
+                    const chatPanel = window.querySelector(`#panel-chat-${windowId}`);
+                    if (chatPanel) {
+                        const iframe = chatPanel.querySelector('iframe');
+                        if (iframe && iframe.dataset.src && (!iframe.src || iframe.src === 'about:blank' || iframe.src === window.location.href)) {
+                            console.log(`Server is running, setting iframe src to ${iframe.dataset.src}`);
+                            iframe.src = iframe.dataset.src;
+                        }
+                    }
                 } else if (status === 'terminating') {
                     statusElement.innerHTML = '<span class="material-icons" style="color: #ffc107; font-size: 14px;">circle</span> Terminating';
                     statusElement.className = 'server-status starting';
@@ -578,9 +588,11 @@ class TerminalManager {
                 if (chatPanel) {
                     const iframe = chatPanel.querySelector('iframe');
                     if (iframe) {
-                        const newUrl = `http://${result.server_host}:${result.server_port}`;
-                        console.log(`Updating chat iframe URL to: ${newUrl}`);
-                        iframe.src = newUrl;
+                        const iframeHost = result.server_host === '127.0.0.1' ? 'localhost' : result.server_host;
+                        const newUrl = `http://${iframeHost}:${result.server_port}`;
+                        console.log(`Storing chat iframe URL to load when ready: ${newUrl}`);
+                        iframe.dataset.src = newUrl;
+                        iframe.src = 'about:blank'; // Clear it while starting
                     }
                 }
 
@@ -770,11 +782,13 @@ class TerminalManager {
         const url = `http://${host}:${port}`;
         const windowId = `native_chat_${Date.now()}`; // Unique ID for each window
 
+        const iframeUrl = url.replace('http://127.0.0.1:', 'http://localhost:');
+
         // Setup iframe content
         // We use an iframe that takes up the full window content and ensure it has white background
         const content = `
             <div style="width: 100%; height: 100%; display: flex; flex-direction: column; background: white;">
-                <iframe src="${url}" frameBorder="0" style="flex: 1; border: none; width: 100%; height: 100%;" allow="clipboard-read; clipboard-write"></iframe>
+                <iframe src="${iframeUrl}" frameBorder="0" style="flex: 1; border: none; width: 100%; height: 100%;" allow="clipboard-read; clipboard-write"></iframe>
             </div>
         `;
 
@@ -1059,7 +1073,7 @@ e-text-muted);">content_copy</span></button></span>
                         </div>
                     </div>
                     <div class="server-tab-panel" id="panel-chat-${windowId}" style="background: white;">
-                        <iframe src="http://${terminalData.host}:${terminalData.port}" frameBorder="0" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write"></iframe>
+                        <iframe src="${terminalData.status === 'running' ? `http://${terminalData.host === '127.0.0.1' ? 'localhost' : terminalData.host}:${terminalData.port}` : 'about:blank'}" data-src="http://${terminalData.host === '127.0.0.1' ? 'localhost' : terminalData.host}:${terminalData.port}" frameBorder="0" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write"></iframe>
                     </div>
                 </div>
             </div>
