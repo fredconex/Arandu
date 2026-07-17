@@ -185,10 +185,10 @@ class TerminalManager {
         // Start polling for output
         this.startServerOutputPolling(processId, windowId);
 
-        // Also add a status check after a few seconds to ensure we show something
+        // Begin polling the actual server endpoint until it responds, then switch.
         setTimeout(() => {
-            console.log('Running server health check...');
-            this.checkServerHealth(windowId, host, port, modelName);
+            console.log('Starting server health polling...');
+            this.startServerHealthPolling(windowId, host, port, modelName);
         }, 3000);
 
         console.log('Terminal window creation completed successfully');
@@ -287,25 +287,10 @@ class TerminalManager {
                     console.log(`Adding ${data.output.length} output lines to buffer`);
                     outputBuffer.push(...data.output);
 
-                    // Check for server ready message and update status
-                    const hasServerReadyMessage = data.output.some(line => {
-                        if (!line) return false;
-                        const lineStr = line.toString();
-                        return lineStr.includes("server is listening on") || 
-                               lineStr.includes("server is listening on http://");
-                    });
-
-                    if (hasServerReadyMessage && terminalInfo.status === 'starting') {
-                        console.log('Server ready message detected, updating status to running');
-                        this.updateServerStatus(windowId, 'running');
-                        
-                        // Auto-switch to chat tab when server is running (if enabled)
-                        if (this.autoSwitchEnabled) {
-                            setTimeout(() => {
-                                this.switchTab(windowId, 'chat');
-                            }, 4000);
-                        }
-                    }
+                    // NOTE: We no longer parse the server log to detect readiness or
+                    // auto-switch to chat. The llama.cpp logs keep changing and are
+                    // unreliable to parse. Readiness is instead detected by actually
+                    // connecting to the server via waitForServerReady() / startServerHealthPolling().
 
                     // Save output to terminal data (keep last 1000 lines)
                     const terminalData = this.terminals.get(windowId);
@@ -387,46 +372,85 @@ class TerminalManager {
     }
 
     async checkServerHealth(windowId, host, port, modelName) {
-        const outputDiv = document.getElementById(`server-output-${windowId}`);
-        if (!outputDiv) return;
+        // Deprecated: kept for backward compatibility (e.g. restore paths).
+        // Readiness is now determined by actually connecting via waitForServerReady().
+        await this.startServerHealthPolling(windowId, host, port, modelName);
+    }
 
-        try {
-            const response = await fetch(`http://${host}:${port}/v1/models`, {
-                method: 'GET',
-                signal: AbortSignal.timeout(5000)
-            });
+    // Poll the real server endpoint until it actually responds, then mark the
+    // server as running and (optionally) auto-switch to the chat tab. This avoids
+    // relying on unstable llama.cpp log line parsing.
+    startServerHealthPolling(windowId, host, port, modelName) {
+        const terminalInfo = this.terminals.get(windowId);
+        if (!terminalInfo) return;
 
-            if (response.ok) {
-                const models = await response.json();
+        // Guard against starting multiple health loops for the same process.
+        if (terminalInfo.healthPollingProcessId === terminalInfo.processId) return;
+        terminalInfo.healthPollingProcessId = terminalInfo.processId;
+        this.terminals.set(windowId, terminalInfo);
+
+        const maxAttempts = 300; // ~5 minutes at 1s interval
+        const intervalMs = 1000;
+        let attempts = 0;
+
+        const pollHealth = async () => {
+            const currentInfo = this.terminals.get(windowId);
+            // Stop if the window was repurposed for a different process or closed.
+            if (!currentInfo || currentInfo.processId !== terminalInfo.processId) {
+                return;
+            }
+            if (currentInfo.status === 'stopped' || currentInfo.status === 'terminating') {
+                return;
+            }
+
+            attempts++;
+            let ok = false;
+            try {
+                const response = await fetch(`http://${host}:${port}/v1/models`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(4000)
+                });
+                ok = response.ok;
+            } catch (error) {
+                ok = false;
+            }
+
+            const outputDiv = document.getElementById(`server-output-${windowId}`);
+            const addLine = (text, cls) => {
+                if (!outputDiv) return;
                 const lineDiv = document.createElement('div');
-                lineDiv.className = 'server-line server-success';
-                lineDiv.textContent = `Server is responding! Available models: ${models.data?.length || 'Unknown'}`;
+                lineDiv.className = `server-line ${cls}`;
+                lineDiv.textContent = text;
                 outputDiv.appendChild(lineDiv);
                 outputDiv.scrollTop = outputDiv.scrollHeight;
-                
-                // Update server status to running when health check succeeds
-                const terminalInfo = this.terminals.get(windowId);
-                if (terminalInfo && terminalInfo.status === 'starting') {
-                    console.log('Health check successful, updating status to running');
-                    this.updateServerStatus(windowId, 'running');
-                    
-                    // Auto-switch to chat tab when server is running (if enabled)
-                    if (this.autoSwitchEnabled) {
-                        setTimeout(() => {
+            };
+
+            if (ok) {
+                addLine(`Server is responding at ${host}:${port}! Switching to chat.`, 'server-success');
+                console.log('Server actually responded, updating status to running');
+                this.updateServerStatus(windowId, 'running');
+
+                // Auto-switch to chat tab once the page is confirmed reachable.
+                if (this.autoSwitchEnabled && currentInfo.status === 'running') {
+                    setTimeout(() => {
+                        const info = this.terminals.get(windowId);
+                        if (info && info.processId === terminalInfo.processId) {
                             this.switchTab(windowId, 'chat');
-                        }, 500);
-                    }
+                        }
+                    }, 500);
                 }
-            } else {
-                throw new Error(`Server responded with status ${response.status}`);
+                return;
             }
-        } catch (error) {
-            const lineDiv = document.createElement('div');
-            lineDiv.className = 'server-line server-warning';
-            lineDiv.textContent = `Warning: Server health check failed: ${error.message}`;
-            outputDiv.appendChild(lineDiv);
-            outputDiv.scrollTop = outputDiv.scrollHeight;
-        }
+
+            if (attempts >= maxAttempts) {
+                addLine(`Warning: Server did not respond after ${maxAttempts}s. It may still be starting.`, 'server-warning');
+                return;
+            }
+
+            setTimeout(pollHealth, intervalMs);
+        };
+
+        pollHealth();
     }
 
     updateServerStatus(windowId, status, returnCode = null) {
@@ -655,9 +679,9 @@ class TerminalManager {
                 // Start polling for new output
                 this.startServerOutputPolling(result.process_id, windowId);
                 
-                // Set up health check after restart
+                // Set up health polling after restart
                 setTimeout(() => {
-                    this.checkServerHealth(windowId, result.server_host, result.server_port, modelName);
+                    this.startServerHealthPolling(windowId, result.server_host, result.server_port, modelName);
                 }, 3000);
                 
             } else {
@@ -1133,6 +1157,7 @@ e-text-muted);">content_copy</span></button></span>
         // Resume output polling if process is still running or starting
         if ((terminalData.status === 'running' || terminalData.status === 'starting') && terminalData.processId) {
             this.startServerOutputPolling(terminalData.processId, windowId);
+            this.startServerHealthPolling(windowId, terminalData.host, terminalData.port, terminalData.modelName);
         }
     }
 
