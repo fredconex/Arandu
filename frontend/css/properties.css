@@ -848,7 +848,8 @@ select.property-input {
 	padding: 16px;
 	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 	z-index: 10000;
-	min-width: 280px;
+	min-width: 220px;
+	max-width: 320px;
 	animation: popoverFadeIn 0.2s ease;
 }
 
@@ -898,6 +899,54 @@ select.property-input {
 
 .popover-content {
 	/* Styles for the slider/input inside popover */
+}
+
+.model-picker {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.model-picker .model-filter {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.model-picker-row {
+	display: flex;
+	align-items: stretch;
+	gap: 8px;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.model-picker-row .property-select {
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.model-select-btn {
+	flex: 0 0 auto;
+	padding: 6px 12px;
+	background: var(--theme-primary);
+	color: #fff;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 12px;
+	white-space: nowrap;
+	transition: background 0.2s ease;
+}
+
+.model-select-btn:hover {
+	background: var(--theme-hover);
+}
+
+.model-select-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	background: var(--theme-surface-light);
 }
 
 /* Override slider styles for popover */

@@ -1415,17 +1415,14 @@
       "description": "Path to LoRA adapter (use comma-separated values to load multiple adapters)"
     },
     {
-      "id": "mmproj",
-      "name": "Multimodal Projector",
-      "type": "model-select",
-      "argument": "-mm",
-      "aliases": [
-        "--mmproj"
-      ],
+      "id": "model_draft",
+      "name": "Draft Model",
+      "type": "model-draft-select",
+      "argument": "--model-draft",
       "isFlag": false,
       "default": "",
       "category": "Model",
-      "description": "Path to a multimodal projector file. see tools/mtmd/README.md"
+      "description": "Path to a draft model used for speculative decoding (any GGUF model)"
     },
     {
       "id": "mmproj_offload",

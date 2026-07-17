@@ -1,6 +1,7 @@
 use tokio::process::{Child, Command as TokioCommand};
 use tokio::io::{BufReader, AsyncBufReadExt};
 use std::process::Stdio;
+use std::path::Path;
 use uuid::Uuid;
 use chrono::Utc;
 use std::sync::Arc;
@@ -8,6 +9,27 @@ use tokio::sync::Mutex;
 use crate::models::*;
 use crate::AppState;
 use crate::config::save_settings;
+
+/// Resolve a model/path argument to an absolute path.
+/// - `%models%/...` is joined against the configured models directory.
+/// - A relative (non-absolute, non-prefixed) path is also joined against the
+///   models directory (handles hand-written relative values).
+/// - An absolute path is returned unchanged.
+fn resolve_model_path(path: &str, models_directory: &str) -> String {
+    if let Some(rest) = path.strip_prefix("%models%/") {
+        return std::path::Path::new(models_directory)
+            .join(rest)
+            .to_string_lossy()
+            .into_owned();
+    }
+    if !Path::new(path).is_absolute() {
+        return std::path::Path::new(models_directory)
+            .join(path)
+            .to_string_lossy()
+            .into_owned();
+    }
+    path.to_string()
+}
 
 async fn resolve_llama_server_path_with_fallback(
     state: &AppState,
@@ -185,14 +207,13 @@ pub async fn launch_model_server(
         let mut custom_args = parse_custom_args(&model_config.custom_args);
         filter_port_args(&mut custom_args); // Filter out --port arguments
         
-        // Resolve relative paths for --mmproj and -mm
+        // Resolve relative paths for --mmproj, -mm and --model-draft
         let mut i = 0;
         while i < custom_args.len() {
-            if (custom_args[i] == "--mmproj" || custom_args[i] == "-mm") && i + 1 < custom_args.len() {
+            if (custom_args[i] == "--mmproj" || custom_args[i] == "-mm" || custom_args[i] == "--model-draft") && i + 1 < custom_args.len() {
                 let path = &custom_args[i + 1];
-                if !std::path::Path::new(path).is_absolute() {
-                    let abs_path = std::path::Path::new(&global_config.models_directory).join(path);
-                    custom_args[i + 1] = abs_path.to_string_lossy().to_string();
+                if !std::path::Path::new(path).is_absolute() || path.starts_with("%models%/") {
+                    custom_args[i + 1] = resolve_model_path(path, &global_config.models_directory);
                 }
                 i += 2;
             } else {
@@ -323,14 +344,13 @@ pub async fn launch_model_external(
         let mut custom_args = parse_custom_args(&model_config.custom_args);
         filter_port_args(&mut custom_args); // Filter out --port arguments
         
-        // Resolve relative paths for --mmproj and -mm
+        // Resolve relative paths for --mmproj, -mm and --model-draft
         let mut i = 0;
         while i < custom_args.len() {
-            if (custom_args[i] == "--mmproj" || custom_args[i] == "-mm") && i + 1 < custom_args.len() {
+            if (custom_args[i] == "--mmproj" || custom_args[i] == "-mm" || custom_args[i] == "--model-draft") && i + 1 < custom_args.len() {
                 let path = &custom_args[i + 1];
-                if !std::path::Path::new(path).is_absolute() {
-                    let abs_path = std::path::Path::new(&global_config.models_directory).join(path);
-                    custom_args[i + 1] = abs_path.to_string_lossy().to_string();
+                if !std::path::Path::new(path).is_absolute() || path.starts_with("%models%/") {
+                    custom_args[i + 1] = resolve_model_path(path, &global_config.models_directory);
                 }
                 i += 2;
             } else {

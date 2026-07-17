@@ -342,6 +342,49 @@ async fn scan_mmproj_files_command(
 }
 
 #[tauri::command]
+async fn scan_draft_models_command(
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let config = state.config.lock().await;
+    let models_directory = config.models_directory.clone();
+    drop(config); // release lock before blocking
+
+    let models_directory_for_scan = models_directory.clone();
+    let models = tokio::task::spawn_blocking(move || scan_models(&models_directory_for_scan))
+        .await
+        .map_err(|e| format!("Scan task panicked: {}", e))?
+        .map_err(|e| format!("Failed to scan models: {}", e))?;
+
+    let base_path = std::path::Path::new(&models_directory);
+
+    let files: Vec<serde_json::Value> = models
+        .into_iter()
+        .map(|m| {
+            // Prefer a path relative to the models directory so the stored
+            // value stays short; keep the absolute path if it lives outside.
+            // Relative paths are prefixed with %models%/ for clarity.
+            let rel = std::path::Path::new(&m.path)
+                .strip_prefix(base_path)
+                .map(|p| format!("%models%/{}", p.to_string_lossy().into_owned()))
+                .unwrap_or_else(|_| m.path.clone());
+
+            serde_json::json!({
+                "path": rel,
+                "name": m.name,
+                "size_gb": m.size_gb,
+                "architecture": m.architecture,
+                "quantization": m.quantization,
+            })
+        })
+        .collect();
+
+    Ok(serde_json::json!({
+        "success": true,
+        "files": files
+    }))
+}
+
+#[tauri::command]
 async fn get_model_settings(
     model_path: String,
     state: tauri::State<'_, AppState>,
@@ -1995,6 +2038,7 @@ pub fn run() {
             check_file_exists,
             get_system_stats,
             scan_mmproj_files_command,
+            scan_draft_models_command,
             hide_window,
             show_window
         ])

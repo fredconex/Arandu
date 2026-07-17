@@ -4295,6 +4295,7 @@ class DesktopManager {
                     // Also handle numeric values including 0
                     if ((value !== undefined && value !== null && value.toString().trim() !== '') ||
                         settingConfig.type === 'model-select' ||
+                        settingConfig.type === 'model-draft-select' ||
                         settingConfig.type === 'select' ||
                         settingConfig.type === 'text' ||
                         (typeof value === 'number' && !isNaN(value))) {

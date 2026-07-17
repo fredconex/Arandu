@@ -1337,7 +1337,7 @@ class PropertiesManager {
                     } else {
                         parsedSettings[settingId] = setting.default !== undefined ? setting.default : '';
                     }
-                } else if (setting.type === 'model-select') {
+                } else if (setting.type === 'model-select' || setting.type === 'model-draft-select') {
                     parsedSettings[settingId] = ''; // Keep it empty, but we'll fix settingsToArguments to allow it
                 } else {
                     parsedSettings[settingId] = setting.default !== undefined ? setting.default : '';
@@ -2040,28 +2040,33 @@ class PropertiesManager {
                     <p>This flag is enabled.</p>
                 </div>
             `;
-        } else if (setting.type === 'model-select') {
+        } else if (setting.type === 'model-select' || setting.type === 'model-draft-select') {
+            const isDraft = setting.type === 'model-draft-select';
+            const scanCommand = isDraft ? 'scan_draft_models_command' : 'scan_mmproj_files_command';
+            const emptyLabel = isDraft ? 'No models found.' : 'No mmproj files found.';
+            const errorContext = isDraft ? 'models' : 'mmproj files';
+
             controlsHTML = `
                 <div class="popover-content">
-                    <div class="loading-spinner" style="text-align: center; padding: 10px;">
-                        <span class="material-icons rotating">sync</span> Loading models...
-                    </div>
+                    <p style="text-align: center; padding: 10px; color: var(--theme-text-muted); font-size: 13px;">Loading models…</p>
                 </div>
             `;
 
             // Fetch models asynchronously
             const invoke = this.getInvoke();
             if (invoke) {
-                invoke('scan_mmproj_files_command').then(result => {
+                invoke(scanCommand).then(result => {
                     if (result && result.success && result.files) {
                         const files = result.files;
-                        const selectHTML = `
-                            <select class="property-select" data-setting="${setting.id}" style="width: 100%; padding: 8px;">
-                                <option value="">None Selected</option>
-                                ${files.map(file => {
+                        const optionsHTML = files.map(file => {
                             const filePath = file.path;
-                            const parts = this.desktop.getPathParts(filePath);
-                            
+                            // The %models%/ prefix is only meaningful for the stored argument
+                            // value; strip it for display so the list stays readable.
+                            const displayPath = filePath.startsWith('%models%/')
+                                ? filePath.slice('%models%/'.length)
+                                : filePath;
+                            const parts = this.desktop.getPathParts(displayPath);
+
                             let displayText = '';
                             if (parts.repo && parts.author) {
                                 displayText = `${parts.repo} · ${parts.author} (${parts.file})`;
@@ -2070,18 +2075,97 @@ class PropertiesManager {
                             } else {
                                 displayText = parts.file;
                             }
-                            
+
+                            const sizeGb = (typeof file.size_gb === 'number') ? file.size_gb : null;
+                            if (sizeGb !== null) {
+                                displayText += ` · ${sizeGb.toFixed(2)} GB`;
+                            }
+
                             return `<option value="${filePath}" ${currentValue === filePath ? 'selected' : ''} title="${filePath}">${displayText}</option>`;
-                        }).join('')}
-                            </select>
+                        }).join('');
+
+                        const contentHTML = `
+                            <div class="model-picker">
+                                <input type="text" class="property-input model-filter" data-setting="${setting.id}" placeholder="Filter models…" style="margin-bottom: 8px;">
+                                <div class="model-picker-row">
+                                    <select class="property-select" data-setting="${setting.id}" style="flex: 1; padding: 8px;">
+                                        <option value="">None Selected</option>
+                                        ${optionsHTML}
+                                    </select>
+                                    <button type="button" class="model-select-btn" title="Use selected model">Select</button>
+                                </div>
+                            </div>
                         `;
                         const popoverContent = popover.querySelector('.popover-content');
                         if (popoverContent) {
-                            popoverContent.innerHTML = selectHTML;
-                            // Add event listener to the new select
-                            const select = popoverContent.querySelector('select');
+                            popoverContent.innerHTML = contentHTML;
 
-                            // Disable close handler when this select is focused
+                            const filterInput = popoverContent.querySelector('.model-filter');
+                            const select = popoverContent.querySelector('select');
+                            const selectBtn = popoverContent.querySelector('.model-select-btn');
+
+                            const commitSelection = async () => {
+                                const value = select.value;
+                                await this.updateSettingValue(setting.id, value);
+                                this.closePopover();
+                            };
+
+                            // Explicit "Select" button commits whatever is currently chosen
+                            if (selectBtn) {
+                                selectBtn.addEventListener('click', async (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    await commitSelection();
+                                });
+
+                                selectBtn.addEventListener('blur', () => {
+                                    setTimeout(() => {
+                                        closeHandlerActive = true;
+                                    }, 200);
+                                });
+                            }
+
+                            // Filter the select options based on the filter text
+                            if (filterInput && select) {
+                                filterInput.addEventListener('input', (e) => {
+                                    const query = e.target.value.toLowerCase();
+                                    select.querySelectorAll('option').forEach(opt => {
+                                        const label = (opt.textContent || '').toLowerCase();
+                                        const value = (opt.value || '').toLowerCase();
+                                        const match = !query || label.includes(query) || value.includes(query);
+                                        opt.style.display = match ? '' : 'none';
+                                    });
+                                    // Auto-select the first visible option for quick keyboard use
+                                    const firstVisible = Array.from(select.options).find(o => o.style.display !== 'none');
+                                    if (firstVisible) {
+                                        select.value = firstVisible.value;
+                                    }
+                                });
+
+                                // Pressing Enter commits the currently filtered selection
+                                filterInput.addEventListener('keydown', async (e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        e.stopImmediatePropagation();
+                                        await commitSelection();
+                                    }
+                                });
+
+                                filterInput.addEventListener('blur', () => {
+                                    setTimeout(() => {
+                                        closeHandlerActive = true;
+                                    }, 200);
+                                });
+                            }
+
+                            const syncSelectBtn = () => {
+                                if (selectBtn) {
+                                    selectBtn.disabled = !select.value;
+                                }
+                            };
+
+                            // Disable close handler when the select is focused
                             select.addEventListener('focus', () => {
                                 closeHandlerActive = false;
                             });
@@ -2092,20 +2176,26 @@ class PropertiesManager {
                                 }, 200);
                             });
 
-                            select.addEventListener('change', async (e) => {
-                                await this.updateSettingValue(setting.id, e.target.value);
-                                // Close popover after selecting from dropdown
-                                this.closePopover();
+                            // Selecting an option updates the value but does NOT auto-close;
+                            // the user confirms via the "Select" button (or Enter in the filter).
+                            select.addEventListener('change', () => {
+                                syncSelectBtn();
                             });
+
+                            select.addEventListener('click', () => {
+                                syncSelectBtn();
+                            });
+
+                            syncSelectBtn();
                         }
                     } else {
                         const popoverContent = popover.querySelector('.popover-content');
                         if (popoverContent) {
-                            popoverContent.innerHTML = '<p style="color: var(--theme-danger); font-size: 12px;">No mmproj files found.</p>';
+                            popoverContent.innerHTML = `<p style="color: var(--theme-danger); font-size: 12px;">${emptyLabel}</p>`;
                         }
                     }
                 }).catch(err => {
-                    console.error('Error fetching mmproj files:', err);
+                    console.error(`Error fetching ${errorContext}:`, err);
                     const popoverContent = popover.querySelector('.popover-content');
                     if (popoverContent) {
                         popoverContent.innerHTML = '<p style="color: var(--theme-danger); font-size: 12px;">Error loading files.</p>';
@@ -2177,7 +2267,7 @@ class PropertiesManager {
         });
 
         // Add Enter key handler for all input elements (not select or range) - separate loop to ensure it's added after other handlers
-        const textInputs = popover.querySelectorAll('input:not([type="range"])');
+        const textInputs = popover.querySelectorAll('input:not([type="range"]):not(.model-filter)');
         textInputs.forEach(input => {
             input.addEventListener('keydown', async (e) => {
                 if (e.key === 'Enter') {
