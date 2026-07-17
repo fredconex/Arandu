@@ -22,6 +22,8 @@ class DesktopManager {
         this.restorationInProgress = false; // Flag to prevent duplicate restoration
         this.modelsByArchitecture = {}; // Store models grouped by architecture
         this.favorites = this.loadFavorites(); // Load favorites from localStorage
+        this.hiddenModels = this.loadHiddenModels(); // Load per-model hidden list from localStorage
+        this.visibilityEditMode = false; // When true, reveal all models and show per-model eye toggle
         this.searchFolderInputValue = ''; // Store search input value when closing folder view
 
         this.init();
@@ -1604,18 +1606,16 @@ class DesktopManager {
             Object.values(this.modelsByArchitecture).forEach(m => {
                 // Avoid duplicates if 'All' was already in modelsByArchitecture
                 // (though we expect to filter it out or not have it)
-                // Filter out CLIP models if hideSuppressedModels is enabled
-                if (this.hideSuppressedModels) {
-                    m.filter(model => {
-                        const modelArch = (model.architecture || '').toLowerCase();
-                        return modelArch !== 'clip';
-                    }).forEach(model => models.push(model));
-                } else {
-                    models.push(...m);
-                }
+                m.forEach(model => models.push(model));
             });
         } else {
             models = this.modelsByArchitecture[arch] || [];
+        }
+
+        // Apply per-model visibility filter unless we're in visibility-edit mode,
+        // in which case ALL models (including hidden ones) are shown so they can be toggled.
+        if (!this.visibilityEditMode) {
+            models = models.filter(model => !this.isModelHidden(model.path));
         }
 
         const modelCount = models.length;
@@ -1703,7 +1703,7 @@ class DesktopManager {
                 }
 
                 return `
-                    <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
+                    <div class="model-card${clipModelClass}${this.isModelHidden(model.path) ? ' model-hidden' : ''}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
                          data-quantization="${model.quantization}" data-date="${model.date}" data-folder="${modelParts.author}\\${modelParts.repo}">
                         <div class="model-card-content">
@@ -1725,9 +1725,7 @@ class DesktopManager {
                         <div class="model-card-action-tab">
                             ${actionButtonsHTML}
                         </div>
-                        <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}" style="${tagStyle}">
-                            <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
-                        </button>
+                        ${this.getCardCornerButtonHTML(model, tagStyle)}
                     </div>
                 `;
             });
@@ -1825,8 +1823,9 @@ class DesktopManager {
                     return;
                 }
 
-                // Don't show tab if clicking on the favorite button
+                // Don't show tab if clicking on the favorite button or visibility toggle
                 if (e.target.closest('.model-card-favorite-btn')) return;
+                if (e.target.closest('.model-card-visibility-btn')) return;
 
                 // Selection is now handled by hover in CSS
             });
@@ -1835,6 +1834,13 @@ class DesktopManager {
             if (favBtn) {
                 favBtn.addEventListener('click', (e) => {
                     this.toggleFavorite(card.dataset.path, e);
+                });
+            }
+            // Add click handler for per-model visibility toggle (visibility-edit mode)
+            const eyeBtn = card.querySelector('.model-card-visibility-btn');
+            if (eyeBtn) {
+                eyeBtn.addEventListener('click', (e) => {
+                    this.toggleModelHidden(card.dataset.path, e);
                 });
             }
         });
@@ -2041,14 +2047,19 @@ class DesktopManager {
                 const isHideSuppressedToggle = btn.id === 'hide-suppressed-btn';
 
                 if (isHideSuppressedToggle) {
-                    // Toggle hiding of suppressed (CLIP) models
-                    this.hideSuppressedModels = !this.hideSuppressedModels;
-                    localStorage.setItem('hideSuppressedModels', this.hideSuppressedModels);
-                    // Update button icon and refresh the view if showing All Models
+                    // Toggle visibility-edit mode: reveal all models (including hidden)
+                    // and show a per-model eye toggle in place of the favorite star.
+                    this.visibilityEditMode = !this.visibilityEditMode;
                     this.updateHideSuppressedButton();
+                    // Refresh the current folder view so cards re-render with/without eye toggles
                     const folderTitle = document.getElementById('search-folder-title');
-                    if (folderTitle && folderTitle.textContent === 'Models') {
-                        this.showArchitectureFolderView('All');
+                    if (folderTitle && folderTitle.textContent === 'Search Results') {
+                        this.showSearchFolderView(this.searchFolderInputValue || '');
+                    } else {
+                        const arch = (folderTitle && folderTitle.textContent && folderTitle.textContent !== 'Models')
+                            ? folderTitle.textContent
+                            : 'All';
+                        this.showArchitectureFolderView(arch);
                     }
                 } else if (isFavoritesToggle) {
                     // Toggle favorites on top
@@ -2261,10 +2272,10 @@ class DesktopManager {
         const matchingModels = [];
         Object.keys(this.modelsByArchitecture).forEach(arch => {
             const archModels = this.modelsByArchitecture[arch];
-            // Filter out CLIP models if hideSuppressedModels is enabled
-            const filteredModels = this.hideSuppressedModels
-                ? archModels.filter(model => (model.architecture || '').toLowerCase() !== 'clip')
-                : archModels;
+            // Apply per-model visibility filter unless in visibility-edit mode
+            const filteredModels = this.visibilityEditMode
+                ? archModels
+                : archModels.filter(model => !this.isModelHidden(model.path));
             filteredModels.forEach(model => {
                 const modelName = (model.name || '').toLowerCase();
                 const cleanModelName = modelName.replace(/[^a-z0-9]/g, '');
@@ -2353,7 +2364,7 @@ class DesktopManager {
                 const parentFolderHtml = secondaryDisplayName ? `<span class="model-card-folder-name">${secondaryDisplayName}</span>` : '';
 
                 return `
-                    <div class="model-card${clipModelClass}" data-path="${model.path}" data-name="${model.name}"
+                    <div class="model-card${clipModelClass}${this.isModelHidden(model.path) ? ' model-hidden' : ''}" data-path="${model.path}" data-name="${model.name}"
                          data-size="${model.size_gb}" data-architecture="${model.architecture}"
                          data-quantization="${model.quantization}" data-date="${model.date}" data-folder="${modelParts.author}\\${modelParts.repo}">
                         <div class="model-card-content">
@@ -2378,9 +2389,7 @@ class DesktopManager {
                                     </span>
                                 </div>
                             </div>
-                            <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}" style="${tagStyle}">
-                                <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
-                            </button>
+                            ${this.getCardCornerButtonHTML(model, tagStyle)}
                         </div>
                         <div class="model-card-action-tab">
                             ${actionButtonsHTML}
@@ -2480,8 +2489,9 @@ class DesktopManager {
                     return;
                 }
 
-                // Don't show tab if clicking on the favorite button
+                // Don't show tab if clicking on the favorite button or visibility toggle
                 if (e.target.closest('.model-card-favorite-btn')) return;
+                if (e.target.closest('.model-card-visibility-btn')) return;
 
                 // Selection is now handled by hover in CSS
             });
@@ -2490,6 +2500,13 @@ class DesktopManager {
             if (favBtn) {
                 favBtn.addEventListener('click', (e) => {
                     this.toggleFavorite(card.dataset.path, e);
+                });
+            }
+            // Add click handler for per-model visibility toggle (visibility-edit mode)
+            const eyeBtn = card.querySelector('.model-card-visibility-btn');
+            if (eyeBtn) {
+                eyeBtn.addEventListener('click', (e) => {
+                    this.toggleModelHidden(card.dataset.path, e);
                 });
             }
         });
@@ -2957,6 +2974,76 @@ class DesktopManager {
         return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
     }
 
+    // Hidden models management (per-model visibility)
+    loadHiddenModels() {
+        try {
+            const saved = localStorage.getItem('Arandu-hidden-models');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Error loading hidden models:', error);
+            return [];
+        }
+    }
+
+    saveHiddenModels() {
+        try {
+            localStorage.setItem('Arandu-hidden-models', JSON.stringify(this.hiddenModels));
+        } catch (error) {
+            console.error('Error saving hidden models:', error);
+        }
+    }
+
+    isModelHidden(modelPath) {
+        return this.hiddenModels.includes(modelPath);
+    }
+
+    // Returns the HTML for the top-right card button:
+    // - In visibility-edit mode: a per-model eye toggle to hide/show the model
+    // - Otherwise: the normal favorite star button
+    getCardCornerButtonHTML(model, tagStyle = '') {
+        if (this.visibilityEditMode) {
+            const hidden = this.isModelHidden(model.path);
+            return `
+                        <button class="model-card-visibility-btn ${hidden ? 'active' : ''}" data-action="toggle-visibility" title="${hidden ? 'Model hidden - click to show' : 'Model visible - click to hide'}" style="${tagStyle}">
+                            <span class="material-icons">${hidden ? 'visibility_off' : 'visibility'}</span>
+                        </button>`;
+        }
+        return `
+                        <button class="model-card-favorite-btn ${this.isFavorite(model.path) ? 'active' : ''}" data-action="favorite" title="${this.isFavorite(model.path) ? 'Remove from favorites' : 'Add to favorites'}" style="${tagStyle}">
+                            <span class="material-icons">${this.isFavorite(model.path) ? 'star' : 'star_border'}</span>
+                        </button>`;
+    }
+
+    toggleModelHidden(modelPath, event) {
+        if (event) {
+            event.stopPropagation();
+        }
+
+        const index = this.hiddenModels.indexOf(modelPath);
+        if (index === -1) {
+            this.hiddenModels.push(modelPath);
+        } else {
+            this.hiddenModels.splice(index, 1);
+        }
+        this.saveHiddenModels();
+
+        // Update the UI for this card's eye toggle
+        const card = document.querySelector(`.model-card[data-path="${CSS.escape(modelPath)}"]`);
+        if (card) {
+            const eyeBtn = card.querySelector('.model-card-visibility-btn');
+            const isHidden = this.isModelHidden(modelPath);
+            card.classList.toggle('model-hidden', isHidden);
+
+            if (eyeBtn) {
+                eyeBtn.classList.toggle('active', isHidden);
+                eyeBtn.title = isHidden ? 'Model hidden - click to show' : 'Model visible - click to hide';
+                eyeBtn.innerHTML = isHidden
+                    ? '<span class="material-icons">visibility_off</span>'
+                    : '<span class="material-icons">visibility</span>';
+            }
+        }
+    }
+
     // Favorites management
     loadFavorites() {
         try {
@@ -3126,7 +3213,9 @@ class DesktopManager {
             }
 
             if (isHideSuppressedToggle) {
-                btn.classList.toggle('active', this.hideSuppressedModels);
+                // Bright/active in normal mode, faint while editing visibility
+                btn.classList.toggle('active', !this.visibilityEditMode);
+                btn.classList.toggle('editing-faint', this.visibilityEditMode);
             }
         });
     }
@@ -3135,14 +3224,20 @@ class DesktopManager {
         const btn = document.getElementById('hide-suppressed-btn');
         if (btn) {
             const icon = btn.querySelector('.material-icons');
-            if (this.hideSuppressedModels) {
-                icon.textContent = 'visibility';
-                btn.title = 'CLIP models hidden - click to show';
+            // Icon stays the same in both states
+            if (icon) icon.textContent = 'visibility';
+
+            if (this.visibilityEditMode) {
+                // Edit mode: faint / de-emphasized look
+                btn.title = 'Editing visibility - click to finish (hidden models will be re-hidden)';
+                btn.classList.remove('active');
+                btn.classList.add('editing-faint');
             } else {
-                icon.textContent = 'visibility';
-                btn.title = 'CLIP models shown - click to hide';
+                // Normal show-only mode: bright / active look
+                btn.title = 'Edit model visibility - show all models and toggle each';
+                btn.classList.add('active');
+                btn.classList.remove('editing-faint');
             }
-            btn.classList.toggle('active', this.hideSuppressedModels);
         }
     }
 

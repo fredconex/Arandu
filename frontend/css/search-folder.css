@@ -133,6 +133,14 @@
     color: var(--theme-text);
 }
 
+/* Visibility-edit button while editing: keep same icon but look faint/de-emphasized */
+.sort-btn.editing-faint {
+    background: var(--theme-surface-light);
+    border-color: var(--theme-border);
+    color: var(--theme-text-muted);
+    opacity: 0.5;
+}
+
 .sort-btn .material-icons {
     font-size: 16px;
 }
@@ -393,6 +401,51 @@
 
 .model-card-favorite-btn .material-icons {
     font-size: 18px;
+}
+
+/* Per-model Visibility (eye) Button - shown in place of favorite while editing visibility */
+.model-card-visibility-btn {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 56px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--theme-text);
+    cursor: pointer;
+    opacity: 1;
+    flex-shrink: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.03);
+    z-index: 5;
+}
+
+.model-card-visibility-btn:hover {
+    background: var(--theme-bg-light);
+    color: var(--theme-text);
+    opacity: 1 !important;
+}
+
+/* Hidden model: faint eye */
+.model-card-visibility-btn.active {
+    opacity: 0.35;
+    color: var(--theme-text-muted);
+}
+
+.model-card-visibility-btn .material-icons {
+    font-size: 18px;
+}
+
+/* Hidden model appearance while in visibility-edit mode */
+.model-card.model-hidden {
+    opacity: 0.45;
+}
+
+.model-card.model-hidden:hover {
+    opacity: 0.8;
 }
 
 .model-card-icon {
