@@ -522,15 +522,13 @@ class TerminalManager {
                 chatTab.classList.add('pulse-animation');
                 if (icon) icon.style.color = '#4caf50';
             } else {
-                chatTab.style.opacity = '0.5';
-                chatTab.style.pointerEvents = 'none';
+                // Keep chat tab enabled even when server is stopped
+                // This allows users to stay on the chat tab if they want
+                chatTab.style.opacity = '0.7';
+                chatTab.style.pointerEvents = 'auto';
                 chatTab.classList.remove('pulse-animation');
                 if (icon) icon.style.color = '';
-
-                // If we are currently on the chat tab and server stops, switch to terminal
-                if (chatTab.classList.contains('active')) {
-                    this.switchTab(windowId, 'terminal');
-                }
+                // Removed: automatic switch to terminal when server stops
             }
         }
 
