@@ -29,9 +29,33 @@ use process::ProcessHandle;
 /// Detect backend type from asset name
 fn detect_backend_type(asset_name: &str) -> String {
     let name_lower = asset_name.to_lowercase();
-    
+
     if name_lower.contains("cuda") || name_lower.contains("cudart") {
-        "cuda".to_string()
+        // Distinguish CUDA major versions (cu12.x / cuda12 -> cuda12, cu13.x / cuda13 -> cuda13)
+        if let Some(captures) = name_lower.match_indices("cu").find_map(|(idx, _)| {
+            let after_cu = &name_lower[idx + 2..];
+            // After "cu" there may be "da"/"dart" (cuda/cudart) and then optionally a major version
+            let after = after_cu
+                .strip_prefix("dart")
+                .or_else(|| after_cu.strip_prefix("da"))
+                .unwrap_or(after_cu);
+            // Allow an optional separator ('-', '_') between the cuda token and the version
+            let after = after
+                .strip_prefix('-')
+                .or_else(|| after.strip_prefix('_'))
+                .unwrap_or(after);
+            if after.starts_with('1') {
+                let major: String = after.chars().take_while(|c| c.is_ascii_digit()).collect();
+                if !major.is_empty() {
+                    return Some(format!("cuda{}", major));
+                }
+            }
+            None
+        }) {
+            captures
+        } else {
+            "cuda".to_string()
+        }
     } else if name_lower.contains("rocm") || name_lower.contains("hip") {
         "rocm".to_string()
     } else if name_lower.contains("vulkan") {
