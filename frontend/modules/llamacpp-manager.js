@@ -311,6 +311,8 @@ class LlamaCppReleasesManager {
         const displayNames = {
             'cpu': 'CPU',
             'cuda': 'CUDA',
+            'cuda12': 'CUDA 12',
+            'cuda13': 'CUDA 13',
             'rocm': 'ROCm',
             'vulkan': 'Vulkan',
             'opencl': 'OpenCL',
@@ -435,8 +437,8 @@ class LlamaCppReleasesManager {
             if (!invoke) throw new Error('Tauri API not available');
             await invoke('download_llamacpp_asset_to_version', { asset, versionFolder: versionFolder });
             console.log(`Started download of ${name} (${backendType}) to ${versionFolder}`);
-            // Auto-switch to Installed tab only when the downloaded version becomes Ready
-            this.autoSwitchWhenVersionReady(versionFolder);
+            // Refresh lists when the downloaded version becomes Ready (stay on the current tab)
+            this.refreshWhenVersionReady(versionFolder);
         } catch (error) {
             console.error(`Failed to start download of ${name}:`, error);
             alert(`Failed to start download: ${error.message}`);
@@ -445,8 +447,13 @@ class LlamaCppReleasesManager {
 
     detectBackendType(assetName) {
         const name = assetName.toLowerCase();
-        
+
         if (name.includes('cuda') || name.includes('cudart')) {
+            // Distinguish CUDA major versions (cu12.x / cuda12 -> cuda12, cu13.x / cuda13 -> cuda13)
+            const cudaVersionMatch = name.match(/cu(?:da)?[-_]?(1[0-9])/);
+            if (cudaVersionMatch) {
+                return `cuda${cudaVersionMatch[1]}`;
+            }
             return 'cuda';
         } else if (name.includes('rocm') || name.includes('hip')) {
             return 'rocm';
@@ -461,8 +468,9 @@ class LlamaCppReleasesManager {
         }
     }
 
-    // Start listening/polling, and switch to Installed when the specific version is detected as Ready
-    async autoSwitchWhenVersionReady(versionFolder, timeoutMs = 180000) {
+    // Start listening/polling, and refresh the lists when the specific version is detected as Ready.
+    // Note: this intentionally does NOT change the active tab; the user stays where they are.
+    async refreshWhenVersionReady(versionFolder, timeoutMs = 180000) {
         const start = Date.now();
         const invoke = this.getInvoke();
         if (!invoke) return;
@@ -494,15 +502,19 @@ class LlamaCppReleasesManager {
                 ]);
                 const found = Array.isArray(versions) ? versions.find(v => matchesTarget(v) && v.has_server) : null;
                 if (found) {
-                    const installedTab = document.querySelector('.llamacpp-top-tabs .top-tab[data-top-tab="installed"]');
-                    if (installedTab) this.switchTopTab(installedTab, 'installed');
-                    
-                    // Refresh the releases to show the "Installed" tag
-                    this.loadLlamaCppReleases();
-                    
+                    // Update only the "Installed" badge on matching releases (no full re-render,
+                    // so expansions and scroll position are preserved)
+                    this.updateInstalledBadges();
+
+                    // Refresh the installed list only if it is already the visible tab
+                    const installedEl = document.getElementById('llamacpp-installed-content');
+                    if (installedEl && !installedEl.classList.contains('hidden')) {
+                        this.loadInstalledVersions();
+                    }
+
                     // Update the latest installed build display
                     this.updateLatestInstalledBuildDisplay();
-                    
+
                     return true;
                 }
             } catch (e) {
@@ -793,8 +805,8 @@ class LlamaCppReleasesManager {
                             <span class="release-tag">${release.tag_name}</span>
                             <span class="release-date">${releaseDate}</span>
                            <span class="release-time">${relativeTime}</span>
-                           ${installedBadge}
-                       </div>
+                           <span class="installed-badge-slot">${installedBadge}</span>
+                        </div>
                        <div class="release-actions">
                            <button class="github-view-btn" onclick="event.stopPropagation(); desktop.openUrl('${release.html_url}')" title="View on GitHub">
                                <span class="material-icons">open_in_new</span>
@@ -862,6 +874,34 @@ class LlamaCppReleasesManager {
             });
         }
         content.scrollTop = scrollY;
+    }
+
+    // Lightweight refresh: update only the "Installed" badge per release item without
+    // re-rendering the whole list (so expansions/scroll are preserved).
+    async updateInstalledBadges() {
+        const content = document.getElementById('llamacpp-manager-content');
+        if (!content) return;
+        const invoke = this.getInvoke();
+        if (!invoke) return;
+        try {
+            const installedVersions = await invoke('list_llamacpp_versions');
+            const installedByVersionTag = new Map();
+            (Array.isArray(installedVersions) ? installedVersions : []).forEach(v => {
+                const baseName = v.name.includes('-') ? v.name.split('-')[0] : v.name;
+                installedByVersionTag.set(baseName.toLowerCase(), v);
+            });
+
+            content.querySelectorAll('.release-item').forEach(item => {
+                const tagEl = item.querySelector('.release-tag');
+                const slot = item.querySelector('.installed-badge-slot');
+                if (!tagEl || !slot) return;
+                const tagNameWithoutPrefix = tagEl.textContent.trim().toLowerCase().replace(/^v/, '');
+                const isInstalled = installedByVersionTag.has(tagNameWithoutPrefix);
+                slot.innerHTML = isInstalled ? '<span class="badge installed">Installed</span>' : '';
+            });
+        } catch (e) {
+            console.error('Failed to update installed badges:', e);
+        }
     }
 
     togglePlatformFilter() {
