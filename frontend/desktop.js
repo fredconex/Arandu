@@ -23,6 +23,7 @@ class DesktopManager {
         this.modelsByArchitecture = {}; // Store models grouped by architecture
         this.favorites = this.loadFavorites(); // Load favorites from localStorage
         this.hiddenModels = this.loadHiddenModels(); // Load per-model hidden list from localStorage
+        this.knownModels = this.loadKnownModels(); // Load known models list to track newly downloaded models
         this.visibilityEditMode = false; // When true, reveal all models and show per-model eye toggle
         this.searchFolderInputValue = ''; // Store search input value when closing folder view
 
@@ -1613,8 +1614,9 @@ class DesktopManager {
         }
 
         // Apply per-model visibility filter unless we're in visibility-edit mode,
-        // in which case ALL models (including hidden ones) are shown so they can be toggled.
-        if (!this.visibilityEditMode) {
+        // or we are specifically viewing the clip folder (where we want to see all clip models).
+        // In visibility-edit mode, ALL models are shown so they can be toggled.
+        if (!this.visibilityEditMode && arch.toLowerCase() !== 'clip') {
             models = models.filter(model => !this.isModelHidden(model.path));
         }
 
@@ -2990,6 +2992,25 @@ class DesktopManager {
             localStorage.setItem('Arandu-hidden-models', JSON.stringify(this.hiddenModels));
         } catch (error) {
             console.error('Error saving hidden models:', error);
+        }
+    }
+
+    // Known models management (to track newly downloaded models)
+    loadKnownModels() {
+        try {
+            const saved = localStorage.getItem('Arandu-known-models');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Error loading known models:', error);
+            return [];
+        }
+    }
+
+    saveKnownModels() {
+        try {
+            localStorage.setItem('Arandu-known-models', JSON.stringify(this.knownModels));
+        } catch (error) {
+            console.error('Error saving known models:', error);
         }
     }
 
@@ -5119,13 +5140,32 @@ class DesktopManager {
 
         // Group models by architecture
         const modelsByArch = {};
+        let knownModelsUpdated = false;
+
         models.forEach(model => {
             const arch = model.architecture || 'Unknown';
             if (!modelsByArch[arch]) {
                 modelsByArch[arch] = [];
             }
             modelsByArch[arch].push(model);
+
+            // Auto-hide new clip models
+            if (!this.knownModels.includes(model.path)) {
+                this.knownModels.push(model.path);
+                knownModelsUpdated = true;
+                
+                if (arch.toLowerCase() === 'clip') {
+                    if (!this.hiddenModels.includes(model.path)) {
+                        this.hiddenModels.push(model.path);
+                        this.saveHiddenModels();
+                    }
+                }
+            }
         });
+
+        if (knownModelsUpdated) {
+            this.saveKnownModels();
+        }
 
         // Store models data for search functionality
         this.modelsByArchitecture = modelsByArch;
