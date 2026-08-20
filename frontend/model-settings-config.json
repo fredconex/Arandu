@@ -1019,23 +1019,20 @@
       "name": "KV Cache Offload",
       "type": "select",
       "argumentMap": {
-        "--kv-offload": "on",
-        "--kv-no-offload": "off",
         "-kvo": "on",
-        "-nkvo": "off",
-        "--no-kv-offload": "off"
+        "-nkvo": "off"
       },
       "options": [
         {
-          "value": "--kv-offload",
+          "value": "-kvo",
           "label": "On"
         },
         {
-          "value": "--kv-no-offload",
+          "value": "-nkvo",
           "label": "Off"
         }
       ],
-      "default": "--kv-offload",
+      "default": "-nkvo",
       "category": "Hardware",
       "description": "Whether to enable KV cache offloading (default: enabled)"
     },
