@@ -1888,9 +1888,142 @@ pub fn run() {
                         setTimeout(() => document.addEventListener('click', dismiss, true), 0);
                     });
                 }
+
+                // Fix WebView2 scrollbar repaint bug + dynamic theme matching via postMessage.
+                // The init script runs inside the iframe but can't read parent CSS vars (cross-origin),
+                // so we use postMessage to receive the live theme colors from the parent.
+                if (window !== window.top) {
+                    const STYLE_ID = '__arandu_scrollbar_fix__';
+
+                    // Default colors (Arandu dark-blue theme) shown before first postMessage arrives
+                    let currentTheme = {
+                        bg:           '#0a1929',
+                        surface:      '#152a4a',
+                        surfaceLight: '#1e3a61',
+                        primary:      '#1565c0',
+                        accent:       '#1976d2',
+                        border:       '#2196f3',
+                        text:         '#e3f2fd',
+                        textMuted:    '#bbdefb',
+                    };
+
+                    // Slightly darken a hex color (used to derive accent/muted from surface)
+                    const darken = (hex, factor) => {
+                        if (!hex || !hex.startsWith('#')) return hex;
+                        const r = parseInt(hex.slice(1, 3), 16);
+                        const g = parseInt(hex.slice(3, 5), 16);
+                        const b = parseInt(hex.slice(5, 7), 16);
+                        return '#' +
+                            Math.max(0, Math.round(r * (1 - factor))).toString(16).padStart(2, '0') +
+                            Math.max(0, Math.round(g * (1 - factor))).toString(16).padStart(2, '0') +
+                            Math.max(0, Math.round(b * (1 - factor))).toString(16).padStart(2, '0');
+                    };
+
+                    const buildCSS = (t) => `
+                        :root, .dark, html, body {
+                            --background: ${darken(t.surface, 0.35)} !important;
+                            --card: ${darken(t.surface, 0.35)} !important;
+                            --popover: ${darken(t.surface, 0.35)} !important;
+                            --muted: ${darken(t.surface, 0.35)} !important;
+                            --accent: ${darken(t.surface, 0.35)} !important;
+                            --secondary: ${t.surfaceLight || t.surface} !important;
+                            --border: ${t.border} !important;
+                            --input: ${t.border} !important;
+                        }
+                        html, body, .bg-background {
+                            background: ${darken(t.surface, 0.15)} !important;
+                            background-color: ${darken(t.surface, 0.15)} !important;
+                        }
+                        .bg-muted {
+                            background: ${darken(t.surface, 0.35)} !important;
+                            background-color: ${darken(t.surface, 0.35)} !important;
+                        }
+                        .bg-accent {
+                            background: ${darken(t.surface, 0.35)} !important;
+                            background-color: ${darken(t.surface, 0.35)} !important;
+                        }
+                        .bg-card, .bg-popover, .bg-secondary {
+                            background: ${t.surface} !important;
+                            background-color: ${t.surface} !important;
+                        }
+
+                        /* --- Scrollbar fix for WebView2 white-repaint bug --- */
+                        * {
+                            scrollbar-color: ${t.surfaceLight || t.border} ${darken(t.surface, 0.15)} !important;
+                            scrollbar-width: thin;
+                        }
+                        ::-webkit-scrollbar {
+                            width: 10px;
+                            height: 10px;
+                            background: ${darken(t.surface, 0.15)} !important;
+                        }
+                        ::-webkit-scrollbar-track {
+                            background: ${darken(t.surface, 0.15)} !important;
+                        }
+                        ::-webkit-scrollbar-thumb {
+                            background: ${t.surfaceLight || t.border} !important;
+                            border-radius: 6px;
+                        }
+                        ::-webkit-scrollbar-thumb:hover {
+                            background: ${t.border} !important;
+                        }
+                        ::-webkit-scrollbar-corner {
+                            background: ${darken(t.surface, 0.15)} !important;
+                        }
+                    `;
+
+                    const injectLast = () => {
+                        const old = document.getElementById(STYLE_ID);
+                        if (old) old.remove();
+                        const s = document.createElement('style');
+                        s.id = STYLE_ID;
+                        s.textContent = buildCSS(currentTheme);
+                        (document.head || document.documentElement)?.appendChild(s);
+                    };
+
+                    // Apply default theme immediately
+                    injectLast();
+
+                    // Re-apply after page load (after llama-server CSS loads, so we win cascade)
+                    window.addEventListener('load', injectLast);
+
+                    // Keep our style last in <head> so it always wins the cascade
+                    const headObserver = new MutationObserver(() => {
+                        const existing = document.getElementById(STYLE_ID);
+                        const head = document.head;
+                        if (head && existing && existing !== head.lastElementChild) {
+                            injectLast();
+                        }
+                    });
+                    const observeHead = () => {
+                        if (document.head) headObserver.observe(document.head, { childList: true });
+                    };
+                    if (document.head) {
+                        observeHead();
+                    } else {
+                        new MutationObserver((_, obs) => {
+                            if (document.head) { obs.disconnect(); observeHead(); }
+                        }).observe(document.documentElement || document, { childList: true, subtree: true });
+                    }
+
+                    // Listen for theme updates from the parent window
+                    window.addEventListener('message', (e) => {
+                        if (e.data?.type === 'arandu-theme') {
+                            currentTheme = { ...currentTheme, ...e.data.theme };
+                            injectLast();
+                        }
+                    });
+
+                    // Request current theme from parent (parent listens for 'arandu-theme-request')
+                    window.top.postMessage({ type: 'arandu-theme-request' }, '*');
+
+                    // Request update on resize
+                    window.top.postMessage({ type: 'arandu-resize' }, '*');
+                }
+
             "#;
             
-            let _main_window = tauri::webview::WebviewWindowBuilder::new(
+            let window_builder = tauri::webview::WebviewWindowBuilder::new(
                 app,
                 "main",
                 tauri::WebviewUrl::App("index.html".into()),
@@ -1899,8 +2032,12 @@ pub fn run() {
             .inner_size(1400.0, 900.0)
             .min_inner_size(1000.0, 700.0)
             .resizable(true)
-            .initialization_script(my_script)
-            .build()?;
+            .initialization_script(my_script);
+
+            // No additional_browser_args needed — the initialization_script handles
+            // scrollbar styling inside iframes directly via CSS injection.
+
+            let _main_window = window_builder.build()?;
             
             // Build the tray icon with menu
             let restore = MenuItemBuilder::with_id("restore", "Restore").build(app)?;

@@ -382,6 +382,14 @@ class DesktopManager {
                 }
             });
         }
+
+        // Respond to theme requests from cross-origin iframes (they can't read our CSS vars)
+        window.addEventListener('message', (e) => {
+            if (e.data?.type === 'arandu-theme-request') {
+                this.broadcastThemeToIframes();
+            }
+        });
+
         // Global clicks
         document.addEventListener('click', (e) => {
             // Don't hide folder view if clicking inside it
@@ -5153,7 +5161,7 @@ class DesktopManager {
             if (!this.knownModels.includes(model.path)) {
                 this.knownModels.push(model.path);
                 knownModelsUpdated = true;
-                
+
                 if (arch.toLowerCase() === 'clip') {
                     if (!this.hiddenModels.includes(model.path)) {
                         this.hiddenModels.push(model.path);
@@ -5432,6 +5440,28 @@ class DesktopManager {
         document.body.dataset.theme = theme;
         document.body.dataset.background = background;
         this.saveDesktopState();
+
+        // Broadcast new theme colors to all cross-origin iframes that can't read our CSS vars
+        this.broadcastThemeToIframes();
+    }
+
+    broadcastThemeToIframes() {
+        const style = getComputedStyle(document.documentElement);
+        const theme = {
+            bg:           style.getPropertyValue('--theme-bg').trim(),
+            surface:      style.getPropertyValue('--theme-surface').trim(),
+            surfaceLight: style.getPropertyValue('--theme-surface-light').trim(),
+            primary:      style.getPropertyValue('--theme-primary').trim(),
+            accent:       style.getPropertyValue('--theme-accent').trim(),
+            border:       style.getPropertyValue('--theme-border').trim(),
+            text:         style.getPropertyValue('--theme-text').trim(),
+            textMuted:    style.getPropertyValue('--theme-text-muted').trim(),
+        };
+        document.querySelectorAll('iframe').forEach(iframe => {
+            try {
+                iframe.contentWindow?.postMessage({ type: 'arandu-theme', theme }, '*');
+            } catch (_) {}
+        });
     }
 
 
