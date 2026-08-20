@@ -386,10 +386,9 @@ async fn scan_draft_models_command(
         .map(|m| {
             // Prefer a path relative to the models directory so the stored
             // value stays short; keep the absolute path if it lives outside.
-            // Relative paths are prefixed with %models%/ for clarity.
             let rel = std::path::Path::new(&m.path)
                 .strip_prefix(base_path)
-                .map(|p| format!("%models%/{}", p.to_string_lossy().into_owned()))
+                .map(|p| p.to_string_lossy().into_owned())
                 .unwrap_or_else(|_| m.path.clone());
 
             serde_json::json!({

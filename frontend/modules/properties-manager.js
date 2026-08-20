@@ -2058,31 +2058,70 @@ class PropertiesManager {
                 invoke(scanCommand).then(result => {
                     if (result && result.success && result.files) {
                         const files = result.files;
-                        const optionsHTML = files.map(file => {
-                            const filePath = file.path;
-                            // The %models%/ prefix is only meaningful for the stored argument
-                            // value; strip it for display so the list stays readable.
-                            const displayPath = filePath.startsWith('%models%/')
-                                ? filePath.slice('%models%/'.length)
-                                : filePath;
-                            const parts = this.desktop.getPathParts(displayPath);
 
-                            let displayText = '';
-                            if (parts.repo && parts.author) {
-                                displayText = `${parts.repo} · ${parts.author} (${parts.file})`;
-                            } else if (parts.repo) {
-                                displayText = `${parts.repo} (${parts.file})`;
-                            } else {
-                                displayText = parts.file;
+                        // Normalize a model path so stored values and scanned
+                        // values compare reliably regardless of surrounding quotes
+                        // (paths with separators get quoted on save), a leading
+                        // %models%/ prefix, or OS-specific path separators.
+                        const normalizePath = (p) => (p || '')
+                            .replace(/^["']+|["']+$/g, '')
+                            .replace(/^%models%\//i, '')
+                            .replace(/\\/g, '/');
+
+                        // Resolve the model whose properties are being edited so we
+                        // can keep it (and invalid entries) out of the draft list.
+                        let ownModelNorm = '';
+                        try {
+                            const pg = activeWindow.querySelector('.property-group[data-model-path]');
+                            if (pg && pg.dataset.modelPath) {
+                                ownModelNorm = normalizePath(atob(pg.dataset.modelPath));
                             }
+                        } catch (e) { /* ignore */ }
 
-                            const sizeGb = (typeof file.size_gb === 'number') ? file.size_gb : null;
-                            if (sizeGb !== null) {
-                                displayText += ` · ${sizeGb.toFixed(2)} GB`;
-                            }
+                        const isSameModel = (filePath) => {
+                            if (!ownModelNorm) return false;
+                            const norm = normalizePath(filePath);
+                            return norm === ownModelNorm ||
+                                ownModelNorm.endsWith(norm) ||
+                                norm.endsWith(ownModelNorm);
+                        };
 
-                            return `<option value="${filePath}" ${currentValue === filePath ? 'selected' : ''} title="${filePath}">${displayText}</option>`;
-                        }).join('');
+                        const optionsHTML = files
+                            .filter(file => {
+                                if (!isDraft) return true;
+                                // Draft models can't be multimodal projectors (clip)
+                                const arch = (file.architecture || '').toLowerCase();
+                                if (arch === 'clip') return false;
+                                // Draft models can't be the model itself
+                                if (isSameModel(file.path)) return false;
+                                return true;
+                            })
+                            .map(file => {
+                                const filePath = file.path;
+                                // The %models%/ prefix is only meaningful for the stored argument
+                                // value; strip it for display so the list stays readable.
+                                const displayPath = filePath.startsWith('%models%/')
+                                    ? filePath.slice('%models%/'.length)
+                                    : filePath;
+                                const parts = this.desktop.getPathParts(displayPath);
+
+                                let displayText = '';
+                                if (parts.repo && parts.author) {
+                                    displayText = `${parts.repo} · ${parts.author} (${parts.file})`;
+                                } else if (parts.repo) {
+                                    displayText = `${parts.repo} (${parts.file})`;
+                                } else {
+                                    displayText = parts.file;
+                                }
+
+                                const sizeGb = (typeof file.size_gb === 'number') ? file.size_gb : null;
+                                if (sizeGb !== null) {
+                                    displayText += ` · ${sizeGb.toFixed(2)} GB`;
+                                }
+
+                                const isSelected = currentValue && normalizePath(currentValue) === normalizePath(filePath);
+                                return `<option value="${filePath}" ${isSelected ? 'selected' : ''} title="${filePath}">${displayText}</option>`;
+                            }).join('');
 
                         const contentHTML = `
                             <div class="model-picker">
@@ -2103,6 +2142,16 @@ class PropertiesManager {
                             const filterInput = popoverContent.querySelector('.model-filter');
                             const select = popoverContent.querySelector('select');
                             const selectBtn = popoverContent.querySelector('.model-select-btn');
+
+                            // Auto-select the currently configured model when opening
+                            // the picker, so an already-set value stays in sync.
+                            if (currentValue) {
+                                const match = Array.from(select.options).find(o =>
+                                    o.value && normalizePath(o.value) === normalizePath(currentValue));
+                                if (match) {
+                                    select.value = match.value;
+                                }
+                            }
 
                             const commitSelection = async () => {
                                 const value = select.value;

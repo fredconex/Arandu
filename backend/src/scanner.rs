@@ -304,6 +304,8 @@ pub fn scan_mmproj_files(
             if metadata.architecture.to_lowercase() != "clip" {
                 return None;
             }
+            // Prefer a path relative to the models directory so the stored
+            // value stays short; keep the absolute path if it lives outside.
             let file_path = path
                 .strip_prefix(base_path)
                 .map(|p| p.to_string_lossy().into_owned())
