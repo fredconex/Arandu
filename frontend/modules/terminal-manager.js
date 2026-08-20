@@ -257,7 +257,7 @@ class TerminalManager {
                     return;
                 }
 
-                console.log(`Polling output for process ${processId}...`);
+                //console.log(`Polling output for process ${processId}...`);
                 // Use Tauri command instead of fetch
                 const invoke = this.getInvoke();
                 if (!invoke) {
@@ -265,7 +265,7 @@ class TerminalManager {
                     return;
                 }
                 const data = await invoke('get_process_output', { processId: processId });
-                console.log(`Output data received:`, data);
+                //console.log(`Output data received:`, data);
 
                 const outputDiv = document.getElementById(`server-output-${windowId}`);
 
@@ -284,7 +284,7 @@ class TerminalManager {
 
                 // Add new output lines to buffer if they exist
                 if (data.output && Array.isArray(data.output) && data.output.length > 0) {
-                    console.log(`Adding ${data.output.length} output lines to buffer`);
+                    //console.log(`Adding ${data.output.length} output lines to buffer`);
                     outputBuffer.push(...data.output);
 
                     // NOTE: We no longer parse the server log to detect readiness or
@@ -307,25 +307,25 @@ class TerminalManager {
                     // Throttle updates to prevent UI freezing but be more responsive
                     const now = Date.now();
                     if (now - lastOutputTime > minUpdateInterval || outputBuffer.length > 50) {
-                        console.log('Flushing output buffer immediately');
+                        //console.log('Flushing output buffer immediately');
                         flushOutputBuffer(outputDiv);
                         lastOutputTime = now;
                     } else if (!updateTimer) {
                         // Schedule buffer flush
                         updateTimer = setTimeout(() => {
-                            console.log('Flushing output buffer (scheduled)');
+                            //console.log('Flushing output buffer (scheduled)');
                             flushOutputBuffer(outputDiv);
                             updateTimer = null;
                             lastOutputTime = Date.now();
                         }, minUpdateInterval);
                     }
                 } else {
-                    console.log('No new output data received');
+                    //console.log('No new output data received');
                 }
 
                 // Check if process is still running
                 if (data.is_running !== false && (terminalInfo.status === 'running' || terminalInfo.status === 'starting')) {
-                    console.log('Process still running, continuing polling in 100ms');
+                    //console.log('Process still running, continuing polling in 100ms');
                     // Continue polling if process is still running - faster polling for better responsiveness
                     setTimeout(pollOutput, 100);
                 } else if (data.is_running === false) {
