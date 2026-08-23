@@ -1921,26 +1921,26 @@ pub fn run() {
 
                     const buildCSS = (t) => `
                         :root, .dark, html, body {
-                            --background: ${darken(t.surface, 0.35)} !important;
-                            --card: ${darken(t.surface, 0.35)} !important;
-                            --popover: ${darken(t.surface, 0.35)} !important;
-                            --muted: ${darken(t.surface, 0.35)} !important;
-                            --accent: ${darken(t.surface, 0.35)} !important;
+                            --background: ${darken(t.surface, 0.45)} !important;
+                            --card: ${t.surface} !important;
+                            --popover: ${t.surface} !important;
+                            --muted: ${t.surface} !important;
+                            --accent: ${t.surface} !important;
                             --secondary: ${t.surfaceLight || t.surface} !important;
                             --border: ${t.border} !important;
                             --input: ${t.border} !important;
                         }
-                        html, body, .bg-background {
-                            background: ${darken(t.surface, 0.15)} !important;
-                            background-color: ${darken(t.surface, 0.15)} !important;
+                        html, body {
+                            background: ${darken(t.surface, 0.45)} !important;
+                            background-color: ${darken(t.surface, 0.45)} !important;
                         }
                         .bg-muted {
-                            background: ${darken(t.surface, 0.35)} !important;
-                            background-color: ${darken(t.surface, 0.35)} !important;
+                            background: ${t.surface} !important;
+                            background-color: ${t.surface} !important;
                         }
                         .bg-accent {
-                            background: ${darken(t.surface, 0.35)} !important;
-                            background-color: ${darken(t.surface, 0.35)} !important;
+                            background: ${t.surface} !important;
+                            background-color: ${t.surface} !important;
                         }
                         .bg-card, .bg-popover, .bg-secondary {
                             background: ${t.surface} !important;
@@ -1949,16 +1949,16 @@ pub fn run() {
 
                         /* --- Scrollbar fix for WebView2 white-repaint bug --- */
                         * {
-                            scrollbar-color: ${t.surfaceLight || t.border} ${darken(t.surface, 0.15)} !important;
+                            scrollbar-color: ${t.surfaceLight || t.border} ${darken(t.surface, 0.45)} !important;
                             scrollbar-width: thin;
                         }
                         ::-webkit-scrollbar {
                             width: 10px;
                             height: 10px;
-                            background: ${darken(t.surface, 0.15)} !important;
+                            background: ${darken(t.surface, 0.45)} !important;
                         }
                         ::-webkit-scrollbar-track {
-                            background: ${darken(t.surface, 0.15)} !important;
+                            background: ${darken(t.surface, 0.45)} !important;
                         }
                         ::-webkit-scrollbar-thumb {
                             background: ${t.surfaceLight || t.border} !important;
@@ -1968,7 +1968,7 @@ pub fn run() {
                             background: ${t.border} !important;
                         }
                         ::-webkit-scrollbar-corner {
-                            background: ${darken(t.surface, 0.15)} !important;
+                            background: ${darken(t.surface, 0.45)} !important;
                         }
                     `;
 
