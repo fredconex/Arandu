@@ -471,12 +471,12 @@ class TerminalManager {
                     statusElement.className = 'server-status running';
                     terminalInfo.status = 'running';
                     
-                    // Delay setting iframe src until server is fully running to avoid WebView2 503 gzip issue
+                    // Load chat iframe on first time only - preserve state on restart
                     const chatPanel = window.querySelector(`#panel-chat-${windowId}`);
                     if (chatPanel) {
                         const iframe = chatPanel.querySelector('iframe');
-                        if (iframe && iframe.dataset.src && (!iframe.src || iframe.src === 'about:blank' || iframe.src === window.location.href)) {
-                            console.log(`Server is running, setting iframe src to ${iframe.dataset.src}`);
+                        if (iframe && iframe.dataset.src && iframe.src === 'about:blank') {
+                            console.log(`First time server running, loading chat iframe: ${iframe.dataset.src}`);
                             iframe.src = iframe.dataset.src;
                         }
                     }
@@ -606,15 +606,25 @@ class TerminalManager {
                 this.terminals.set(windowId, terminalInfo);
 
                 // Update chat iframe URL with new host:port
+                // Preserve iframe state across restarts, but reload if URL changed (e.g., port changed)
                 const chatPanel = document.getElementById(`panel-chat-${windowId}`);
                 if (chatPanel) {
                     const iframe = chatPanel.querySelector('iframe');
                     if (iframe) {
                         const iframeHost = result.server_host === '127.0.0.1' ? 'localhost' : result.server_host;
                         const newUrl = `http://${iframeHost}:${result.server_port}`;
-                        console.log(`Storing chat iframe URL to load when ready: ${newUrl}`);
+                        const oldUrl = iframe.dataset.src;
+                        
+                        // Update the data-src attribute
                         iframe.dataset.src = newUrl;
-                        iframe.src = 'about:blank'; // Clear it while starting
+                        
+                        // Only reload if URL actually changed (e.g., port changed due to busy port)
+                        if (oldUrl !== newUrl) {
+                            console.log(`Chat iframe URL changed from ${oldUrl} to ${newUrl}, reloading`);
+                            iframe.src = newUrl;
+                        } else {
+                            console.log(`Chat iframe URL unchanged (${newUrl}), preserving existing state`);
+                        }
                     }
                 }
 
