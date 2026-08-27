@@ -196,7 +196,8 @@ pub async fn fetch_llamacpp_releases() -> Result<Vec<LlamaCppReleaseFrontend>, B
     let client = reqwest::Client::new();
     
     // Use the proper GitHub API endpoint with correct headers
-    let url = "https://api.github.com/repos/ggerganov/llama.cpp/releases";
+    let url = "https://api.github.com/repos/ggml-org/llama.cpp/releases";
+
     
     println!("Fetching llama.cpp releases from: {}", url);
     
@@ -262,7 +263,7 @@ pub async fn fetch_llamacpp_releases() -> Result<Vec<LlamaCppReleaseFrontend>, B
     // Filter out draft and prerelease versions by default (can be made configurable later)
     let filtered_releases: Vec<LlamaCppRelease> = releases
         .into_iter()
-        .filter(|r| !r.draft && !r.prerelease)
+        .filter(|r| !r.draft)
         .collect();
     
     println!("Filtered to {} stable releases", filtered_releases.len());
@@ -284,7 +285,7 @@ pub async fn fetch_commit_info(tag_name: &str) -> Result<CommitInfo, Box<dyn std
     let client = reqwest::Client::new();
     
     // Get the specific release to find the commit SHA
-    let release_url = format!("https://api.github.com/repos/ggerganov/llama.cpp/releases/tags/{}", tag_name);
+    let release_url = format!("https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{}", tag_name);
     println!("Fetching release info from: {}", release_url);
     
     let release_response = client
@@ -308,7 +309,7 @@ pub async fn fetch_commit_info(tag_name: &str) -> Result<CommitInfo, Box<dyn std
     println!("Found commit SHA: {} for tag: {}", commit_sha, tag_name);
     
     // Now fetch the commit details using the SHA
-    let commit_url = format!("https://api.github.com/repos/ggerganov/llama.cpp/commits/{}", commit_sha);
+    let commit_url = format!("https://api.github.com/repos/ggml-org/llama.cpp/commits/{}", commit_sha);
     println!("Fetching commit info from: {}", commit_url);
     
     let commit_response = client
