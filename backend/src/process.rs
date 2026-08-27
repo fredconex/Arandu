@@ -499,9 +499,17 @@ async fn add_output_line(state: &AppState, process_id: &str, line: String) {
             process_info.status = ProcessStatus::Running;
         }
         process_info.output.push(line);
-        // Keep only last 1000 lines to prevent memory issues
+        // Keep only last 1000 lines to prevent memory issues.
+        // When we trim from the front, we must also decrement the
+        // last_sent_line cursor so it stays valid relative to the
+        // trimmed buffer (otherwise get_process_logs returns empty
+        // and no further lines are ever delivered).
         if process_info.output.len() > 1000 {
-            process_info.output.drain(0..process_info.output.len() - 1000);
+            let drained = process_info.output.len() - 1000;
+            process_info.output.drain(0..drained);
+            process_info.last_sent_line = Some(
+                process_info.last_sent_line.map(|v| v.saturating_sub(drained)).unwrap_or(0)
+            );
         }
     }
 }
