@@ -2,7 +2,6 @@ use crate::AppState;
 use crate::models::DownloadStartResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tokio::sync::Mutex;
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use std::path::Path;
@@ -55,7 +54,8 @@ pub struct DownloadStatus {
 pub struct DownloadManager {
     pub downloads: HashMap<String, DownloadStatus>,
     pub download_history: Vec<DownloadStatus>,
-    cancellation_tokens: HashMap<String, Arc<Mutex<bool>>>,
+    cancellation_tokens: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    pause_flags: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
 }
 
 impl DownloadManager {
@@ -64,12 +64,20 @@ impl DownloadManager {
             downloads: HashMap::new(),
             download_history: Vec::new(),
             cancellation_tokens: HashMap::new(),
+            pause_flags: HashMap::new(),
         }
     }
 
     pub fn add_download(&mut self, id: String, status: DownloadStatus) {
         self.downloads.insert(id.clone(), status);
-        self.cancellation_tokens.insert(id, Arc::new(Mutex::new(false)));
+        self.cancellation_tokens.insert(id.clone(), Arc::new(std::sync::atomic::AtomicBool::new(false)));
+        self.pause_flags.insert(id, Arc::new(std::sync::atomic::AtomicBool::new(false)));
+    }
+
+    pub fn get_control_flags(&self, id: &str) -> (Arc<std::sync::atomic::AtomicBool>, Arc<std::sync::atomic::AtomicBool>) {
+        let cancel = self.cancellation_tokens.get(id).cloned().unwrap_or_else(|| Arc::new(std::sync::atomic::AtomicBool::new(false)));
+        let pause = self.pause_flags.get(id).cloned().unwrap_or_else(|| Arc::new(std::sync::atomic::AtomicBool::new(false)));
+        (cancel, pause)
     }
 
     pub fn get_status(&self, id: &str) -> Option<&DownloadStatus> {
@@ -78,9 +86,13 @@ impl DownloadManager {
 
     pub fn pause_download(&mut self, id: &str) -> Result<(), String> {
         if let Some(status) = self.downloads.get_mut(id) {
-            if matches!(status.status, DownloadState::Downloading) {
+            if matches!(status.status, DownloadState::Downloading | DownloadState::Starting) {
                 status.status = DownloadState::Paused;
+                status.speed = 0.0;
                 status.pause_start_time = Some(chrono::Utc::now());
+                if let Some(flag) = self.pause_flags.get(id) {
+                    flag.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
                 Ok(())
             } else {
                 Err("Download is not in a state that can be paused".to_string())
@@ -99,6 +111,9 @@ impl DownloadManager {
                     status.pause_start_time = None;
                 }
                 status.status = DownloadState::Downloading;
+                if let Some(flag) = self.pause_flags.get(id) {
+                    flag.store(false, std::sync::atomic::Ordering::Relaxed);
+                }
                 Ok(())
             } else {
                 Err("Download is not paused".to_string())
@@ -111,12 +126,9 @@ impl DownloadManager {
     pub fn cancel_download(&mut self, id: &str) -> Result<(), String> {
         if let Some(status) = self.downloads.get_mut(id) {
             status.status = DownloadState::Cancelled;
-            if let Some(token) = self.cancellation_tokens.get(id) {
-                let token = token.clone();
-                tokio::spawn(async move {
-                    let mut token_guard = token.lock().await;
-                    *token_guard = true;
-                });
+            status.speed = 0.0;
+            if let Some(flag) = self.cancellation_tokens.get(id) {
+                flag.store(true, std::sync::atomic::Ordering::Relaxed);
             }
             Ok(())
         } else {
@@ -222,6 +234,116 @@ pub async fn start_download(
     })
 }
 
+// Struct to hold remote file probing information
+struct RemoteFileInfo {
+    total_size: u64,
+    supports_ranges: bool,
+}
+
+async fn probe_remote_file(
+    client: &reqwest::Client,
+    url: &str,
+    base_headers: &reqwest::header::HeaderMap,
+) -> Option<RemoteFileInfo> {
+    // Try HEAD request first
+    if let Ok(resp) = client.head(url).headers(base_headers.clone()).send().await {
+        if resp.status().is_success() {
+            let accepts_ranges = resp
+                .headers()
+                .get(reqwest::header::ACCEPT_RANGES)
+                .and_then(|v| v.to_str().ok())
+                .map(|v| v.to_lowercase().contains("bytes"))
+                .unwrap_or(false);
+            if let Some(len) = resp.content_length() {
+                if len > 0 {
+                    return Some(RemoteFileInfo {
+                        total_size: len,
+                        supports_ranges: accepts_ranges,
+                    });
+                }
+            }
+        }
+    }
+
+    // If HEAD failed or had no length, probe with a tiny range request (Range: bytes=0-0)
+    let mut range_headers = base_headers.clone();
+    range_headers.insert(
+        reqwest::header::RANGE,
+        reqwest::header::HeaderValue::from_static("bytes=0-0"),
+    );
+    if let Ok(resp) = client.get(url).headers(range_headers).send().await {
+        if resp.status() == reqwest::StatusCode::PARTIAL_CONTENT {
+            if let Some(cr) = resp
+                .headers()
+                .get(reqwest::header::CONTENT_RANGE)
+                .and_then(|v| v.to_str().ok())
+            {
+                if let Some(total_str) = cr.split('/').last() {
+                    if let Ok(total) = total_str.trim().parse::<u64>() {
+                        return Some(RemoteFileInfo {
+                            total_size: total,
+                            supports_ranges: true,
+                        });
+                    }
+                }
+            }
+        } else if resp.status().is_success() {
+            if let Some(len) = resp.content_length() {
+                return Some(RemoteFileInfo {
+                    total_size: len,
+                    supports_ranges: false,
+                });
+            }
+        }
+    }
+
+    None
+}
+
+async fn stitch_parts(
+    part_paths: &[std::path::PathBuf],
+    output_path: &Path,
+) -> Result<(), String> {
+    use tokio::fs::File;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let mut out_file = File::create(output_path)
+        .await
+        .map_err(|e| format!("Failed to create output file for stitching: {}", e))?;
+
+    let mut buffer = vec![0u8; 8 * 1024 * 1024]; // 8MB buffer for rapid disk stitching
+    for part_path in part_paths {
+        let mut in_file = File::open(part_path)
+            .await
+            .map_err(|e| format!("Failed to open part file {:?}: {}", part_path, e))?;
+
+        loop {
+            let bytes_read = in_file
+                .read(&mut buffer)
+                .await
+                .map_err(|e| format!("Error reading from {:?}: {}", part_path, e))?;
+            if bytes_read == 0 {
+                break;
+            }
+            out_file
+                .write_all(&buffer[..bytes_read])
+                .await
+                .map_err(|e| format!("Error writing during stitching: {}", e))?;
+        }
+    }
+    out_file
+        .flush()
+        .await
+        .map_err(|e| format!("Failed to flush stitched file: {}", e))?;
+
+    // Cleanup temporary part files
+    for part_path in part_paths {
+        let _ = tokio::fs::remove_file(part_path).await;
+    }
+
+    Ok(())
+}
+
 async fn execute_download(
     download_id: String,
     config: DownloadConfig,
@@ -236,10 +358,13 @@ async fn execute_download(
     use futures_util::StreamExt;
     use tauri::Emitter;
     use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, USER_AGENT};
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-    let client = reqwest::Client::new();
-    let mut last_emit_time = std::time::Instant::now();
-    let mut last_progress = 0u8;
+    let client = reqwest::Client::builder()
+        .tcp_nodelay(true)
+        .http1_only() // force separate connections per chunk instead of h2 multiplexing
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
 
     for (file_index, file_path) in files.iter().enumerate() {
         // Check if download was cancelled before starting each file
@@ -252,10 +377,8 @@ async fn execute_download(
 
         // Construct download URL
         let download_url = if files.len() == 1 && config.files.is_empty() {
-            // Single file download from direct URL
             config.base_url.clone()
         } else {
-            // Multi-file download or specific file from base URL
             format!("{}/{}", config.base_url.trim_end_matches('/'), file_path.trim_start_matches('/'))
         };
 
@@ -286,17 +409,21 @@ async fn execute_download(
             continue;
         }
 
-        // Build base headers (avoid duplicate User-Agent)
+        // Build base headers
         let mut base_headers = HeaderMap::new();
         base_headers.insert(ACCEPT, HeaderValue::from_static("*/*"));
 
         if let Some(custom) = &config.custom_headers {
             for (key, value) in custom {
-                if let (Ok(name), Ok(val)) = (
-                    HeaderName::from_bytes(key.as_bytes()),
+                match (
+                    HeaderName::try_from(key.as_str()),
                     HeaderValue::from_str(value),
                 ) {
-                    base_headers.insert(name, val);
+                    (Ok(name), Ok(val)) => {
+                        base_headers.insert(name, val);
+                    }
+                    (Err(e), _) => eprintln!("Failed to parse header name '{}': {}", key, e),
+                    (_, Err(e)) => eprintln!("Failed to parse header value for '{}': {}", key, e),
                 }
             }
         } else {
@@ -306,190 +433,406 @@ async fn execute_download(
             );
         }
 
-        // --- Retry loop with resume support ---
-        const MAX_RETRIES: u32 = 5;
-        let mut attempt = 0u32;
-        let start_time = std::time::Instant::now();
-        let mut total_size = 0u64;
-        let mut downloaded;  // set from resume_from at the start of each attempt
+        // Probe remote file to check size & range support
+        let remote_info = probe_remote_file(&client, &download_url, &base_headers).await;
+        let total_size = remote_info.as_ref().map(|info| info.total_size).unwrap_or(0);
+        let supports_ranges = remote_info.as_ref().map(|info| info.supports_ranges).unwrap_or(false);
 
-        loop {
-            attempt += 1;
-
-            // Check for cancellation before each attempt
-            if check_cancellation_status(&download_id, state).await? {
-                let _ = tokio::fs::remove_file(&temp_path).await;
-                return Err("Download cancelled by user".to_string());
+        // Update total bytes in state if known
+        if total_size > 0 {
+            let mut download_manager = state.download_manager.lock().await;
+            if let Some(s) = download_manager.downloads.get_mut(&download_id) {
+                s.total_bytes = total_size;
             }
-            wait_if_paused(&download_id, state).await?;
+        }
 
-            // Detect already-downloaded bytes from the temp file (for resume)
-            let resume_from = if temp_path.exists() {
-                tokio::fs::metadata(&temp_path).await.map(|m| m.len()).unwrap_or(0)
-            } else {
-                0
-            };
+        // Parallel chunk downloads threshold: >= 10MB and server supports ranges
+        const MIN_PARALLEL_SIZE: u64 = 10 * 1024 * 1024;
+        const NUM_CHUNKS: usize = 8;
 
-            // Build per-attempt headers (add Range if resuming)
-            let mut headers_map = base_headers.clone();
-            if resume_from > 0 {
-                if let Ok(range_val) = HeaderValue::from_str(&format!("bytes={}-", resume_from)) {
-                    headers_map.insert(reqwest::header::RANGE, range_val);
-                    println!("Resuming download of {} from byte {}", file_path, resume_from);
-                }
-            }
+        let (cancel_flag, pause_flag) = {
+            let dm = state.download_manager.lock().await;
+            dm.get_control_flags(&download_id)
+        };
 
-            let response = match client.get(&download_url).headers(headers_map).send().await {
-                Ok(r) => r,
-                Err(e) => {
-                    if attempt >= MAX_RETRIES {
-                        return Err(format!("Failed to connect after {} attempts: {}", MAX_RETRIES, e));
-                    }
-                    eprintln!("Download attempt {} failed (connect): {}. Retrying in {}s...", attempt, e, attempt * 2);
-                    tokio::time::sleep(tokio::time::Duration::from_secs((attempt * 2) as u64)).await;
-                    continue;
-                }
-            };
+        if supports_ranges && total_size >= MIN_PARALLEL_SIZE {
+            println!(
+                "Starting 8-way parallel download for {} ({} MB)",
+                file_name,
+                total_size / (1024 * 1024)
+            );
 
-            let status_code = response.status();
-            // 200 OK (full content) or 206 Partial Content (resumed) are both acceptable
-            if !status_code.is_success() {
-                if attempt >= MAX_RETRIES {
-                    return Err(format!("Failed to download {}: {} (after {} attempts)", file_path, status_code, MAX_RETRIES));
-                }
-                eprintln!("Download attempt {} got HTTP {}. Retrying in {}s...", attempt, status_code, attempt * 2);
-                tokio::time::sleep(tokio::time::Duration::from_secs((attempt * 2) as u64)).await;
-                continue;
-            }
+            let chunk_size = total_size / NUM_CHUNKS as u64;
+            let mut chunk_ranges = Vec::new();
+            let mut part_paths = Vec::new();
+            let mut initial_downloaded = 0u64;
 
-            // If server responded with 200 instead of 206 when we asked for a range,
-            // it doesn't support resume — start over from byte 0.
-            let server_resumed = status_code == reqwest::StatusCode::PARTIAL_CONTENT;
-            if resume_from > 0 && !server_resumed {
-                // Server doesn't honour Range; restart from scratch
-                downloaded = 0;
-                let _ = tokio::fs::remove_file(&temp_path).await;
-            } else {
-                downloaded = resume_from;
-            }
-
-            // On first successful response (or non-range response), read content-length
-            let content_length = response.content_length().unwrap_or(0);
-            if total_size == 0 {
-                total_size = if server_resumed {
-                    // Content-Length is the remaining bytes; add what we already have
-                    content_length + resume_from
+            for i in 0..NUM_CHUNKS {
+                let start = i as u64 * chunk_size;
+                let end = if i == NUM_CHUNKS - 1 {
+                    total_size - 1
                 } else {
-                    content_length
+                    (i as u64 + 1) * chunk_size - 1
+                };
+                let part_path = Path::new(&destination_folder)
+                    .join(format!("{}.download.part{}", file_name, i));
+
+                // Check for existing partial chunk bytes
+                let existing_len = if part_path.exists() {
+                    tokio::fs::metadata(&part_path).await.map(|m| m.len()).unwrap_or(0)
+                } else {
+                    0
+                };
+                let expected_chunk_len = end - start + 1;
+                let valid_existing_len = if existing_len <= expected_chunk_len {
+                    existing_len
+                } else {
+                    let _ = tokio::fs::remove_file(&part_path).await;
+                    0
                 };
 
-                // Update total bytes in state
-                let mut download_manager = state.download_manager.lock().await;
-                if let Some(s) = download_manager.downloads.get_mut(&download_id) {
-                    s.total_bytes = total_size;
-                }
+                initial_downloaded += valid_existing_len;
+                chunk_ranges.push((start, end, valid_existing_len));
+                part_paths.push(part_path);
             }
 
-            // Open temp file: append if resuming, create fresh otherwise
-            let mut file = if server_resumed && resume_from > 0 {
-                use tokio::fs::OpenOptions;
-                OpenOptions::new().append(true).open(&temp_path).await
-                    .map_err(|e| e.to_string())?
-            } else {
-                File::create(&temp_path).await
-                    .map_err(|e| e.to_string())?
-            };
+            let downloaded_atomic = Arc::new(AtomicU64::new(initial_downloaded));
+            let is_completed = Arc::new(AtomicBool::new(false));
+            let start_time = std::time::Instant::now();
 
-            let mut stream = response.bytes_stream();
-            let mut stream_error: Option<String> = None;
+            // Spawn progress emitter task
+            let progress_download_id = download_id.clone();
+            let progress_atomic = downloaded_atomic.clone();
+            let progress_completed = is_completed.clone();
+            let progress_app_handle = app_handle.clone();
+            let progress_state_dm = state.download_manager.clone();
+            let progress_pause_flag = pause_flag.clone();
+            let progress_cancel_flag = cancel_flag.clone();
+            let total_files_count = files.len();
 
-            while let Some(chunk) = stream.next().await {
-                // Check for cancellation during download
-                if check_cancellation_status(&download_id, state).await? {
-                    let _ = tokio::fs::remove_file(&temp_path).await;
-                    return Err("Download cancelled by user".to_string());
-                }
-
-                // Handle pause
-                wait_if_paused(&download_id, state).await?;
-
-                match chunk {
-                    Err(e) => {
-                        // Stream error — will retry
-                        stream_error = Some(e.to_string());
+            let progress_handle = tokio::spawn(async move {
+                let mut last_progress = 0u8;
+                while !progress_completed.load(Ordering::Relaxed) {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+                    if progress_completed.load(Ordering::Relaxed) {
                         break;
                     }
-                    Ok(data) => {
-                        if let Err(e) = file.write_all(&data).await {
-                            stream_error = Some(e.to_string());
-                            break;
+
+                    let cur_downloaded = progress_atomic.load(Ordering::Relaxed);
+                    let elapsed = start_time.elapsed().as_secs_f64();
+                    let is_paused = progress_pause_flag.load(Ordering::Relaxed);
+                    let is_cancelled = progress_cancel_flag.load(Ordering::Relaxed);
+                    let speed = if is_paused || is_cancelled {
+                        0.0
+                    } else if elapsed > 0.0 {
+                        (cur_downloaded.saturating_sub(initial_downloaded)) as f64 / elapsed
+                    } else {
+                        0.0
+                    };
+
+                    let file_progress = if total_size > 0 {
+                        (cur_downloaded as f32 / total_size as f32) * 100.0
+                    } else {
+                        0.0
+                    };
+                    let overall_progress = ((file_index as f32 + file_progress / 100.0) / total_files_count as f32) * 100.0;
+                    let cur_progress = overall_progress as u8;
+
+                    {
+                        let mut dm = progress_state_dm.lock().await;
+                        if let Some(s) = dm.downloads.get_mut(&progress_download_id) {
+                            s.downloaded_bytes = cur_downloaded;
+                            s.speed = speed;
+                            let current_elapsed = chrono::Utc::now()
+                                .signed_duration_since(s.start_time)
+                                .num_seconds();
+                            s.elapsed_time = current_elapsed - s.total_paused_time;
+                            s.progress = cur_progress;
+
+                            if cur_progress.abs_diff(last_progress) >= 1 || elapsed > 1.0 || is_paused {
+                                last_progress = cur_progress;
+                                let _ = progress_app_handle.emit("download-progress", s.clone());
+                            }
                         }
-                        downloaded += data.len() as u64;
+                    }
+                }
+            });
 
-                        // Calculate speed and elapsed time
-                        let elapsed = start_time.elapsed().as_secs_f64();
-                        let speed = if elapsed > 0.0 { downloaded as f64 / elapsed } else { 0.0 };
+            // Spawn concurrent chunk workers
+            let mut chunk_futures = Vec::new();
+            for (chunk_idx, (start, end, existing_len)) in chunk_ranges.into_iter().enumerate() {
+                let client_clone = client.clone();
+                let url_clone = download_url.clone();
+                let part_path = part_paths[chunk_idx].clone();
+                let base_headers_clone = base_headers.clone();
+                let downloaded_counter = downloaded_atomic.clone();
+                let expected_chunk_len = end - start + 1;
+                let chunk_cancel_flag = cancel_flag.clone();
+                let chunk_pause_flag = pause_flag.clone();
 
-                        // Update progress
+                chunk_futures.push(tokio::spawn(async move {
+                    if existing_len >= expected_chunk_len {
+                        return Ok(());
+                    }
+
+                    const MAX_RETRIES: u32 = 5;
+                    let mut chunk_downloaded = existing_len;
+
+                    for attempt in 1..=MAX_RETRIES {
+                        if chunk_cancel_flag.load(Ordering::Relaxed) {
+                            return Err("Download cancelled by user".to_string());
+                        }
+                        while chunk_pause_flag.load(Ordering::Relaxed) {
+                            if chunk_cancel_flag.load(Ordering::Relaxed) {
+                                return Err("Download cancelled by user".to_string());
+                            }
+                            tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                        }
+
+                        let range_start = start + chunk_downloaded;
+                        let mut headers_map = base_headers_clone.clone();
+                        if let Ok(range_val) = HeaderValue::from_str(&format!("bytes={}-{}", range_start, end)) {
+                            headers_map.insert(reqwest::header::RANGE, range_val);
+                        }
+
+                        let resp = match client_clone.get(&url_clone).headers(headers_map).send().await {
+                            Ok(r) => r,
+                            Err(e) => {
+                                if attempt >= MAX_RETRIES {
+                                    return Err(format!("Chunk {} failed after {} attempts: {}", chunk_idx, MAX_RETRIES, e));
+                                }
+                                tokio::time::sleep(tokio::time::Duration::from_secs(attempt as u64)).await;
+                                continue;
+                            }
+                        };
+
+                        if !resp.status().is_success() && resp.status() != reqwest::StatusCode::PARTIAL_CONTENT {
+                            if attempt >= MAX_RETRIES {
+                                return Err(format!("Chunk {} received HTTP {}", chunk_idx, resp.status()));
+                            }
+                            tokio::time::sleep(tokio::time::Duration::from_secs(attempt as u64)).await;
+                            continue;
+                        }
+
+                        use tokio::fs::OpenOptions;
+                        let mut part_file = match OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(&part_path)
+                            .await
                         {
-                            let mut download_manager = state.download_manager.lock().await;
-                            if let Some(s) = download_manager.downloads.get_mut(&download_id) {
-                                s.downloaded_bytes = downloaded;
-                                s.speed = speed;
+                            Ok(f) => f,
+                            Err(e) => return Err(format!("Failed to open part file: {}", e)),
+                        };
 
-                                let current_elapsed = chrono::Utc::now().signed_duration_since(s.start_time).num_seconds();
-                                s.elapsed_time = current_elapsed - s.total_paused_time;
+                        let mut stream = resp.bytes_stream();
+                        let mut stream_err = None;
 
-                                if total_size > 0 {
-                                    let file_progress = (downloaded as f32 / total_size as f32) * 100.0;
-                                    let overall_progress = ((file_index as f32 + file_progress / 100.0) / files.len() as f32) * 100.0;
-                                    s.progress = overall_progress as u8;
+                        while let Some(chunk_res) = stream.next().await {
+                            if chunk_cancel_flag.load(Ordering::Relaxed) {
+                                return Err("Download cancelled by user".to_string());
+                            }
+                            while chunk_pause_flag.load(Ordering::Relaxed) {
+                                if chunk_cancel_flag.load(Ordering::Relaxed) {
+                                    return Err("Download cancelled by user".to_string());
+                                }
+                                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                            }
+
+                            match chunk_res {
+                                Ok(data) => {
+                                    if let Err(e) = part_file.write_all(&data).await {
+                                        stream_err = Some(e.to_string());
+                                        break;
+                                    }
+                                    let len = data.len() as u64;
+                                    chunk_downloaded += len;
+                                    downloaded_counter.fetch_add(len, Ordering::Relaxed);
+                                }
+                                Err(e) => {
+                                    stream_err = Some(e.to_string());
+                                    break;
                                 }
                             }
                         }
 
-                        // Emit real-time progress (throttled to 500ms or 1% change)
-                        let current_time = std::time::Instant::now();
-                        let time_since_last_emit = current_time.duration_since(last_emit_time).as_millis();
-                        let current_progress = if total_size > 0 {
-                            let file_progress = (downloaded as f32 / total_size as f32) * 100.0;
-                            let overall_progress = ((file_index as f32 + file_progress / 100.0) / files.len() as f32) * 100.0;
-                            overall_progress as u8
-                        } else {
-                            0
-                        };
+                        let _ = part_file.flush().await;
 
-                        if time_since_last_emit >= 500 || current_progress.abs_diff(last_progress) >= 1 {
-                            last_emit_time = current_time;
-                            last_progress = current_progress;
-                            let download_manager = state.download_manager.lock().await;
-                            if let Some(s) = download_manager.downloads.get(&download_id) {
-                                let _ = app_handle.emit("download-progress", s.clone());
+                        if stream_err.is_none() && chunk_downloaded >= expected_chunk_len {
+                            return Ok(());
+                        }
+
+                        if attempt >= MAX_RETRIES {
+                            return Err(format!(
+                                "Chunk {} stream failed after {} retries: {:?}",
+                                chunk_idx, MAX_RETRIES, stream_err
+                            ));
+                        }
+                        tokio::time::sleep(tokio::time::Duration::from_secs(attempt as u64)).await;
+                    }
+
+                    Ok(())
+                }));
+            }
+
+            // Await all chunk downloads
+            let results = futures_util::future::join_all(chunk_futures).await;
+            is_completed.store(true, Ordering::Relaxed);
+            let _ = progress_handle.await;
+
+            // Check if any chunk failed
+            for res in results {
+                match res {
+                    Ok(Ok(())) => {}
+                    Ok(Err(e)) => return Err(e),
+                    Err(join_err) => return Err(format!("Chunk task panicked: {}", join_err)),
+                }
+            }
+
+            // Stitch all chunks together
+            println!("All chunks downloaded successfully. Stitching {}...", file_name);
+            stitch_parts(&part_paths, &temp_path).await?;
+        } else {
+            // Fallback: Robust Single-Stream Downloader
+            println!("Using single-stream download for {}", file_name);
+            const MAX_RETRIES: u32 = 5;
+            let mut attempt = 0u32;
+            let start_time = std::time::Instant::now();
+            let mut downloaded;
+
+            loop {
+                attempt += 1;
+
+                if cancel_flag.load(Ordering::Relaxed) {
+                    let _ = tokio::fs::remove_file(&temp_path).await;
+                    return Err("Download cancelled by user".to_string());
+                }
+                while pause_flag.load(Ordering::Relaxed) {
+                    if cancel_flag.load(Ordering::Relaxed) {
+                        let _ = tokio::fs::remove_file(&temp_path).await;
+                        return Err("Download cancelled by user".to_string());
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                }
+
+                let resume_from = if temp_path.exists() {
+                    tokio::fs::metadata(&temp_path).await.map(|m| m.len()).unwrap_or(0)
+                } else {
+                    0
+                };
+
+                let mut headers_map = base_headers.clone();
+                if resume_from > 0 {
+                    if let Ok(range_val) = HeaderValue::from_str(&format!("bytes={}-", resume_from)) {
+                        headers_map.insert(reqwest::header::RANGE, range_val);
+                    }
+                }
+
+                let response = match client.get(&download_url).headers(headers_map).send().await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        if attempt >= MAX_RETRIES {
+                            return Err(format!("Failed to connect after {} attempts: {}", MAX_RETRIES, e));
+                        }
+                        tokio::time::sleep(tokio::time::Duration::from_secs((attempt * 2) as u64)).await;
+                        continue;
+                    }
+                };
+
+                let status_code = response.status();
+                if !status_code.is_success() && status_code != reqwest::StatusCode::PARTIAL_CONTENT {
+                    if attempt >= MAX_RETRIES {
+                        return Err(format!("Failed to download {}: {}", file_path, status_code));
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs((attempt * 2) as u64)).await;
+                    continue;
+                }
+
+                let server_resumed = status_code == reqwest::StatusCode::PARTIAL_CONTENT;
+                if resume_from > 0 && !server_resumed {
+                    downloaded = 0;
+                    let _ = tokio::fs::remove_file(&temp_path).await;
+                } else {
+                    downloaded = resume_from;
+                }
+
+                let mut file = if server_resumed && resume_from > 0 {
+                    use tokio::fs::OpenOptions;
+                    OpenOptions::new().append(true).open(&temp_path).await
+                        .map_err(|e| e.to_string())?
+                } else {
+                    File::create(&temp_path).await
+                        .map_err(|e| e.to_string())?
+                };
+
+                let mut stream = response.bytes_stream();
+                let mut stream_error: Option<String> = None;
+                let mut last_emit = std::time::Instant::now();
+
+                while let Some(chunk) = stream.next().await {
+                    if cancel_flag.load(Ordering::Relaxed) {
+                        let _ = tokio::fs::remove_file(&temp_path).await;
+                        return Err("Download cancelled by user".to_string());
+                    }
+                    while pause_flag.load(Ordering::Relaxed) {
+                        if cancel_flag.load(Ordering::Relaxed) {
+                            let _ = tokio::fs::remove_file(&temp_path).await;
+                            return Err("Download cancelled by user".to_string());
+                        }
+                        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                    }
+
+                    match chunk {
+                        Err(e) => {
+                            stream_error = Some(e.to_string());
+                            break;
+                        }
+                        Ok(data) => {
+                            if let Err(e) = file.write_all(&data).await {
+                                stream_error = Some(e.to_string());
+                                break;
+                            }
+                            downloaded += data.len() as u64;
+
+                            let elapsed = start_time.elapsed().as_secs_f64();
+                            let is_paused = pause_flag.load(Ordering::Relaxed);
+                            let speed = if is_paused { 0.0 } else if elapsed > 0.0 { downloaded as f64 / elapsed } else { 0.0 };
+
+                            if last_emit.elapsed().as_millis() >= 300 {
+                                last_emit = std::time::Instant::now();
+                                let mut download_manager = state.download_manager.lock().await;
+                                if let Some(s) = download_manager.downloads.get_mut(&download_id) {
+                                    s.downloaded_bytes = downloaded;
+                                    s.speed = speed;
+                                    let current_elapsed = chrono::Utc::now().signed_duration_since(s.start_time).num_seconds();
+                                    s.elapsed_time = current_elapsed - s.total_paused_time;
+
+                                    if total_size > 0 {
+                                        let file_progress = (downloaded as f32 / total_size as f32) * 100.0;
+                                        let overall_progress = ((file_index as f32 + file_progress / 100.0) / files.len() as f32) * 100.0;
+                                        s.progress = overall_progress as u8;
+                                    }
+                                    let _ = app_handle.emit("download-progress", s.clone());
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // Flush and sync the file before deciding what to do
-            let _ = file.flush().await;
+                let _ = file.flush().await;
 
-            if let Some(err_msg) = stream_error {
-                if attempt >= MAX_RETRIES {
-                    return Err(format!("Download failed after {} attempts: {}", MAX_RETRIES, err_msg));
+                if let Some(err_msg) = stream_error {
+                    if attempt >= MAX_RETRIES {
+                        return Err(format!("Download failed after {} attempts: {}", MAX_RETRIES, err_msg));
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs((attempt * 2) as u64)).await;
+                    continue;
                 }
-                eprintln!("Stream error on attempt {} (downloaded {} / {} bytes): {}. Retrying in {}s...",
-                    attempt, downloaded, total_size, err_msg, attempt * 2);
-                tokio::time::sleep(tokio::time::Duration::from_secs((attempt * 2) as u64)).await;
-                // Loop back — resume_from will be recalculated from temp file size
-                continue;
+
+                break;
             }
-
-            // Stream finished without error — download of this file is done
-            break;
-        } // end retry loop
-
-        
+        }
+       
                 // Move temp file to final location
                 // First, try to remove the final path if it exists (in case of resumed download)
                 if final_path.exists() {

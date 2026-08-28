@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use tokio::fs;
 
-/// Cleanup leftover .download files from interrupted downloads during startup
+/// Cleanup leftover .download and .part files from interrupted downloads during startup
 pub async fn cleanup_leftover_downloads(models_directory: &str) -> Result<usize, Box<dyn std::error::Error>> {
     if models_directory.is_empty() {
         return Ok(0);
@@ -18,25 +18,19 @@ pub async fn cleanup_leftover_downloads(models_directory: &str) -> Result<usize,
     let mut cleaned_count = 0;
     
     // Recursively walk through the models directory
-    let mut entries = fs::read_dir(models_path).await?;
-    while let Some(entry) = entries.next_entry().await? {
-        let path = entry.path();
-        
-        if path.is_dir() {
-            // Recursively clean subdirectories (author folders, model folders)
-            if let Ok(count) = cleanup_directory_downloads(&path).await {
-                cleaned_count += count;
-            }
-        } else if path.is_file() {
-            // Check if it's a .gguf.download file
-            if is_gguf_download_file(&path) {
-                match fs::remove_file(&path).await {
-                    Ok(_) => {
+    if let Ok(mut entries) = fs::read_dir(models_path).await {
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            
+            if path.is_dir() {
+                if let Ok(count) = cleanup_directory_downloads(&path).await {
+                    cleaned_count += count;
+                }
+            } else if path.is_file() {
+                if is_unfinished_download_file(&path) {
+                    if let Ok(_) = fs::remove_file(&path).await {
                         println!("Cleaned up leftover download file: {:?}", path);
                         cleaned_count += 1;
-                    },
-                    Err(e) => {
-                        eprintln!("Failed to remove download file {:?}: {}", path, e);
                     }
                 }
             }
@@ -44,54 +38,60 @@ pub async fn cleanup_leftover_downloads(models_directory: &str) -> Result<usize,
     }
     
     if cleaned_count > 0 {
-        println!("Startup cleanup: removed {} leftover .gguf.download files", cleaned_count);
+        println!("Startup cleanup: removed {} leftover download file(s)", cleaned_count);
     }
     
     Ok(cleaned_count)
 }
 
-/// Recursively clean .gguf.download files from a directory
+/// Recursively clean unfinished download files from a directory and remove empty dirs
 fn cleanup_directory_downloads(dir_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<usize, Box<dyn std::error::Error>>> + Send + '_>> {
     Box::pin(async move {
         let mut cleaned_count = 0;
+        let mut has_other_files = false;
         
-        let mut entries = fs::read_dir(dir_path).await?;
-        while let Some(entry) = entries.next_entry().await? {
-            let path = entry.path();
-            
-            if path.is_dir() {
-                // Recursively clean subdirectories
-                if let Ok(count) = cleanup_directory_downloads(&path).await {
-                    cleaned_count += count;
-                }
-            } else if path.is_file() {
-                // Check if it's a .gguf.download file
-                if is_gguf_download_file(&path) {
-                    match fs::remove_file(&path).await {
-                        Ok(_) => {
+        if let Ok(mut entries) = fs::read_dir(dir_path).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let path = entry.path();
+                
+                if path.is_dir() {
+                    if let Ok(count) = cleanup_directory_downloads(&path).await {
+                        cleaned_count += count;
+                    }
+                    if path.exists() {
+                        has_other_files = true;
+                    }
+                } else if path.is_file() {
+                    if is_unfinished_download_file(&path) {
+                        if let Ok(_) = fs::remove_file(&path).await {
                             println!("Cleaned up leftover download file: {:?}", path);
                             cleaned_count += 1;
-                        },
-                        Err(e) => {
-                            eprintln!("Failed to remove download file {:?}: {}", path, e);
                         }
+                    } else {
+                        has_other_files = true;
                     }
                 }
             }
+        }
+
+        // If directory is now completely empty, remove it to keep directory tree clean
+        if !has_other_files {
+            let _ = fs::remove_dir(dir_path).await;
         }
         
         Ok(cleaned_count)
     })
 }
 
-/// Strictly check if a file is a .gguf.download file
-/// Only files ending with exactly ".gguf.download" will be considered for removal
-fn is_gguf_download_file(path: &Path) -> bool {
-    if let Some(file_name) = path.file_name() {
-        if let Some(file_str) = file_name.to_str() {
-            // Must end with exactly ".gguf.download" - case insensitive for safety
-            return file_str.to_lowercase().ends_with(".gguf.download");
-        }
+/// Check if a file is an unfinished download artifact
+fn is_unfinished_download_file(path: &Path) -> bool {
+    if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+        let lower = file_name.to_lowercase();
+        return lower.ends_with(".download")
+            || lower.contains(".download.part")
+            || lower.ends_with(".part")
+            || (lower.contains(".part") && lower.split(".part").last().unwrap_or("").chars().all(|c| c.is_ascii_digit()))
+            || lower.ends_with(".tmp");
     }
     false
 }

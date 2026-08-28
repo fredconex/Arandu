@@ -1736,17 +1736,17 @@ async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error>> 
         }
     }
     
-    // Cleanup leftover download files from previous sessions - ONLY if we're the only instance
-    // to avoid interrupting active downloads in other instances
-    if !is_another_instance_running() {
+    // Cleanup leftover download files from previous sessions on startup
+    {
         let config = state.config.lock().await;
         if !config.models_directory.is_empty() {
-            if let Err(e) = huggingface::cleanup_leftover_downloads(&config.models_directory).await {
-                eprintln!("Warning: Failed to cleanup leftover downloads: {}", e);
-            }
+            let models_dir = config.models_directory.clone();
+            tokio::spawn(async move {
+                if let Err(e) = huggingface::cleanup_leftover_downloads(&models_dir).await {
+                    eprintln!("Warning: Failed to cleanup leftover downloads: {}", e);
+                }
+            });
         }
-    } else {
-        println!("Another instance detected, skipping startup downloads cleanup to avoid interrupting active downloads");
     }
     
     Ok(state)
