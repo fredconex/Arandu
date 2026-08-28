@@ -491,6 +491,8 @@ async fn handle_process_output(
     }
 }
 
+const MAX_LOG_LINES: usize = 1000;
+
 async fn add_output_line(state: &AppState, process_id: &str, line: String) {
     let mut processes = state.running_processes.lock().await;
     if let Some(process_info) = processes.get_mut(process_id) {
@@ -498,17 +500,21 @@ async fn add_output_line(state: &AppState, process_id: &str, line: String) {
         if matches!(process_info.status, ProcessStatus::Starting) {
             process_info.status = ProcessStatus::Running;
         }
+
         process_info.output.push(line);
-        // Keep only last 1000 lines to prevent memory issues.
-        // When we trim from the front, we must also decrement the
-        // last_sent_line cursor so it stays valid relative to the
-        // trimmed buffer (otherwise get_process_logs returns empty
-        // and no further lines are ever delivered).
-        if process_info.output.len() > 1000 {
-            let drained = process_info.output.len() - 1000;
+
+        // Keep buffer size strictly capped at MAX_LOG_LINES
+        if process_info.output.len() > MAX_LOG_LINES {
+            let drained = process_info.output.len() - MAX_LOG_LINES;
             process_info.output.drain(0..drained);
+            
+            // Shift the read cursor back by the number of drained lines,
+            // clamping at 0 so subsequent reads don't skip or panic.
             process_info.last_sent_line = Some(
-                process_info.last_sent_line.map(|v| v.saturating_sub(drained)).unwrap_or(0)
+                process_info
+                    .last_sent_line
+                    .unwrap_or(0)
+                    .saturating_sub(drained)
             );
         }
     }
@@ -585,13 +591,11 @@ pub async fn get_process_logs(
     let mut processes = state.running_processes.lock().await;
     
     if let Some(process_info) = processes.get_mut(&process_id) {
-        // Get new output since last check
         let total_lines = process_info.output.len();
-        let last_sent = process_info.last_sent_line.unwrap_or(0);
+        let last_sent = process_info.last_sent_line.unwrap_or(0).min(total_lines);
         
         let new_output = if last_sent < total_lines {
             let new_lines = process_info.output[last_sent..].to_vec();
-            // Update the last sent line index
             process_info.last_sent_line = Some(total_lines);
             new_lines
         } else {
