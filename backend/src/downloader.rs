@@ -286,10 +286,9 @@ async fn execute_download(
             continue;
         }
 
-        // Create request with headers (avoid duplicate User-Agent)
-        let mut headers_map = HeaderMap::new();
-        // Always send a generic Accept to play nice with CDNs
-        headers_map.insert(ACCEPT, HeaderValue::from_static("*/*"));
+        // Build base headers (avoid duplicate User-Agent)
+        let mut base_headers = HeaderMap::new();
+        base_headers.insert(ACCEPT, HeaderValue::from_static("*/*"));
 
         if let Some(custom) = &config.custom_headers {
             for (key, value) in custom {
@@ -297,109 +296,198 @@ async fn execute_download(
                     HeaderName::from_bytes(key.as_bytes()),
                     HeaderValue::from_str(value),
                 ) {
-                    headers_map.insert(name, val);
+                    base_headers.insert(name, val);
                 }
             }
         } else {
-            // Default UA only if caller didn't supply one
-            headers_map.insert(
+            base_headers.insert(
                 USER_AGENT,
                 HeaderValue::from_static("Universal-Downloader/1.0"),
             );
         }
 
-        let request = client.get(&download_url).headers(headers_map);
-
-        // Start downloading to temp file
-        let response = request
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-
-        if !response.status().is_success() {
-            return Err(format!("Failed to download {}: {}", file_path, response.status()));
-        }
-
-        let total_size = response.content_length().unwrap_or(0);
-
-        // Update total bytes
-        {
-            let mut download_manager = state.download_manager.lock().await;
-            if let Some(status) = download_manager.downloads.get_mut(&download_id) {
-                status.total_bytes = total_size;
-            }
-        }
-
-        // Create the temp file
-        let mut file = File::create(&temp_path).await
-            .map_err(|e| e.to_string())?;
-        let mut downloaded = 0u64;
-        let mut stream = response.bytes_stream();
+        // --- Retry loop with resume support ---
+        const MAX_RETRIES: u32 = 5;
+        let mut attempt = 0u32;
         let start_time = std::time::Instant::now();
+        let mut total_size = 0u64;
+        let mut downloaded;  // set from resume_from at the start of each attempt
 
-        while let Some(chunk) = stream.next().await {
-            // Check for cancellation during download
+        loop {
+            attempt += 1;
+
+            // Check for cancellation before each attempt
             if check_cancellation_status(&download_id, state).await? {
                 let _ = tokio::fs::remove_file(&temp_path).await;
                 return Err("Download cancelled by user".to_string());
             }
-
-            // Handle pause
             wait_if_paused(&download_id, state).await?;
 
-            let chunk = chunk.map_err(|e| e.to_string())?;
-            file.write_all(&chunk).await
-                .map_err(|e| e.to_string())?;
-            downloaded += chunk.len() as u64;
-
-            // Calculate speed and elapsed time
-            let elapsed = start_time.elapsed().as_secs_f64();
-            let speed = if elapsed > 0.0 { downloaded as f64 / elapsed } else { 0.0 };
-
-            // Update progress
-            {
-                let mut download_manager = state.download_manager.lock().await;
-                if let Some(status) = download_manager.downloads.get_mut(&download_id) {
-                    status.downloaded_bytes = downloaded;
-                    status.speed = speed;
-                    
-                    // Calculate elapsed time considering pauses
-                    let current_elapsed = chrono::Utc::now().signed_duration_since(status.start_time).num_seconds();
-                    status.elapsed_time = current_elapsed - status.total_paused_time;
-                    
-                    if total_size > 0 {
-                        let file_progress = (downloaded as f32 / total_size as f32) * 100.0;
-                        let overall_progress = ((file_index as f32 + file_progress / 100.0) / files.len() as f32) * 100.0;
-                        status.progress = overall_progress as u8;
-                    }
-                }
-            }
-            
-            // Emit real-time progress update (throttled to every 500ms or 1% progress)
-            let current_time = std::time::Instant::now();
-            let time_since_last_emit = current_time.duration_since(last_emit_time).as_millis();
-            let current_progress = if total_size > 0 {
-                let file_progress = (downloaded as f32 / total_size as f32) * 100.0;
-                let overall_progress = ((file_index as f32 + file_progress / 100.0) / files.len() as f32) * 100.0;
-                overall_progress as u8
+            // Detect already-downloaded bytes from the temp file (for resume)
+            let resume_from = if temp_path.exists() {
+                tokio::fs::metadata(&temp_path).await.map(|m| m.len()).unwrap_or(0)
             } else {
                 0
             };
-            
-            // Emit only if 500ms have passed or progress changed by at least 1%
-            if time_since_last_emit >= 500 || current_progress.abs_diff(last_progress) >= 1 {
-                last_emit_time = current_time;
-                last_progress = current_progress;
-                
-                //println!("Emitting download progress event for {}: {}%", download_id, current_progress);
-                
-                // Emit directly without spawning a new task
-                let download_manager = state.download_manager.lock().await;
-                if let Some(status) = download_manager.downloads.get(&download_id) {
-                    let _ = app_handle.emit("download-progress", status.clone());
+
+            // Build per-attempt headers (add Range if resuming)
+            let mut headers_map = base_headers.clone();
+            if resume_from > 0 {
+                if let Ok(range_val) = HeaderValue::from_str(&format!("bytes={}-", resume_from)) {
+                    headers_map.insert(reqwest::header::RANGE, range_val);
+                    println!("Resuming download of {} from byte {}", file_path, resume_from);
                 }
             }
-        }
+
+            let response = match client.get(&download_url).headers(headers_map).send().await {
+                Ok(r) => r,
+                Err(e) => {
+                    if attempt >= MAX_RETRIES {
+                        return Err(format!("Failed to connect after {} attempts: {}", MAX_RETRIES, e));
+                    }
+                    eprintln!("Download attempt {} failed (connect): {}. Retrying in {}s...", attempt, e, attempt * 2);
+                    tokio::time::sleep(tokio::time::Duration::from_secs((attempt * 2) as u64)).await;
+                    continue;
+                }
+            };
+
+            let status_code = response.status();
+            // 200 OK (full content) or 206 Partial Content (resumed) are both acceptable
+            if !status_code.is_success() {
+                if attempt >= MAX_RETRIES {
+                    return Err(format!("Failed to download {}: {} (after {} attempts)", file_path, status_code, MAX_RETRIES));
+                }
+                eprintln!("Download attempt {} got HTTP {}. Retrying in {}s...", attempt, status_code, attempt * 2);
+                tokio::time::sleep(tokio::time::Duration::from_secs((attempt * 2) as u64)).await;
+                continue;
+            }
+
+            // If server responded with 200 instead of 206 when we asked for a range,
+            // it doesn't support resume — start over from byte 0.
+            let server_resumed = status_code == reqwest::StatusCode::PARTIAL_CONTENT;
+            if resume_from > 0 && !server_resumed {
+                // Server doesn't honour Range; restart from scratch
+                downloaded = 0;
+                let _ = tokio::fs::remove_file(&temp_path).await;
+            } else {
+                downloaded = resume_from;
+            }
+
+            // On first successful response (or non-range response), read content-length
+            let content_length = response.content_length().unwrap_or(0);
+            if total_size == 0 {
+                total_size = if server_resumed {
+                    // Content-Length is the remaining bytes; add what we already have
+                    content_length + resume_from
+                } else {
+                    content_length
+                };
+
+                // Update total bytes in state
+                let mut download_manager = state.download_manager.lock().await;
+                if let Some(s) = download_manager.downloads.get_mut(&download_id) {
+                    s.total_bytes = total_size;
+                }
+            }
+
+            // Open temp file: append if resuming, create fresh otherwise
+            let mut file = if server_resumed && resume_from > 0 {
+                use tokio::fs::OpenOptions;
+                OpenOptions::new().append(true).open(&temp_path).await
+                    .map_err(|e| e.to_string())?
+            } else {
+                File::create(&temp_path).await
+                    .map_err(|e| e.to_string())?
+            };
+
+            let mut stream = response.bytes_stream();
+            let mut stream_error: Option<String> = None;
+
+            while let Some(chunk) = stream.next().await {
+                // Check for cancellation during download
+                if check_cancellation_status(&download_id, state).await? {
+                    let _ = tokio::fs::remove_file(&temp_path).await;
+                    return Err("Download cancelled by user".to_string());
+                }
+
+                // Handle pause
+                wait_if_paused(&download_id, state).await?;
+
+                match chunk {
+                    Err(e) => {
+                        // Stream error — will retry
+                        stream_error = Some(e.to_string());
+                        break;
+                    }
+                    Ok(data) => {
+                        if let Err(e) = file.write_all(&data).await {
+                            stream_error = Some(e.to_string());
+                            break;
+                        }
+                        downloaded += data.len() as u64;
+
+                        // Calculate speed and elapsed time
+                        let elapsed = start_time.elapsed().as_secs_f64();
+                        let speed = if elapsed > 0.0 { downloaded as f64 / elapsed } else { 0.0 };
+
+                        // Update progress
+                        {
+                            let mut download_manager = state.download_manager.lock().await;
+                            if let Some(s) = download_manager.downloads.get_mut(&download_id) {
+                                s.downloaded_bytes = downloaded;
+                                s.speed = speed;
+
+                                let current_elapsed = chrono::Utc::now().signed_duration_since(s.start_time).num_seconds();
+                                s.elapsed_time = current_elapsed - s.total_paused_time;
+
+                                if total_size > 0 {
+                                    let file_progress = (downloaded as f32 / total_size as f32) * 100.0;
+                                    let overall_progress = ((file_index as f32 + file_progress / 100.0) / files.len() as f32) * 100.0;
+                                    s.progress = overall_progress as u8;
+                                }
+                            }
+                        }
+
+                        // Emit real-time progress (throttled to 500ms or 1% change)
+                        let current_time = std::time::Instant::now();
+                        let time_since_last_emit = current_time.duration_since(last_emit_time).as_millis();
+                        let current_progress = if total_size > 0 {
+                            let file_progress = (downloaded as f32 / total_size as f32) * 100.0;
+                            let overall_progress = ((file_index as f32 + file_progress / 100.0) / files.len() as f32) * 100.0;
+                            overall_progress as u8
+                        } else {
+                            0
+                        };
+
+                        if time_since_last_emit >= 500 || current_progress.abs_diff(last_progress) >= 1 {
+                            last_emit_time = current_time;
+                            last_progress = current_progress;
+                            let download_manager = state.download_manager.lock().await;
+                            if let Some(s) = download_manager.downloads.get(&download_id) {
+                                let _ = app_handle.emit("download-progress", s.clone());
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Flush and sync the file before deciding what to do
+            let _ = file.flush().await;
+
+            if let Some(err_msg) = stream_error {
+                if attempt >= MAX_RETRIES {
+                    return Err(format!("Download failed after {} attempts: {}", MAX_RETRIES, err_msg));
+                }
+                eprintln!("Stream error on attempt {} (downloaded {} / {} bytes): {}. Retrying in {}s...",
+                    attempt, downloaded, total_size, err_msg, attempt * 2);
+                tokio::time::sleep(tokio::time::Duration::from_secs((attempt * 2) as u64)).await;
+                // Loop back — resume_from will be recalculated from temp file size
+                continue;
+            }
+
+            // Stream finished without error — download of this file is done
+            break;
+        } // end retry loop
 
         
                 // Move temp file to final location
