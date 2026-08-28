@@ -5,6 +5,7 @@ class TerminalManager {
         this.desktop = desktop;
         this.terminals = new Map(); // Store terminal instances
         this.terminalCounter = 0;
+        this.maxTerminalLines = 3000; // Rolling window limit for terminal lines
 
         // Initialize Tauri API access
         this.invoke = null;
@@ -116,7 +117,6 @@ class TerminalManager {
             });
 
             // Handle focus/click to bring to front and handle global click interactions
-            // Since iframe consumes clicks, we monitor window blur which happens when clicking into iframe
             setTimeout(() => {
                 const chatPanel = window.querySelector(`#panel-chat-${windowId}`);
                 if (chatPanel) {
@@ -126,11 +126,11 @@ class TerminalManager {
                             if (document.activeElement === iframe) {
                                 // Bring this window to front
                                 window.style.zIndex = ++this.desktop.windowZIndex;
-                                
+
                                 // Update visual active state
                                 document.querySelectorAll('.window').forEach(w => w.classList.remove('active'));
                                 window.classList.add('active');
-                                
+
                                 document.querySelectorAll('.taskbar-item').forEach(t => t.classList.remove('active'));
                                 const taskbarItem = document.getElementById(`taskbar-${windowId}`);
                                 if (taskbarItem) taskbarItem.classList.add('active');
@@ -170,8 +170,6 @@ class TerminalManager {
 
         // Set up event listeners for buttons
         setTimeout(() => {
-
-
             const stopBtn = document.getElementById(`stop-btn-${windowId}`);
             if (stopBtn) {
                 stopBtn.addEventListener('click', () => {
@@ -192,18 +190,15 @@ class TerminalManager {
         }, 3000);
 
         console.log('Terminal window creation completed successfully');
-        
+
         // Maximize the window on creation - need to clear transform first
         setTimeout(() => {
-            // Remove the centering transform before maximizing
             window.style.transform = 'none';
             window.style.left = '100px';
             window.style.top = '100px';
-            
-            // Now maximize
             this.desktop.maximizeWindow(windowId);
         }, 50);
-        
+
         return window;
     }
 
@@ -231,13 +226,17 @@ class TerminalManager {
                     if (line !== null && line !== undefined) {
                         const lineDiv = document.createElement('div');
                         lineDiv.className = 'server-line';
-                        // Handle special characters and escape sequences
                         lineDiv.textContent = line.toString();
                         fragment.appendChild(lineDiv);
                     }
                 });
 
                 outputDiv.appendChild(fragment);
+
+                // Maintain a rolling window of the last 3000 lines in the DOM
+                while (outputDiv.children.length > this.maxTerminalLines) {
+                    outputDiv.removeChild(outputDiv.firstElementChild);
+                }
 
                 // Only scroll to bottom if user hasn't scrolled up
                 if (wasScrolledToBottom) {
@@ -250,22 +249,18 @@ class TerminalManager {
 
         const pollOutput = async () => {
             try {
-                // IMPORTANT: Check if this loop is still the active one for this window
-                // If the terminal has been restarted, terminalInfo.processId will be different
+                // Check if this loop is still the active one for this window
                 if (terminalInfo.processId !== processId) {
                     console.log(`⏹️ [POLL STOP] Stopping loop for old process ${processId} (New: ${terminalInfo.processId})`);
                     return;
                 }
 
-                //console.log(`Polling output for process ${processId}...`);
-                // Use Tauri command instead of fetch
                 const invoke = this.getInvoke();
                 if (!invoke) {
                     console.error('Tauri invoke not available for output polling');
                     return;
                 }
                 const data = await invoke('get_process_output', { processId: processId });
-                //console.log(`Output data received:`, data);
 
                 const outputDiv = document.getElementById(`server-output-${windowId}`);
 
@@ -284,58 +279,42 @@ class TerminalManager {
 
                 // Add new output lines to buffer if they exist
                 if (data.output && Array.isArray(data.output) && data.output.length > 0) {
-                    //console.log(`Adding ${data.output.length} output lines to buffer`);
                     outputBuffer.push(...data.output);
 
-                    // NOTE: We no longer parse the server log to detect readiness or
-                    // auto-switch to chat. The llama.cpp logs keep changing and are
-                    // unreliable to parse. Readiness is instead detected by actually
-                    // connecting to the server via waitForServerReady() / startServerHealthPolling().
-
-                    // Save output to terminal data (keep last 1000 lines)
+                    // Save output to terminal data (keep last 3000 lines in memory)
                     const terminalData = this.terminals.get(windowId);
                     if (terminalData) {
                         if (!terminalData.output) terminalData.output = [];
                         terminalData.output.push(...data.output);
-                        // Keep only last 1000 lines to prevent memory issues
-                        if (terminalData.output.length > 1000) {
-                            terminalData.output = terminalData.output.slice(-1000);
+                        if (terminalData.output.length > this.maxTerminalLines) {
+                            terminalData.output = terminalData.output.slice(-this.maxTerminalLines);
                         }
                         this.terminals.set(windowId, terminalData);
                     }
 
-                    // Throttle updates to prevent UI freezing but be more responsive
+                    // Throttle updates to prevent UI freezing but be responsive
                     const now = Date.now();
                     if (now - lastOutputTime > minUpdateInterval || outputBuffer.length > 50) {
-                        //console.log('Flushing output buffer immediately');
                         flushOutputBuffer(outputDiv);
                         lastOutputTime = now;
                     } else if (!updateTimer) {
-                        // Schedule buffer flush
                         updateTimer = setTimeout(() => {
-                            //console.log('Flushing output buffer (scheduled)');
                             flushOutputBuffer(outputDiv);
                             updateTimer = null;
                             lastOutputTime = Date.now();
                         }, minUpdateInterval);
                     }
-                } else {
-                    //console.log('No new output data received');
                 }
 
                 // Check if process is still running
                 if (data.is_running !== false && (terminalInfo.status === 'running' || terminalInfo.status === 'starting')) {
-                    //console.log('Process still running, continuing polling in 100ms');
-                    // Continue polling if process is still running - faster polling for better responsiveness
                     setTimeout(pollOutput, 100);
                 } else if (data.is_running === false) {
-                    // Guard: only mark as stopped if this loop is still for the active process
                     if (terminalInfo.processId !== processId) {
                         console.log(`⏹️ [POLL STOP] Old process ${processId} stopped, but active process is now ${terminalInfo.processId}. Not updating status.`);
                         return;
                     }
                     console.log('Process has stopped, finalizing output');
-                    // Process has stopped, flush any remaining output
                     if (updateTimer) {
                         clearTimeout(updateTimer);
                     }
@@ -343,8 +322,6 @@ class TerminalManager {
                     this.updateServerStatus(windowId, 'stopped', data.return_code || 0);
                 }
             } catch (error) {
-                // Guard: if a new process has taken over this window, this loop is stale.
-                // Do not mark the window as stopped — just exit silently.
                 const currentTerminalInfo = this.terminals.get(windowId);
                 if (currentTerminalInfo && currentTerminalInfo.processId !== processId) {
                     console.log(`⏹️ [POLL STOP] Stale loop for old process ${processId} caught error (new process: ${currentTerminalInfo.processId}). Stopping silently.`);
@@ -353,7 +330,6 @@ class TerminalManager {
 
                 console.error('Error polling server output:', error);
 
-                // If the server is gone or another error, stop polling.
                 this.updateServerStatus(windowId, 'stopped', -1);
                 const outputDiv = document.getElementById(`server-output-${windowId}`);
                 if (outputDiv) {
@@ -361,9 +337,13 @@ class TerminalManager {
                     errorDiv.className = 'server-line server-error';
                     errorDiv.textContent = `Connection to server lost. Polling stopped. Error: ${error.message}`;
                     outputDiv.appendChild(errorDiv);
+
+                    while (outputDiv.children.length > this.maxTerminalLines) {
+                        outputDiv.removeChild(outputDiv.firstElementChild);
+                    }
                     outputDiv.scrollTop = outputDiv.scrollHeight;
                 }
-                return; // Stop polling
+                return;
             }
         };
 
@@ -372,30 +352,23 @@ class TerminalManager {
     }
 
     async checkServerHealth(windowId, host, port, modelName) {
-        // Deprecated: kept for backward compatibility (e.g. restore paths).
-        // Readiness is now determined by actually connecting via waitForServerReady().
         await this.startServerHealthPolling(windowId, host, port, modelName);
     }
 
-    // Poll the real server endpoint until it actually responds, then mark the
-    // server as running and (optionally) auto-switch to the chat tab. This avoids
-    // relying on unstable llama.cpp log line parsing.
     startServerHealthPolling(windowId, host, port, modelName) {
         const terminalInfo = this.terminals.get(windowId);
         if (!terminalInfo) return;
 
-        // Guard against starting multiple health loops for the same process.
         if (terminalInfo.healthPollingProcessId === terminalInfo.processId) return;
         terminalInfo.healthPollingProcessId = terminalInfo.processId;
         this.terminals.set(windowId, terminalInfo);
 
-        const maxAttempts = 300; // ~5 minutes at 1s interval
-        const intervalMs = 1000;
+        const maxAttempts = 300;
+        const intervalMs = 3000;
         let attempts = 0;
 
         const pollHealth = async () => {
             const currentInfo = this.terminals.get(windowId);
-            // Stop if the window was repurposed for a different process or closed.
             if (!currentInfo || currentInfo.processId !== terminalInfo.processId) {
                 return;
             }
@@ -422,6 +395,9 @@ class TerminalManager {
                 lineDiv.className = `server-line ${cls}`;
                 lineDiv.textContent = text;
                 outputDiv.appendChild(lineDiv);
+                while (outputDiv.children.length > this.maxTerminalLines) {
+                    outputDiv.removeChild(outputDiv.firstElementChild);
+                }
                 outputDiv.scrollTop = outputDiv.scrollHeight;
             };
 
@@ -430,7 +406,6 @@ class TerminalManager {
                 console.log('Server actually responded, updating status to running');
                 this.updateServerStatus(windowId, 'running');
 
-                // Auto-switch to chat tab once the page is confirmed reachable.
                 if (this.autoSwitchEnabled && currentInfo.status === 'running') {
                     setTimeout(() => {
                         const info = this.terminals.get(windowId);
@@ -470,8 +445,7 @@ class TerminalManager {
                     statusElement.innerHTML = '<span class="material-icons" style="color: #4caf50; font-size: 14px;">circle</span> Running';
                     statusElement.className = 'server-status running';
                     terminalInfo.status = 'running';
-                    
-                    // Load chat iframe on first time only - preserve state on restart
+
                     const chatPanel = window.querySelector(`#panel-chat-${windowId}`);
                     if (chatPanel) {
                         const iframe = chatPanel.querySelector('iframe');
@@ -487,15 +461,9 @@ class TerminalManager {
                 } else if (status === 'stopped') {
                     statusElement.textContent = 'Stopped';
                     statusElement.className = 'server-status stopped';
-
-                    // Update terminal info
                     terminalInfo.status = 'stopped';
 
-
-
-                    // Change stop button to start button
                     if (stopBtn) {
-                        // Clone button to remove old event listeners
                         const newStartBtn = stopBtn.cloneNode(true);
                         stopBtn.parentNode.replaceChild(newStartBtn, stopBtn);
 
@@ -503,7 +471,6 @@ class TerminalManager {
                         newStartBtn.className = 'server-btn start-btn';
                         newStartBtn.id = `start-btn-${windowId}`;
 
-                        // Add restart listener
                         newStartBtn.addEventListener('click', () => {
                             this.restartServer(windowId, terminalInfo.modelPath, terminalInfo.modelName);
                         });
@@ -512,7 +479,6 @@ class TerminalManager {
             }
         }
 
-        // Update chat icon state based on server status
         const chatTab = document.getElementById(`tab-chat-${windowId}`);
         if (chatTab) {
             const icon = chatTab.querySelector('.material-icons');
@@ -522,17 +488,13 @@ class TerminalManager {
                 chatTab.classList.add('pulse-animation');
                 if (icon) icon.style.color = '#4caf50';
             } else {
-                // Keep chat tab enabled even when server is stopped
-                // This allows users to stay on the chat tab if they want
                 chatTab.style.opacity = '0.7';
                 chatTab.style.pointerEvents = 'auto';
                 chatTab.classList.remove('pulse-animation');
                 if (icon) icon.style.color = '';
-                // Removed: automatic switch to terminal when server stops
             }
         }
 
-        // Update model indicators in desktop folder view
         if (this.desktop.refreshModelIndicators) {
             this.desktop.refreshModelIndicators();
         }
@@ -540,21 +502,15 @@ class TerminalManager {
 
     async stopServer(processId, windowId, modelPath, modelName) {
         try {
-            // Use Tauri command instead of fetch
             const invoke = this.getInvoke();
             if (!invoke) {
                 console.error('Tauri invoke not available for process termination');
                 return;
             }
             await invoke('kill_process', { processId: processId });
-
             this.updateServerStatus(windowId, 'stopped', 0);
-            // this.desktop.showNotification(`${modelName} stopped`, 'info');
-
-
         } catch (error) {
             console.error('Error stopping server:', error);
-            // this.desktop.showNotification(`Error stopping server: ${error.message}`, 'error');
         }
     }
 
@@ -563,21 +519,16 @@ class TerminalManager {
         if (!terminalInfo) return;
 
         console.log(`🚀 [START SERVER] Starting ${modelName} in window ${windowId}`);
-        
-        // Update status to starting immediately in UI
         this.updateServerStatus(windowId, 'starting');
 
         try {
-            // Use Tauri command instead of fetch
             const invoke = this.getInvoke();
             if (!invoke) {
                 console.error('Tauri invoke not available for model restart');
                 this.updateServerStatus(windowId, 'stopped');
                 return;
             }
-            
-            // Launch the model - reuse the exact same custom args that were originally used,
-            // so that presets (MTP, custom flags, etc.) are preserved across Stop/Start cycles.
+
             let result;
             const savedCustomArgs = terminalInfo.customArgsUsed;
             if (savedCustomArgs !== null && savedCustomArgs !== undefined) {
@@ -593,20 +544,16 @@ class TerminalManager {
 
             if (result && result.success) {
                 console.log(`✅ [START SUCCESS] New Process ID: ${result.process_id}`);
-                
-                // Update terminal info with new process ID (keep customArgsUsed intact)
+
                 terminalInfo.processId = result.process_id;
                 terminalInfo.host = result.server_host;
                 terminalInfo.port = result.server_port;
                 terminalInfo.status = 'starting';
-                // Preserve or update customArgsUsed if the new launch returned one
                 if (result.custom_args_used !== undefined && result.custom_args_used !== null) {
                     terminalInfo.customArgsUsed = result.custom_args_used;
                 }
                 this.terminals.set(windowId, terminalInfo);
 
-                // Update chat iframe URL with new host:port
-                // Preserve iframe state across restarts, but reload if URL changed (e.g., port changed)
                 const chatPanel = document.getElementById(`panel-chat-${windowId}`);
                 if (chatPanel) {
                     const iframe = chatPanel.querySelector('iframe');
@@ -614,11 +561,8 @@ class TerminalManager {
                         const iframeHost = result.server_host === '127.0.0.1' ? 'localhost' : result.server_host;
                         const newUrl = `http://${iframeHost}:${result.server_port}`;
                         const oldUrl = iframe.dataset.src;
-                        
-                        // Update the data-src attribute
+
                         iframe.dataset.src = newUrl;
-                        
-                        // Only reload if URL actually changed (e.g., port changed due to busy port)
                         if (oldUrl !== newUrl) {
                             console.log(`Chat iframe URL changed from ${oldUrl} to ${newUrl}, reloading`);
                             iframe.src = newUrl;
@@ -628,7 +572,6 @@ class TerminalManager {
                     }
                 }
 
-                // Update UI elements
                 const window = this.desktop.windows.get(windowId);
                 if (window) {
                     const serverDetails = window.querySelector('.server-details');
@@ -643,23 +586,20 @@ class TerminalManager {
                         commandLine.textContent = Array.isArray(result.command) ? result.command.join(' ') : result.command;
                     }
 
-                    // Change button back to stop button if it was a start button
                     if (stopBtn && stopBtn.classList.contains('start-btn')) {
                         stopBtn.textContent = 'Stop';
                         stopBtn.className = 'server-btn stop-btn';
                         stopBtn.id = `stop-btn-${windowId}`;
-                        
-                        // Clone to remove old listener
+
                         const newStopBtn = stopBtn.cloneNode(true);
                         stopBtn.parentNode.replaceChild(newStopBtn, stopBtn);
-                        
+
                         newStopBtn.addEventListener('click', () => {
                             this.updateServerStatus(windowId, 'terminating');
                             this.stopServer(result.process_id, windowId, modelPath, modelName);
                         });
                     }
 
-                    // Add restart message to output
                     const outputDiv = document.getElementById(`server-output-${windowId}`);
                     if (outputDiv) {
                         const separator = document.createElement('div');
@@ -680,26 +620,27 @@ class TerminalManager {
                         processDiv.textContent = `New Process ID: ${result.process_id}`;
                         outputDiv.appendChild(processDiv);
 
+                        while (outputDiv.children.length > this.maxTerminalLines) {
+                            outputDiv.removeChild(outputDiv.firstElementChild);
+                        }
+
                         outputDiv.scrollTop = outputDiv.scrollHeight;
                     }
                 }
 
-                // Start polling for new output
                 this.startServerOutputPolling(result.process_id, windowId);
-                
-                // Set up health polling after restart
+
                 setTimeout(() => {
                     this.startServerHealthPolling(windowId, result.server_host, result.server_port, modelName);
                 }, 3000);
-                
+
             } else {
                 throw new Error(result?.error || 'Failed to launch model');
             }
         } catch (error) {
             console.error('❌ [START ERROR] Error starting server:', error);
             this.updateServerStatus(windowId, 'stopped');
-            
-            // Add error message to output
+
             const outputDiv = document.getElementById(`server-output-${windowId}`);
             if (outputDiv) {
                 const errorDiv = document.createElement('div');
@@ -707,23 +648,24 @@ class TerminalManager {
                 errorDiv.style.color = '#f44336';
                 errorDiv.textContent = `Error starting server: ${error.message || error}`;
                 outputDiv.appendChild(errorDiv);
+
+                while (outputDiv.children.length > this.maxTerminalLines) {
+                    outputDiv.removeChild(outputDiv.firstElementChild);
+                }
                 outputDiv.scrollTop = outputDiv.scrollHeight;
             }
         }
     }
 
-    // Proper restart functionality that stops then starts
     async restartServer(windowId, modelPath, modelName) {
         console.log(`🔄 [INDIVIDUAL SERVER RESTART] Starting restart for ${modelName} (window: ${windowId})`);
 
         const terminalInfo = this.terminals.get(windowId);
         if (!terminalInfo) {
             console.warn(`No terminal info found for window ${windowId}`);
-            console.log(`🆕 [NEW SERVER START] No existing terminal, starting fresh server for ${modelName}`);
             return this.startServer(windowId, modelPath, modelName);
         }
 
-        // Guard against multiple simultaneous restart attempts
         if (terminalInfo.status === 'starting' || terminalInfo.status === 'terminating') {
             console.log(`ℹ️ [RESTART GUARD] Server is already ${terminalInfo.status}, ignoring restart request`);
             return;
@@ -732,12 +674,10 @@ class TerminalManager {
         try {
             console.log(`🔄 [RESTART SEQUENCE] Restarting server for ${modelName}...`);
 
-            // First, stop the existing process if it's running or starting
             if (terminalInfo.processId && (terminalInfo.status === 'running' || terminalInfo.status === 'starting')) {
                 console.log(`🛑 [STOP PHASE] Stopping existing process ${terminalInfo.processId}`);
                 await this.stopServer(terminalInfo.processId, windowId, modelPath, modelName);
 
-                // Wait a moment for the process to fully stop
                 console.log(`⏱️ [WAIT PHASE] Waiting 500ms for process cleanup...`);
                 await new Promise(resolve => setTimeout(resolve, 500));
                 console.log(`✅ [WAIT COMPLETE] Ready to start new process`);
@@ -745,7 +685,6 @@ class TerminalManager {
                 console.log(`ℹ️ [SKIP STOP] Process not running, proceeding to start`);
             }
 
-            // Then start a new instance
             console.log(`▶️ [START PHASE] Starting new instance of ${modelName}`);
             const result = await this.startServer(windowId, modelPath, modelName);
             console.log(`🎉 [RESTART COMPLETE] Successfully restarted ${modelName}`);
@@ -753,7 +692,6 @@ class TerminalManager {
 
         } catch (error) {
             console.error('❌ [RESTART ERROR] Error in restart sequence:', error);
-            // this.desktop.showNotification(`Failed to restart ${modelName}: ${error.message}`, 'error');
         }
     }
 
@@ -769,10 +707,8 @@ class TerminalManager {
             terminalPanel?.classList.add('active');
             chatPanel?.classList.remove('active');
 
-            // Fix: Scroll to bottom when switching back to terminal
             const outputDiv = document.getElementById(`server-output-${windowId}`);
             if (outputDiv) {
-                // Use a small timeout to ensure the display: flex has taken effect
                 setTimeout(() => {
                     outputDiv.scrollTop = outputDiv.scrollHeight;
                 }, 50);
@@ -786,13 +722,9 @@ class TerminalManager {
     }
 
     toggleAutoSwitch(windowId) {
-        // Toggle the global auto-switch setting
         this.autoSwitchEnabled = !this.autoSwitchEnabled;
-        
-        // Save to localStorage
         localStorage.setItem('terminalAutoSwitch', this.autoSwitchEnabled.toString());
-        
-        // Update all auto-switch buttons across all terminals
+
         const allAutoSwitchButtons = document.querySelectorAll('.auto-switch-btn');
         allAutoSwitchButtons.forEach(btn => {
             const icon = btn.querySelector('.material-icons');
@@ -806,58 +738,44 @@ class TerminalManager {
                 if (icon) icon.textContent = 'toggle_off';
             }
         });
-        
+
         console.log(`Auto-switch ${this.autoSwitchEnabled ? 'enabled' : 'disabled'}`);
     }
 
     openNativeChatForServer(modelName, host, port) {
         const url = `http://${host}:${port}`;
-        const windowId = `native_chat_${Date.now()}`; // Unique ID for each window
-
+        const windowId = `native_chat_${Date.now()}`;
         const iframeUrl = url.replace('http://127.0.0.1:', 'http://localhost:');
 
-        // Setup iframe content
-        // We use an iframe that takes up the full window content and ensure it has white background
         const content = `
             <div style="width: 100%; height: 100%; display: flex; flex-direction: column; background: white;">
                 <iframe src="${iframeUrl}" frameBorder="0" style="flex: 1; border: none; width: 100%; height: 100%;" allow="clipboard-read; clipboard-write"></iframe>
             </div>
         `;
 
-        // Create the window with host and port in title
         this.desktop.createWindow(windowId, `Native Chat - ${modelName} (${host}:${port})`, 'browser-window', content);
 
-        // Apply some specific styles if needed (desktop.js handles basic window creation)
         const windowElement = this.desktop.windows.get(windowId);
         if (windowElement) {
-            // Make it a decent size by default
             windowElement.style.width = '1000px';
             windowElement.style.height = '800px';
 
-            // Center it roughly
             const left = (window.innerWidth - 1000) / 2;
             const top = (window.innerHeight - 800) / 2;
             windowElement.style.left = `${Math.max(50, left)}px`;
             windowElement.style.top = `${Math.max(50, top)}px`;
 
-            // Bring to front
             windowElement.style.zIndex = this.desktop.windowZIndex + 1;
             this.desktop.windowZIndex += 1;
 
-            // Add taskbar item for this window with host and port in title
             this.desktop.addTaskbarItem(`Native Chat - ${modelName} (${host}:${port})`, windowId, '<span class="material-icons">open_in_browser</span>');
 
-            // Handle focus/click to bring to front
-            // Since iframe consumes clicks, we monitor window blur which happens when clicking into iframe
             const iframe = windowElement.querySelector('iframe');
             if (iframe) {
                 const blurHandler = () => {
                     if (document.activeElement === iframe) {
-                        // Bring this window to front
                         windowElement.style.zIndex = ++this.desktop.windowZIndex;
 
-                        // Update visual active state if possible (DesktopManager doesn't expose a clean method for this but we can try)
-                        // This mimics what happens in desktop.js mousedown handler
                         document.querySelectorAll('.window').forEach(w => w.classList.remove('active'));
                         windowElement.classList.add('active');
 
@@ -871,9 +789,6 @@ class TerminalManager {
         }
     }
 
-
-
-    // Session management methods
     async saveTerminalState(windowId, terminalData) {
         try {
             const response = await fetch('/api/session/terminal', {
@@ -901,29 +816,24 @@ class TerminalManager {
         }
     }
 
-    // Check for existing terminal for a model
     getExistingTerminal(modelPath) {
         return Array.from(this.terminals.entries()).find(([windowId, terminalInfo]) =>
             terminalInfo.modelPath === modelPath
         );
     }
 
-    // Get terminal data for session restoration
     getTerminalData(windowId) {
         return this.terminals.get(windowId);
     }
 
-    // Remove terminal from tracking
     removeTerminal(windowId) {
         this.terminals.delete(windowId);
     }
 
-    // Get all terminals for session management
     getAllTerminals() {
         return this.terminals;
     }
 
-    // Get active terminal IDs for cleanup
     getActiveTerminals() {
         const activeTerminals = [];
         for (const [windowId, terminalInfo] of this.terminals.entries()) {
@@ -934,7 +844,6 @@ class TerminalManager {
         return activeTerminals;
     }
 
-    // Close a specific terminal and its process
     async closeTerminal(windowId) {
         const terminalInfo = this.terminals.get(windowId);
         if (terminalInfo && terminalInfo.processId && (terminalInfo.status === 'running' || terminalInfo.status === 'starting')) {
@@ -942,9 +851,6 @@ class TerminalManager {
             try {
                 await this.stopServer(terminalInfo.processId, windowId, terminalInfo.modelPath, terminalInfo.modelName);
                 console.log(`✅ Successfully closed terminal ${windowId}`);
-
-                // Disconnect any chat sessions connected to this server
-
             } catch (error) {
                 console.error(`❌ Failed to close terminal ${windowId}:`, error);
             }
@@ -952,21 +858,17 @@ class TerminalManager {
         this.terminals.delete(windowId);
     }
 
-    // Method to open URL in default browser
     async openUrl(url) {
         try {
-            // Use desktop manager's openUrl method
             await this.desktop.openUrl(url);
         } catch (error) {
             console.error('Error opening URL:', error);
         }
     }
 
-    // Method to copy text to clipboard
     async copyToClipboard(text, buttonElement) {
         try {
             await navigator.clipboard.writeText(text);
-            // Show visual feedback
             const originalIcon = buttonElement.innerHTML;
             buttonElement.innerHTML = '<span class="material-icons" style="font-size: 14px; color: #4caf50;">check</span>';
             setTimeout(() => {
@@ -974,7 +876,6 @@ class TerminalManager {
             }, 2000);
         } catch (error) {
             console.error('Error copying to clipboard:', error);
-            // Show error feedback
             const originalIcon = buttonElement.innerHTML;
             buttonElement.innerHTML = '<span class="material-icons" style="font-size: 14px; color: #f44336;">error</span>';
             setTimeout(() => {
@@ -983,7 +884,6 @@ class TerminalManager {
         }
     }
 
-    // Terminal restoration and session management methods
     async restoreTerminalsAndWindows() {
         if (!this.desktop.sessionData) {
             console.log('No session data available for restoration');
@@ -997,34 +897,18 @@ class TerminalManager {
 
         this.desktop.restorationInProgress = true;
         console.log('Starting terminal and window restoration...');
-        console.log('Session data terminals:', this.desktop.sessionData.terminals);
-        console.log('Session data windows:', this.desktop.sessionData.windows);
 
-        // First restore terminals data
         for (const [windowId, terminalData] of Object.entries(this.desktop.sessionData.terminals || {})) {
-            console.log('Loading terminal data for', windowId, ':', terminalData);
-            console.log('Terminal output length:', terminalData.output ? terminalData.output.length : 'no output');
-
             this.terminals.set(windowId, terminalData);
-            // Check if process is still running - this will update the status
             await this.checkTerminalProcess(windowId, terminalData);
         }
 
-        // Then restore windows - restore terminals regardless of visibility, other windows only if visible
         for (const [windowId, windowData] of Object.entries(this.desktop.sessionData.windows || {})) {
-            console.log('Processing window restoration for:', windowId, windowData);
-
             if (windowData.type === 'terminal') {
-                // Always restore terminal windows (whether they were visible or minimized)
                 const terminalData = this.getTerminalData(windowId);
-                console.log('Terminal data for window restoration:', terminalData);
                 if (terminalData && (terminalData.status === 'running' || terminalData.status === 'starting')) {
-                    console.log('Restoring terminal window for running/starting process:', windowId, windowData);
                     this.restoreTerminalWindow(windowId, terminalData, windowData);
                 } else {
-                    console.log('Skipping terminal window restoration - process not running:', windowId,
-                        terminalData ? `status: ${terminalData.status}` : 'no terminal data');
-                    // Remove the non-running terminal from session
                     await this.desktop.removeWindowFromSession(windowId);
                 }
             }
@@ -1038,53 +922,47 @@ class TerminalManager {
         if (!terminalData.processId) {
             terminalData.status = 'stopped';
             this.terminals.set(windowId, terminalData);
-            console.log(`Terminal ${windowId} has no processId, marked as stopped`);
             return;
         }
 
         try {
-            console.log(`Checking process status for ${windowId} with processId: ${terminalData.processId}`);
-            // Use Tauri command instead of fetch API
             const invoke = this.getInvoke();
             const result = await invoke('get_process_output', { processId: terminalData.processId });
             const newStatus = result.is_running ? (terminalData.status === 'starting' ? 'starting' : 'running') : 'stopped';
-            console.log(`Process ${terminalData.processId} status: ${newStatus}`);
             terminalData.status = newStatus;
             this.terminals.set(windowId, terminalData);
         } catch (error) {
             console.warn(`Error checking terminal process ${terminalData.processId}:`, error);
-            // If the process is not found or another error, mark as stopped
             terminalData.status = 'stopped';
             this.terminals.set(windowId, terminalData);
         }
     }
 
     restoreTerminalWindow(windowId, terminalData, windowData) {
-        console.log('Restoring terminal window with data:', terminalData);
-        console.log('Terminal output length:', terminalData.output ? terminalData.output.length : 'no output');
-
-        // Get model parts for consistent display
         const parts = this.desktop.getPathParts(terminalData.modelPath);
         const displayName = parts.repo || parts.file || terminalData.modelName;
         const authorName = parts.author;
         const fullModelDisplayName = authorName ? `${displayName} · ${authorName}` : displayName;
 
-        // Format launch command if available
         let launchCommandHtml = '';
         if (terminalData.launchArgs) {
             const commandStr = Array.isArray(terminalData.launchArgs) ? terminalData.launchArgs.join(' ') : terminalData.launchArgs;
             launchCommandHtml = `<div class="server-command-line" style="width: 100%; word-break: break-all; opacity: 0.5; font-family: monospace; font-size: 10px; margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05);">${commandStr}</div>`;
         }
 
+        // Limit restored lines to last 3000 lines
+        const restoredLines = (terminalData.output || []).slice(-this.maxTerminalLines);
+
         const content = `
             <div class="server-terminal-container">
                 <div class="server-main-content">
-                    <div class="server-tab-panel active" id="panel-terminal-${windowId}">                             <span class="server-status ${terminalData.status}">
+                    <div class="server-tab-panel active" id="panel-terminal-${windowId}">
+                        <div class="server-info">
+                            <span class="server-status ${terminalData.status}">
                                 <span class="material-icons" style="color: ${terminalData.status === 'running' ? '#4caf50' : terminalData.status === 'starting' ? '#ffc107' : '#f44336'}; font-size: 14px;">circle</span>
                                 ${terminalData.status}
                             </span>
                             <span class="server-details">${fullModelDisplayName} - <span class="clickable" style="cursor: pointer; text-decoration: underline;" onclick="terminalManager.openUrl('http://${terminalData.host}:${terminalData.port}')">${terminalData.host}:${terminalData.port}</span><button class="copy-link-btn" style="background: none; border: none; cursor: pointer; margin-left: 5px; padding: 0; font-size: 14px; vertical-align: middle;" onclick="terminalManager.copyToClipboard('http://${terminalData.host}:${terminalData.port}', this)" title="Copy link"><span class="material-icons" style="font-size: 14px; color: var(--theme-text-muted);">content_copy</span></button></span>
-e-text-muted);">content_copy</span></button></span>
                             <div class="server-controls">
                                 <button class="server-btn auto-switch-btn ${this.autoSwitchEnabled ? 'active' : ''}" id="auto-switch-btn-${windowId}" onclick="terminalManager.toggleAutoSwitch('${windowId}')" title="${this.autoSwitchEnabled ? 'Auto-switch to chat: ON' : 'Auto-switch to chat: OFF'}"><span class="material-icons">${this.autoSwitchEnabled ? 'toggle_on' : 'toggle_off'}</span></button>
                                 ${terminalData.status === 'running' || terminalData.status === 'starting' ?
@@ -1098,8 +976,8 @@ e-text-muted);">content_copy</span></button></span>
                             <div class="server-line">Restored ${fullModelDisplayName} session</div>
                             <div class="server-line">Process ID: ${terminalData.processId}</div>
                             <div class="server-line">Server: <span class="clickable" style="cursor: pointer; text-decoration: underline;" onclick="terminalManager.openUrl('http://${terminalData.host}:${terminalData.port}')">${terminalData.host}:${terminalData.port}</span><button class="copy-link-btn" style="background: none; border: none; cursor: pointer; margin-left: 5px; padding: 0; font-size: 14px; vertical-align: middle;" onclick="terminalManager.copyToClipboard('http://${terminalData.host}:${terminalData.port}', this)" title="Copy link"><span class="material-icons" style="font-size: 14px; color: var(--theme-text-muted);">content_copy</span></button></div>
-                            <div class="server-line">Output lines: ${terminalData.output ? terminalData.output.length : 0}</div>
-                            ${terminalData.output && terminalData.output.length > 0 ? terminalData.output.map(line =>
+                            <div class="server-line">Output lines: ${restoredLines.length}</div>
+                            ${restoredLines.length > 0 ? restoredLines.map(line =>
                 `<div class="server-line">${line.toString().replace(/ /g, '&nbsp;')}</div>`
             ).join('') : '<div class="server-line">No saved output found</div>'}
                         </div>
@@ -1113,7 +991,6 @@ e-text-muted);">content_copy</span></button></span>
 
         const window = this.desktop.createWindow(windowId, `Server - ${fullModelDisplayName}`, 'server-terminal-window', content);
 
-        // Inject tabs into header
         const header = window.querySelector('.window-header');
         if (header) {
             const tabsHtml = `
@@ -1134,7 +1011,6 @@ e-text-muted);">content_copy</span></button></span>
 
         this.desktop.addTaskbarItem(`Server - ${fullModelDisplayName}`, windowId, '<span class="material-icons">computer</span>');
 
-        // Restore window position and size
         if (windowData.position) {
             window.style.left = windowData.position.x + 'px';
             window.style.top = windowData.position.y + 'px';
@@ -1142,7 +1018,6 @@ e-text-muted);">content_copy</span></button></span>
         if (windowData.size) {
             window.style.width = windowData.size.width + 'px';
             window.style.height = windowData.size.height + 'px';
-            // Store the dimensions for proper size saving when minimized
             window.dataset.savedWidth = windowData.size.width.toString();
             window.dataset.savedHeight = windowData.size.height.toString();
         }
@@ -1151,10 +1026,8 @@ e-text-muted);">content_copy</span></button></span>
             this.desktop.windowZIndex = Math.max(this.desktop.windowZIndex, windowData.zIndex);
         }
 
-        // Always start minimized during restoration
         this.desktop.minimizeWindow(windowId);
 
-        // Scroll terminal to bottom after restoration
         setTimeout(() => {
             const outputDiv = document.getElementById(`server-output-${windowId}`);
             if (outputDiv) {
@@ -1162,7 +1035,6 @@ e-text-muted);">content_copy</span></button></span>
             }
         }, 100);
 
-        // Resume output polling if process is still running or starting
         if ((terminalData.status === 'running' || terminalData.status === 'starting') && terminalData.processId) {
             this.startServerOutputPolling(terminalData.processId, windowId);
             this.startServerHealthPolling(windowId, terminalData.host, terminalData.port, terminalData.modelName);
@@ -1171,20 +1043,16 @@ e-text-muted);">content_copy</span></button></span>
 
     async closeAllTerminalSessions() {
         try {
-            // Get all terminal windows from session state
             const terminalWindows = Object.values(this.desktop.windows).filter(window =>
                 window && (window.type === 'terminal' || window.id.includes('terminal'))
             );
 
-            // Get all active terminals from terminal manager
             const activeTerminals = this.getActiveTerminals();
 
             console.log(`Found ${terminalWindows.length} terminal windows and ${activeTerminals.length} active terminals`);
 
-            // Close all terminal processes
             const closePromises = [];
 
-            // Close terminals via terminal manager if available
             if (activeTerminals.length > 0) {
                 for (const terminalId of activeTerminals) {
                     try {
@@ -1198,11 +1066,9 @@ e-text-muted);">content_copy</span></button></span>
                 }
             }
 
-            // Also close terminal windows via window manager
             for (const window of terminalWindows) {
                 try {
                     if (window.processId) {
-                        // Kill the process via API
                         const killPromise = fetch(`/api/process/${window.processId}/kill`, {
                             method: 'POST',
                             headers: {
@@ -1213,17 +1079,14 @@ e-text-muted);">content_copy</span></button></span>
                         closePromises.push(killPromise);
                     }
 
-                    // Close the window
                     this.desktop.closeWindow(window.id);
                 } catch (error) {
                     console.error(`Error closing terminal window ${window.id}:`, error);
                 }
             }
 
-            // Wait for all close operations to complete (with timeout)
             if (closePromises.length > 0) {
                 await Promise.allSettled(closePromises);
-                // Give processes a moment to fully terminate
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
@@ -1231,7 +1094,6 @@ e-text-muted);">content_copy</span></button></span>
 
         } catch (error) {
             console.error('Error closing terminal sessions:', error);
-            // Don't throw - we want restart to continue even if terminal cleanup fails
         }
     }
 }

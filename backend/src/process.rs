@@ -491,7 +491,7 @@ async fn handle_process_output(
     }
 }
 
-const MAX_LOG_LINES: usize = 1000;
+const MAX_LOG_LINES: usize = 3000;
 
 async fn add_output_line(state: &AppState, process_id: &str, line: String) {
     let mut processes = state.running_processes.lock().await;
