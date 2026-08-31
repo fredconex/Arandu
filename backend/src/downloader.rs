@@ -300,47 +300,92 @@ async fn probe_remote_file(
     None
 }
 
-async fn stitch_parts(
-    part_paths: &[std::path::PathBuf],
-    output_path: &Path,
+// Structs for state management (Chrome-like parallel single-file download)
+#[derive(Serialize, Deserialize)]
+struct SavedRange {
+    start: u64,
+    current: u64,
+    end: u64,
+}
+
+struct ActiveRange {
+    start: u64,
+    current: std::sync::atomic::AtomicU64,
+    end: std::sync::atomic::AtomicU64,
+    active: std::sync::atomic::AtomicBool,
+}
+
+// Function to handle the actual bytes streamed for a dynamic segment
+async fn download_range(
+    client: &reqwest::Client,
+    url: &str,
+    base_headers: &reqwest::header::HeaderMap,
+    temp_path: &Path,
+    range: &Arc<ActiveRange>,
+    downloaded_counter: &Arc<std::sync::atomic::AtomicU64>,
+    cancel_flag: &Arc<std::sync::atomic::AtomicBool>,
+    pause_flag: &Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
-    use tokio::fs::File;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::{AsyncSeekExt, AsyncWriteExt};
+    use std::io::SeekFrom;
+    use std::sync::atomic::Ordering;
+    use futures_util::StreamExt;
+    use reqwest::header::HeaderValue;
 
-    let mut out_file = File::create(output_path)
-        .await
-        .map_err(|e| format!("Failed to create output file for stitching: {}", e))?;
+    let start = range.current.load(Ordering::Relaxed);
+    let end = range.end.load(Ordering::Relaxed);
+    if start > end { return Ok(()); }
 
-    let mut buffer = vec![0u8; 8 * 1024 * 1024]; // 8MB buffer for rapid disk stitching
-    for part_path in part_paths {
-        let mut in_file = File::open(part_path)
-            .await
-            .map_err(|e| format!("Failed to open part file {:?}: {}", part_path, e))?;
+    let mut headers_map = base_headers.clone();
+    headers_map.insert(
+        reqwest::header::RANGE,
+        HeaderValue::from_str(&format!("bytes={}-{}", start, end)).unwrap()
+    );
 
-        loop {
-            let bytes_read = in_file
-                .read(&mut buffer)
-                .await
-                .map_err(|e| format!("Error reading from {:?}: {}", part_path, e))?;
-            if bytes_read == 0 {
-                break;
-            }
-            out_file
-                .write_all(&buffer[..bytes_read])
-                .await
-                .map_err(|e| format!("Error writing during stitching: {}", e))?;
+    let resp = client.get(url).headers(headers_map).send().await.map_err(|e| e.to_string())?;
+    if !resp.status().is_success() && resp.status() != reqwest::StatusCode::PARTIAL_CONTENT {
+        return Err(format!("HTTP {}", resp.status()));
+    }
+
+    let mut file = tokio::fs::OpenOptions::new().write(true).open(temp_path).await.map_err(|e| format!("Open error: {}", e))?;
+    file.seek(SeekFrom::Start(start)).await.map_err(|e| format!("Seek error: {}", e))?;
+
+    let mut stream = resp.bytes_stream();
+    
+    while let Some(chunk_res) = stream.next().await {
+        if cancel_flag.load(Ordering::Relaxed) { return Err("Cancelled".into()); }
+        while pause_flag.load(Ordering::Relaxed) {
+            if cancel_flag.load(Ordering::Relaxed) { return Err("Cancelled".into()); }
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        }
+
+        let chunk = chunk_res.map_err(|e| format!("Stream error: {}", e))?;
+        let mut data = chunk.as_ref();
+
+        let cur = range.current.load(Ordering::Relaxed);
+        let current_end = range.end.load(Ordering::Relaxed);
+
+        if cur > current_end {
+            break; // Range got stolen and we already reached/passed the new end
+        }
+
+        // Ensure we don't overwrite if another thread dynamically shrank our end target
+        let allowed = (current_end - cur + 1) as usize;
+        if data.len() > allowed {
+            data = &data[..allowed];
+        }
+
+        file.write_all(data).await.map_err(|e| format!("Write error: {}", e))?;
+        let written = data.len() as u64;
+        
+        range.current.fetch_add(written, Ordering::Relaxed);
+        downloaded_counter.fetch_add(written, Ordering::Relaxed);
+
+        if range.current.load(Ordering::Relaxed) > current_end {
+            break;
         }
     }
-    out_file
-        .flush()
-        .await
-        .map_err(|e| format!("Failed to flush stitched file: {}", e))?;
-
-    // Cleanup temporary part files
-    for part_path in part_paths {
-        let _ = tokio::fs::remove_file(part_path).await;
-    }
-
+    
     Ok(())
 }
 
@@ -359,10 +404,11 @@ async fn execute_download(
     use tauri::Emitter;
     use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, USER_AGENT};
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use tokio::sync::Mutex as AsyncMutex;
 
     let client = reqwest::Client::builder()
         .tcp_nodelay(true)
-        .http1_only() // force separate connections per chunk instead of h2 multiplexing
+        .http1_only() // Force separate connections per chunk instead of h2 multiplexing
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
 
@@ -398,6 +444,7 @@ async fn execute_download(
             .to_string();
         let final_path = Path::new(&destination_folder).join(&file_name);
         let temp_path = Path::new(&destination_folder).join(format!("{}.download", file_name));
+        let state_path = Path::new(&destination_folder).join(format!("{}.download.state", file_name));
 
         // Check if final file already exists
         if final_path.exists() {
@@ -457,50 +504,63 @@ async fn execute_download(
 
         if supports_ranges && total_size >= MIN_PARALLEL_SIZE {
             println!(
-                "Starting 8-way parallel download for {} ({} MB)",
+                "Starting 8-way parallel download for {} ({} MB) with dynamic chunking to a single file",
                 file_name,
                 total_size / (1024 * 1024)
             );
 
-            let chunk_size = total_size / NUM_CHUNKS as u64;
-            let mut chunk_ranges = Vec::new();
-            let mut part_paths = Vec::new();
-            let mut initial_downloaded = 0u64;
-
-            for i in 0..NUM_CHUNKS {
-                let start = i as u64 * chunk_size;
-                let end = if i == NUM_CHUNKS - 1 {
-                    total_size - 1
-                } else {
-                    (i as u64 + 1) * chunk_size - 1
-                };
-                let part_path = Path::new(&destination_folder)
-                    .join(format!("{}.download.part{}", file_name, i));
-
-                // Check for existing partial chunk bytes
-                let existing_len = if part_path.exists() {
-                    tokio::fs::metadata(&part_path).await.map(|m| m.len()).unwrap_or(0)
-                } else {
-                    0
-                };
-                let expected_chunk_len = end - start + 1;
-                let valid_existing_len = if existing_len <= expected_chunk_len {
-                    existing_len
-                } else {
-                    let _ = tokio::fs::remove_file(&part_path).await;
-                    0
-                };
-
-                initial_downloaded += valid_existing_len;
-                chunk_ranges.push((start, end, valid_existing_len));
-                part_paths.push(part_path);
+            // Pre-allocate the single final file to prevent fragmentation
+            {
+                let f = tokio::fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .open(&temp_path)
+                    .await
+                    .map_err(|e| format!("Failed to create single download file: {}", e))?;
+                f.set_len(total_size)
+                    .await
+                    .map_err(|e| format!("Failed to pre-allocate file: {}", e))?;
             }
 
+            let mut initial_downloaded = 0u64;
+            let mut initial_ranges = Vec::new();
+
+            // Attempt to restore parallel status
+            if let Ok(state_data) = tokio::fs::read_to_string(&state_path).await {
+                if let Ok(saved) = serde_json::from_str::<Vec<SavedRange>>(&state_data) {
+                    if let Ok(meta) = tokio::fs::metadata(&temp_path).await {
+                        if meta.len() == total_size { // Verify file size hasn't changed remotely
+                            for sr in saved {
+                                initial_downloaded += sr.current.saturating_sub(sr.start);
+                                initial_ranges.push(Arc::new(ActiveRange {
+                                    start: sr.start,
+                                    current: AtomicU64::new(sr.current),
+                                    end: AtomicU64::new(sr.end),
+                                    active: AtomicBool::new(false),
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fresh start if no saved state 
+            if initial_ranges.is_empty() {
+                initial_downloaded = 0;
+                initial_ranges.push(Arc::new(ActiveRange {
+                    start: 0,
+                    current: AtomicU64::new(0),
+                    end: AtomicU64::new(total_size - 1),
+                    active: AtomicBool::new(false),
+                }));
+            }
+
+            let shared_ranges = Arc::new(AsyncMutex::new(initial_ranges));
             let downloaded_atomic = Arc::new(AtomicU64::new(initial_downloaded));
             let is_completed = Arc::new(AtomicBool::new(false));
             let start_time = std::time::Instant::now();
 
-            // Spawn progress emitter task
+            // Spawn progress emitter and state persistence task
             let progress_download_id = download_id.clone();
             let progress_atomic = downloaded_atomic.clone();
             let progress_completed = is_completed.clone();
@@ -508,6 +568,8 @@ async fn execute_download(
             let progress_state_dm = state.download_manager.clone();
             let progress_pause_flag = pause_flag.clone();
             let progress_cancel_flag = cancel_flag.clone();
+            let progress_shared_ranges = shared_ranges.clone();
+            let progress_state_path = state_path.clone();
             let total_files_count = files.len();
 
             let progress_handle = tokio::spawn(async move {
@@ -516,6 +578,19 @@ async fn execute_download(
                     tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
                     if progress_completed.load(Ordering::Relaxed) {
                         break;
+                    }
+
+                    // Save state periodically
+                    {
+                        let ranges = progress_shared_ranges.lock().await;
+                        let saved: Vec<SavedRange> = ranges.iter().map(|r| SavedRange {
+                            start: r.start,
+                            current: r.current.load(Ordering::Relaxed),
+                            end: r.end.load(Ordering::Relaxed),
+                        }).collect();
+                        if let Ok(json) = serde_json::to_string(&saved) {
+                            let _ = tokio::fs::write(&progress_state_path, json).await;
+                        }
                     }
 
                     let cur_downloaded = progress_atomic.load(Ordering::Relaxed);
@@ -558,125 +633,124 @@ async fn execute_download(
                 }
             });
 
-            // Spawn concurrent chunk workers
-            let mut chunk_futures = Vec::new();
-            for (chunk_idx, (start, end, existing_len)) in chunk_ranges.into_iter().enumerate() {
+            // Spawn concurrent workers with dynamic chunk stealing
+            let mut worker_futures = Vec::new();
+            for worker_id in 0..NUM_CHUNKS {
                 let client_clone = client.clone();
                 let url_clone = download_url.clone();
-                let part_path = part_paths[chunk_idx].clone();
+                let temp_path_clone = temp_path.clone();
                 let base_headers_clone = base_headers.clone();
                 let downloaded_counter = downloaded_atomic.clone();
-                let expected_chunk_len = end - start + 1;
-                let chunk_cancel_flag = cancel_flag.clone();
-                let chunk_pause_flag = pause_flag.clone();
+                let worker_cancel_flag = cancel_flag.clone();
+                let worker_pause_flag = pause_flag.clone();
+                let shared_ranges = shared_ranges.clone();
 
-                chunk_futures.push(tokio::spawn(async move {
-                    if existing_len >= expected_chunk_len {
-                        return Ok(());
-                    }
+                worker_futures.push(tokio::spawn(async move {
+                    let mut fail_count = 0;
 
-                    const MAX_RETRIES: u32 = 5;
-                    let mut chunk_downloaded = existing_len;
-
-                    for attempt in 1..=MAX_RETRIES {
-                        if chunk_cancel_flag.load(Ordering::Relaxed) {
-                            return Err("Download cancelled by user".to_string());
-                        }
-                        while chunk_pause_flag.load(Ordering::Relaxed) {
-                            if chunk_cancel_flag.load(Ordering::Relaxed) {
-                                return Err("Download cancelled by user".to_string());
-                            }
+                    loop {
+                        if worker_cancel_flag.load(Ordering::Relaxed) { return Err("Download cancelled by user".to_string()); }
+                        while worker_pause_flag.load(Ordering::Relaxed) {
+                            if worker_cancel_flag.load(Ordering::Relaxed) { return Err("Download cancelled by user".to_string()); }
                             tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
                         }
 
-                        let range_start = start + chunk_downloaded;
-                        let mut headers_map = base_headers_clone.clone();
-                        if let Ok(range_val) = HeaderValue::from_str(&format!("bytes={}-{}", range_start, end)) {
-                            headers_map.insert(reqwest::header::RANGE, range_val);
-                        }
-
-                        let resp = match client_clone.get(&url_clone).headers(headers_map).send().await {
-                            Ok(r) => r,
-                            Err(e) => {
-                                if attempt >= MAX_RETRIES {
-                                    return Err(format!("Chunk {} failed after {} attempts: {}", chunk_idx, MAX_RETRIES, e));
-                                }
-                                tokio::time::sleep(tokio::time::Duration::from_secs(attempt as u64)).await;
-                                continue;
-                            }
-                        };
-
-                        if !resp.status().is_success() && resp.status() != reqwest::StatusCode::PARTIAL_CONTENT {
-                            if attempt >= MAX_RETRIES {
-                                return Err(format!("Chunk {} received HTTP {}", chunk_idx, resp.status()));
-                            }
-                            tokio::time::sleep(tokio::time::Duration::from_secs(attempt as u64)).await;
-                            continue;
-                        }
-
-                        use tokio::fs::OpenOptions;
-                        let mut part_file = match OpenOptions::new()
-                            .create(true)
-                            .append(true)
-                            .open(&part_path)
-                            .await
+                        let mut work_range = None;
+                        
                         {
-                            Ok(f) => f,
-                            Err(e) => return Err(format!("Failed to open part file: {}", e)),
-                        };
+                            let mut ranges = shared_ranges.lock().await;
 
-                        let mut stream = resp.bytes_stream();
-                        let mut stream_err = None;
-
-                        while let Some(chunk_res) = stream.next().await {
-                            if chunk_cancel_flag.load(Ordering::Relaxed) {
-                                return Err("Download cancelled by user".to_string());
-                            }
-                            while chunk_pause_flag.load(Ordering::Relaxed) {
-                                if chunk_cancel_flag.load(Ordering::Relaxed) {
-                                    return Err("Download cancelled by user".to_string());
-                                }
-                                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                            }
-
-                            match chunk_res {
-                                Ok(data) => {
-                                    if let Err(e) = part_file.write_all(&data).await {
-                                        stream_err = Some(e.to_string());
-                                        break;
-                                    }
-                                    let len = data.len() as u64;
-                                    chunk_downloaded += len;
-                                    downloaded_counter.fetch_add(len, Ordering::Relaxed);
-                                }
-                                Err(e) => {
-                                    stream_err = Some(e.to_string());
+                            // 1. Check for any incomplete inactive range
+                            for r in ranges.iter() {
+                                if !r.active.load(Ordering::Relaxed) && r.current.load(Ordering::Relaxed) <= r.end.load(Ordering::Relaxed) {
+                                    r.active.store(true, Ordering::Relaxed);
+                                    work_range = Some(r.clone());
                                     break;
                                 }
                             }
+
+                            // 2. No inactive range, try to steal from largest remaining active worker (fixes end slowdown)
+                            if work_range.is_none() {
+                                let mut max_rem = 0;
+                                let mut max_idx = None;
+
+                                for (i, r) in ranges.iter().enumerate() {
+                                    let cur = r.current.load(Ordering::Relaxed);
+                                    let end = r.end.load(Ordering::Relaxed);
+                                    let rem = end.saturating_sub(cur);
+                                    
+                                    // Require at least 1MB to steal to prevent unnecessary requests
+                                    if rem > 1024 * 1024 && rem > max_rem {
+                                        max_rem = rem;
+                                        max_idx = Some(i);
+                                    }
+                                }
+
+                                if let Some(idx) = max_idx {
+                                    let old_r = &ranges[idx];
+                                    let cur = old_r.current.load(Ordering::Relaxed);
+                                    let end = old_r.end.load(Ordering::Relaxed);
+                                    let mid = cur + (end - cur) / 2;
+
+                                    // Update old range's end boundary on the fly
+                                    old_r.end.store(mid, Ordering::Relaxed);
+
+                                    let new_r = Arc::new(ActiveRange {
+                                        start: mid + 1,
+                                        current: AtomicU64::new(mid + 1),
+                                        end: AtomicU64::new(end),
+                                        active: AtomicBool::new(true),
+                                    });
+                                    work_range = Some(new_r.clone());
+                                    ranges.push(new_r);
+                                }
+                            }
                         }
 
-                        let _ = part_file.flush().await;
-
-                        if stream_err.is_none() && chunk_downloaded >= expected_chunk_len {
-                            return Ok(());
+                        // Process assigned workload
+                        if let Some(range) = work_range {
+                            match download_range(
+                                &client_clone, &url_clone, &base_headers_clone,
+                                &temp_path_clone, &range, &downloaded_counter,
+                                &worker_cancel_flag, &worker_pause_flag
+                            ).await {
+                                Ok(_) => {
+                                    fail_count = 0;
+                                    range.active.store(false, Ordering::Relaxed);
+                                }
+                                Err(e) => {
+                                    range.active.store(false, Ordering::Relaxed);
+                                    if e.contains("Cancelled") { return Err(e); }
+                                    fail_count += 1;
+                                    if fail_count >= 5 {
+                                        return Err(format!("Worker {} failed after 5 retries: {}", worker_id, e));
+                                    }
+                                    tokio::time::sleep(tokio::time::Duration::from_secs(fail_count as u64)).await;
+                                }
+                            }
+                        } else {
+                            // Verify if entirely complete
+                            let mut all_done = true;
+                            let ranges = shared_ranges.lock().await;
+                            for r in ranges.iter() {
+                                if r.current.load(Ordering::Relaxed) <= r.end.load(Ordering::Relaxed) {
+                                    all_done = false;
+                                    break;
+                                }
+                            }
+                            if all_done { break; }
+                            
+                            // Sleep to allow active workers to handle tiny (<1MB) remainders
+                            tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
                         }
-
-                        if attempt >= MAX_RETRIES {
-                            return Err(format!(
-                                "Chunk {} stream failed after {} retries: {:?}",
-                                chunk_idx, MAX_RETRIES, stream_err
-                            ));
-                        }
-                        tokio::time::sleep(tokio::time::Duration::from_secs(attempt as u64)).await;
                     }
 
-                    Ok(())
+                    Ok::<(), String>(())
                 }));
             }
 
-            // Await all chunk downloads
-            let results = futures_util::future::join_all(chunk_futures).await;
+            // Await all worker completion
+            let results = futures_util::future::join_all(worker_futures).await;
             is_completed.store(true, Ordering::Relaxed);
             let _ = progress_handle.await;
 
@@ -689,9 +763,9 @@ async fn execute_download(
                 }
             }
 
-            // Stitch all chunks together
-            println!("All chunks downloaded successfully. Stitching {}...", file_name);
-            stitch_parts(&part_paths, &temp_path).await?;
+            println!("All segments downloaded successfully to single file.");
+            let _ = tokio::fs::remove_file(&state_path).await; // Remove state persistence cleanly
+
         } else {
             // Fallback: Robust Single-Stream Downloader
             println!("Using single-stream download for {}", file_name);
@@ -833,29 +907,30 @@ async fn execute_download(
             }
         }
        
-                // Move temp file to final location
-                // First, try to remove the final path if it exists (in case of resumed download)
-                if final_path.exists() {
-                    if let Err(e) = tokio::fs::remove_file(&final_path).await {
-                        return Err(format!("Failed to remove existing file before finalizing download: {}", e));
-                    }
+        // Move temp file to final location
+        // First, try to remove the final path if it exists (in case of resumed download)
+        if final_path.exists() {
+            if let Err(e) = tokio::fs::remove_file(&final_path).await {
+                return Err(format!("Failed to remove existing file before finalizing download: {}", e));
+            }
+        }
+        
+        // Now rename the temp file to final location
+        if let Err(e) = tokio::fs::rename(&temp_path, &final_path).await {
+            // If rename fails, try alternative approach using copy and remove
+            if let Err(copy_error) = tokio::fs::copy(&temp_path, &final_path).await {
+                // Attempt to clean up the temp file
+                let _ = tokio::fs::remove_file(&temp_path).await;
+                return Err(format!("Failed to finalize file (both rename and copy failed): {}, copy error: {}", e, copy_error));
+            } else {
+                // Copy succeeded, now remove the temp file
+                if let Err(remove_error) = tokio::fs::remove_file(&temp_path).await {
+                    // Log the error but continue - the file was copied successfully
+                    eprintln!("Warning: Could not remove temp file after copying: {}", remove_error);
                 }
-                
-                // Now rename the temp file to final location
-                if let Err(e) = tokio::fs::rename(&temp_path, &final_path).await {
-                    // If rename fails, try alternative approach using copy and remove
-                    if let Err(copy_error) = tokio::fs::copy(&temp_path, &final_path).await {
-                        // Attempt to clean up the temp file
-                        let _ = tokio::fs::remove_file(&temp_path).await;
-                        return Err(format!("Failed to finalize file (both rename and copy failed): {}, copy error: {}", e, copy_error));
-                    } else {
-                        // Copy succeeded, now remove the temp file
-                        if let Err(remove_error) = tokio::fs::remove_file(&temp_path).await {
-                            // Log the error but continue - the file was copied successfully
-                            eprintln!("Warning: Could not remove temp file after copying: {}", remove_error);
-                        }
-                    }
-                }
+            }
+        }
+
         // Extract if requested and file is a zip
         if config.auto_extract && file_name.to_lowercase().ends_with(".zip") {
             // Update status to extracting
@@ -868,7 +943,6 @@ async fn execute_download(
             }
             
             // Emit extraction start event
-            //println!("Emitting extraction start event for {}", download_id);
             let download_manager = state.download_manager.lock().await;
             if let Some(status) = download_manager.downloads.get(&download_id) {
                 let _ = app_handle.emit("download-progress", status.clone());
@@ -913,7 +987,6 @@ async fn execute_download(
 
     Ok(())
 }
-
 
 
 // Helper functions
