@@ -1157,3 +1157,6 @@ class LlamaCppReleasesManager {
         }
     }
 }
+
+// Expose class globally
+window.LlamaCppReleasesManager = LlamaCppReleasesManager;

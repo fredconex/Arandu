@@ -150,7 +150,7 @@ class HuggingFaceApp {
     async openHuggingFaceSearch() {
         // Check if Tauri API is available
         if (!this.isInitialized()) {
-            console.warn('HuggingFace app not fully initialized, attempting to initialize...');
+            console.log('HuggingFace app not fully initialized, attempting to initialize...');
 
             // Try to wait for Tauri API to be ready
             const apiReady = await this.waitForTauriAPI();
@@ -1212,3 +1212,6 @@ class HuggingFaceApp {
         }
     }
 }
+
+// Expose class globally
+window.HuggingFaceApp = HuggingFaceApp;

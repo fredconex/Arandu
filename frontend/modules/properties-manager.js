@@ -2760,3 +2760,6 @@ class PropertiesManager {
         }
     }
 }
+
+// Expose class globally
+window.PropertiesManager = PropertiesManager;
