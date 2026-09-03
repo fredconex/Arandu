@@ -198,33 +198,12 @@ class HuggingFaceApp {
 
         const content = `
             <div class="huggingface-search-container">
-                <div class="search-section">
-                    <div class="search-header">
-                    <div class="search-controls" style="position: relative;">
-                        <div style="position: relative; flex: 1; display: flex; align-items: center;">
-                            <input type="text" id="hf-search-input" class="search-input" placeholder="Search for models (e.g., llama, mistral, qwen, codellama)" autocomplete="off" style="flex: 1;">
-                            <button class="search-clear" id="hf-search-clear" title="Clear Search" style="position: absolute; right: 8px;">
-                                <span class="material-icons">close</span>
-                            </button>
-                        </div>
-                        <div class="limit-controls">
-                            <label for="hf-limit">Show:</label>
-                            <select id="hf-limit" class="limit-select">
-                                <option value="50">50</option>
-                                <option value="100" selected>100</option>
-                                <option value="250">250</option>
-                                <option value="500">500</option>
-                            </select>
-                        </div>
-                        <div class="sorting-controls">
-                            <label for="hf-sort-by">Sort by:</label>
-                            <select id="hf-sort-by" class="sort-select">
-                                <option value="relevance">Relevance</option>
-                                <option value="downloads">Most Downloads</option>
-                                <option value="likes">Most Likes</option>
-                                <option value="updated">Recently Updated</option>
-                            </select>
-                        </div>
+                <div class="search-controls">
+                    <div class="search-input-wrapper">
+                        <input type="text" id="hf-search-input" class="search-input" placeholder="Search for models (e.g., llama, mistral, qwen, codellama)" autocomplete="off">
+                        <button class="search-clear" id="hf-search-clear" title="Clear Search">
+                            <span class="material-icons">close</span>
+                        </button>
                         <div class="search-history-dropdown" id="hf-search-history-dropdown">
                             <ul class="search-history-list" id="hf-search-history-list">
                                 <!-- History items will be populated here -->
@@ -235,8 +214,26 @@ class HuggingFaceApp {
                             </div>
                         </div>
                     </div>
+                    <div class="limit-controls">
+                        <label for="hf-limit">Show:</label>
+                        <select id="hf-limit" class="limit-select">
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="250">250</option>
+                            <option value="500">500</option>
+                        </select>
+                    </div>
+                    <div class="sorting-controls">
+                        <label for="hf-sort-by">Sort by:</label>
+                        <select id="hf-sort-by" class="sort-select">
+                            <option value="relevance">Relevance</option>
+                            <option value="downloads">Most Downloads</option>
+                            <option value="likes">Most Likes</option>
+                            <option value="updated">Recently Updated</option>
+                        </select>
+                    </div>
                 </div>
-                
+
                 <div class="search-results" id="hf-search-results">
                     ${this.generatePlaceholderHTML()}
                 </div>

@@ -550,6 +550,10 @@
 }
 
 .search-clear {
+	position: absolute;
+	right: 8px;
+	top: 50%;
+	transform: translateY(-50%);
 	width: 28px;
 	height: 28px;
 	background: transparent;

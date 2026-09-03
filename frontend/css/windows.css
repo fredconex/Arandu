@@ -499,6 +499,8 @@
 
 .huggingface-search-window .window-content {
 	padding: 0;
+	overflow: hidden;
+	height: calc(100% - 40px);
 }
 
 /* Llama.cpp Manager Window */
