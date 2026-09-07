@@ -81,20 +81,22 @@ html, body {
 @keyframes pulse {
 	0%, 100% {
 		opacity: 0.4;
+		transform: translateZ(0);
 	}
 	50% {
 		opacity: 1;
+		transform: translateZ(0);
 	}
 }
 
 @keyframes pulse-glow {
 	0%, 100% {
 		text-shadow: 0 0 20px var(--theme-glow);
-		transform: scale(1);
+		transform: scale(1) translateZ(0);
 	}
 	50% {
 		text-shadow: 0 0 30px var(--theme-glow-strong), 0 0 40px var(--theme-glow);
-		transform: scale(1.02);
+		transform: scale(1.02) translateZ(0);
 	}
 }
 
@@ -110,22 +112,22 @@ html, body {
 @keyframes slideIn {
 	from {
 		opacity: 0;
-		transform: translateX(100%);
+		transform: translateX(100%) translateZ(0);
 	}
 	to {
 		opacity: 1;
-		transform: translateX(0);
+		transform: translateX(0) translateZ(0);
 	}
 }
 
 @keyframes modalSlideIn {
 	from {
 		opacity: 0;
-		transform: translateY(-20px) scale(0.95);
+		transform: translateY(-20px) scale(0.95) translateZ(0);
 	}
 	to {
 		opacity: 1;
-		transform: translateY(0) scale(1);
+		transform: translateY(0) scale(1) translateZ(0);
 	}
 }
 

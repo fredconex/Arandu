@@ -73,6 +73,9 @@
 	height: 1px;
 	background: linear-gradient(to right, transparent 0%, transparent 70%, rgba(255, 255, 255, 0.1) 85%, rgba(255, 255, 255, 0.1) 100%);
 	pointer-events: none;
+	/* Hardware acceleration to prevent ghosting in WebView2 */
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
 }
 
 .desktop-memory-monitor:hover::before {
@@ -127,6 +130,10 @@
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 	z-index: 10000;
 	pointer-events: none;
+	/* Hardware acceleration to prevent box-shadow ghosting in WebView2 */
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+	will-change: box-shadow, transform;
 }
 
 /* Hide tooltips when popup is visible */
@@ -639,7 +646,6 @@
 	justify-content: flex-start;
 	padding: 0;
 	box-sizing: border-box;
-	backdrop-filter: blur(5px);
 }
 
 .memory-bar-ram {
@@ -742,7 +748,8 @@
 	border-radius: 0 0 8px 8px;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 	z-index: 1500;
-	backdrop-filter: blur(10px);
+	/* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
+	/* backdrop-filter: blur(10px); */
 	overflow: hidden;
 }
 
@@ -827,7 +834,8 @@
 	z-index: 10001;
 	min-width: 180px;
 	padding: 4px 0;
-	backdrop-filter: blur(10px);
+	/* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
+	/* backdrop-filter: blur(10px); */
 }
 
 .context-menu-item {
@@ -900,7 +908,8 @@
 	z-index: 1500;
 	min-width: 220px;
 	padding: 12px;
-	backdrop-filter: blur(10px);
+	/* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
+	/* backdrop-filter: blur(10px); */
 	font-size: 12px;
 	line-height: 1.5;
 	color: var(--theme-text-muted);
@@ -948,7 +957,8 @@
 	text-align: center;
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 	z-index: 10;
-	backdrop-filter: blur(5px);
+	/* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
+	/* backdrop-filter: blur(5px); */
 }
 
 .desktop-icon.architecture-icon:hover .model-count-badge {
@@ -967,7 +977,8 @@
 	z-index: 1500;
 	width: 420px;
 	max-height: 500px;
-	backdrop-filter: blur(10px);
+	/* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
+	/* backdrop-filter: blur(10px); */
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;

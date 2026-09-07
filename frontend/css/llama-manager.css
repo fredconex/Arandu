@@ -903,8 +903,9 @@
 .color-picker-popup {
     position: absolute;
     background: rgba(30, 32, 40, 0.6); /* More transparent for glass effect */
-    backdrop-filter: blur(4px);       /* Stronger blur for 'frosted' look */
-    -webkit-backdrop-filter: blur(4px);
+    /* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
+    /* backdrop-filter: blur(4px); */
+    /* -webkit-backdrop-filter: blur(4px); */
     border: 1px solid rgba(255, 255, 255, 0.15); /* Subtle white border */
     border-radius: 10px;
     padding: 10px;

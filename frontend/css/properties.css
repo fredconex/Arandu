@@ -51,6 +51,9 @@
 	outline: none;
 	border-color: var(--theme-accent);
 	box-shadow: 0 0 0 2px rgba(41, 182, 246, 0.2);
+	/* Hardware acceleration to prevent focus ghosting in WebView2 */
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
 }
 
 select.property-input {
@@ -93,6 +96,9 @@ select.property-input {
 	outline: none;
 	border-color: var(--theme-accent);
 	box-shadow: 0 0 0 2px rgba(41, 182, 246, 0.2);
+	/* Hardware acceleration to prevent focus ghosting in WebView2 */
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
 }
 
 .property-input:disabled,
@@ -197,6 +203,9 @@ select.property-input {
 	outline: 1px solid var(--theme-accent);
 	border-radius: 3px;
 	padding: 0 4px;
+	/* Hardware acceleration to prevent focus ghosting in WebView2 */
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
 }
 
 .setting-actions {
@@ -349,7 +358,8 @@ select.property-input {
 	border-top: 1px solid var(--theme-border);
 	padding: 16px;
 	z-index: 10;
-	backdrop-filter: blur(10px);
+	/* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
+	/* backdrop-filter: blur(10px); */
 }
 
 .properties-bottom-section {
@@ -851,17 +861,21 @@ select.property-input {
 	min-width: 220px;
 	max-width: 320px;
 	animation: popoverFadeIn 0.2s ease;
+	/* Hardware acceleration to prevent ghosting in WebView2 */
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+	will-change: transform, opacity;
 }
 
 @keyframes popoverFadeIn {
 	from {
 		opacity: 0;
-		transform: translateY(5px);
+		transform: translateY(5px) translateZ(0);
 	}
 
 	to {
 		opacity: 1;
-		transform: translateY(0);
+		transform: translateY(0) translateZ(0);
 	}
 }
 
@@ -1114,6 +1128,10 @@ select.property-input {
 	background: rgba(30, 136, 229, 0.1);
 	transition: all 0.1s ease;
 	animation: placeholderPulse 1s ease-in-out infinite alternate;
+	/* Hardware acceleration to prevent ghosting in WebView2 */
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+	will-change: opacity;
 }
 
 @keyframes placeholderPulse {

@@ -10,7 +10,8 @@
 	min-height: 300px;
 	z-index: 500;
 	/* overflow: hidden; - Removed to allow resize handles outside */
-	backdrop-filter: blur(10px);
+	/* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
+	/* backdrop-filter: blur(10px); */
 }
 
 /* Resize Handles */
@@ -167,13 +168,15 @@
 	width: 800px;
 	height: 600px;
 	background: var(--theme-surface);
-	backdrop-filter: blur(10px);
+	/* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
+	/* backdrop-filter: blur(10px); */
 	border: 1px solid var(--theme-border);
 }
 
 .server-terminal-window .window-header {
 	background: var(--theme-surface-light);
-	backdrop-filter: blur(10px);
+	/* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
+	/* backdrop-filter: blur(10px); */
 }
 
 .server-terminal-window .window-content {
