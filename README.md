@@ -2,7 +2,7 @@
 <img width="256" height="256" alt="Icon_source" src="https://github.com/user-attachments/assets/d96ead1f-faa9-4ee5-a156-3eee750294e6" />
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/github/v/release/fredconex/arandu?filter=*&color=brightgreen)](https://github.com/fredconex/arandu/releases?q=tag:v*)
+[![Release](https://img.shields.io/github/v/release/fredconex/arandu?filter=*&color=brightgreen)](https://github.com/fredconex/arandu/releases)
 [![Powered by llama.cpp](https://img.shields.io/badge/Powered%20by-llama.cpp-FF6B6B?style=flat&logo=c)](https://github.com/ggml-org/llama.cpp)
 [![Powered by HuggingFace](https://img.shields.io/badge/Powered%20by-HuggingFace-FF9E2C?style=flat&logo=huggingface)](https://huggingface.co)
 
