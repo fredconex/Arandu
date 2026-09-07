@@ -1,6 +1,13 @@
 # Arandu
 <img width="256" height="256" alt="Icon_source" src="https://github.com/user-attachments/assets/d96ead1f-faa9-4ee5-a156-3eee750294e6" />
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Release](https://img.shields.io/github/v/release/fredconex/arandu?filter=*&color=brightgreen)](https://github.com/fredconex/arandu/releases)
+[![Powered by llama.cpp](https://img.shields.io/badge/Powered%20by-llama.cpp-FF6B6B?style=flat&logo=c)](https://github.com/ggml-org/llama.cpp)
+[![Powered by HuggingFace](https://img.shields.io/badge/Powered%20by-HuggingFace-FF9E2C?style=flat&logo=huggingface)](https://huggingface.co)
+
+
+
 This is Arandu, an app to help with Llama.cpp usage, the idea is to create a small system around llama-server without need to hook with the dll files.
 
 - [x] Model management
@@ -12,8 +19,7 @@ This is Arandu, an app to help with Llama.cpp usage, the idea is to create a sma
 - [x] Color themes
 
 # To-do (long way ahead)
-- [ ] Cleanup code and organize it better
-- [ ] Make compatible with Linux and Mac
+- [ ] Make compatible with Linux and Mac (problematic because of webview)
 
 # Building
 Use ```cargo tauri build```, it will output to ```backend\target\release```.
@@ -22,12 +28,13 @@ Use ```cargo tauri build```, it will output to ```backend\target\release```.
 https://github.com/fredconex/Arandu/releases
 
 # Screenshots
-<img width="1432" height="956" alt="image" src="https://github.com/user-attachments/assets/ad78272c-e2ca-4ab9-89fe-2cf521be2254" />
-<img width="1421" height="946" alt="image" src="https://github.com/user-attachments/assets/5117ab50-05d7-4553-9cb3-7087d3075a50" />
-<img width="1441" height="966" alt="image" src="https://github.com/user-attachments/assets/bd410c36-a42f-46e6-a1c1-00581f81b7e4" />
-<img width="1456" height="980" alt="image" src="https://github.com/user-attachments/assets/ff67bb81-acda-41a5-876a-373c21cab841" />
-<img width="1444" height="971" alt="image" src="https://github.com/user-attachments/assets/8e810303-4f37-4e04-af10-364f8d889062" />
-<img width="1434" height="970" alt="image" src="https://github.com/user-attachments/assets/570b053d-3e31-4041-9c82-0744ace7086c" />
+<img width="1496" height="1069" alt="image" src="https://github.com/user-attachments/assets/bfde4200-ae80-46e8-a715-40280fd53ee8" />
+<img width="1502" height="1074" alt="image" src="https://github.com/user-attachments/assets/3e353f1f-6b07-497d-8eb9-88862ed06ae6" />
+<img width="1516" height="1074" alt="image" src="https://github.com/user-attachments/assets/1dfd3b22-1bd4-4a69-8533-5df017589792" />
+<img width="1494" height="1069" alt="image" src="https://github.com/user-attachments/assets/8c6fe2a9-ba32-4aa9-94d4-8ccb54be84bb" />
+<img width="1501" height="1072" alt="image" src="https://github.com/user-attachments/assets/70b2b7c8-fba9-44d3-b5c6-99b623fd5fdf" />
+<img width="1513" height="1081" alt="image" src="https://github.com/user-attachments/assets/0ce3d9da-4c61-4859-9c7a-5e018e3f5094" />
+
 
 
 
