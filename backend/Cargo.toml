@@ -1,6 +1,6 @@
 [package]
 name = "Arandu"
-version = "0.6.8"
+version = "0.6.9"
 description = "Arandu: Desktop UI for llama.cpp model management and server launching"
 authors = ["Alfredo Fernandes"]
 edition = "2021"
@@ -29,11 +29,11 @@ tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
 tauri = { version = "2.11.5", features = ["tray-icon", "devtools"] }
-tauri-plugin-opener = "2.5.4"
-tauri-plugin-fs = "2.5.1"
-tauri-plugin-dialog = "2.7.2"
-tauri-plugin-shell = "2.3.5"
-tauri-plugin-single-instance = "2.4.3"
+tauri-plugin-opener = "2.5.5"
+tauri-plugin-fs = "2.5.2"
+tauri-plugin-dialog = "2.7.3"
+tauri-plugin-shell = "2.3.6"
+tauri-plugin-single-instance = "2.4.4"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 tokio = { version = "1.53.1", features = ["full"] }
@@ -41,7 +41,7 @@ reqwest = { version = "0.13.4", features = ["json", "stream"] }
 glob = "0.3.4"
 regex = "1.13.1"
 chrono = { version = "0.4.45", features = ["serde"] }
-uuid = { version = "1.24.1", features = ["v4", "serde"] }
+uuid = { version = "1.26.0", features = ["v4", "serde"] }
 thiserror = "2.0.20"
 anyhow = "1.0.104"
 tracing = "0.1.44"
@@ -49,7 +49,7 @@ tracing-subscriber = "0.3.23"
 bytes = "1.12.1"
 futures-util = "0.3.34"
 md5 = "0.8.1"
-dirs = "6.0"
+dirs = "7.0.0"
 urlencoding = "2.1"
 sysinfo = { version = "0.39.6", features = ["serde"] }
 gfxinfo = "0.1.2"
@@ -57,7 +57,7 @@ zip = "8.6.0"
 url = "2.5.8"
 axum = "0.8.9"
 tower = "0.5.3"
-tower-http = { version = "0.7.0", features = ["cors"] }
-hyper = { version = "1.11.0", features = ["full"] }
+tower-http = { version = "0.7.1", features = ["cors"] }
+hyper = { version = "1.11.1", features = ["full"] }
 http-body-util = "0.1.5"
 
