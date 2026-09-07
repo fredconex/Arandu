@@ -31,55 +31,206 @@
 	display: none;
 }
 
+/* RAM and VRAM usage thin bar at bottom of desktop - full width */
 .desktop-memory-monitor {
 	position: fixed;
-	bottom: 12px;
-	right: 20px;
+	bottom: 0;
+	left: 60px;
+	right: 0;
+	height: 16px;
 	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	padding: 0 12px;
+	gap: 16px;
+	background: transparent;
+	user-select: none;
+	cursor: pointer;
+	z-index: 9998;
+}
+
+.desktop-memory-monitor::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 60px;
+	right: 0;
+	bottom: 0;
+	background: rgba(255, 255, 255, 0.03);
+	backdrop-filter: blur(6px) saturate(180%);
+	-webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.6) 85%, rgba(0,0,0,1) 100%);
+	mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.6) 85%, rgba(0,0,0,1) 100%);
+	pointer-events: none;
+	z-index: -1;
+}
+
+.desktop-memory-monitor::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 60px;
+	right: 0;
+	height: 1px;
+	background: linear-gradient(to right, transparent 0%, transparent 70%, rgba(255, 255, 255, 0.1) 85%, rgba(255, 255, 255, 0.1) 100%);
+	pointer-events: none;
+}
+
+.desktop-memory-monitor:hover::before {
+	backdrop-filter: blur(8px) saturate(180%);
+}
+
+/* Memory bars wrapper - compact horizontal layout */
+.memory-bars-wrapper {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 16px;
+	position: relative;
+	z-index: 1;
+}
+
+/* Individual memory bar row */
+.memory-bar-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	position: relative;
+	z-index: 1;
+}
+
+/* Memory label styling */
+.memory-label {
+	font-size: 9px;
+	font-weight: 600;
+	color: var(--theme-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	min-width: 36px;
+	position: relative;
+	z-index: 2;
+	cursor: pointer;
+}
+
+/* CSS Tooltip for memory bars */
+.memory-bar-row[data-tooltip]:hover::after {
+	content: attr(data-tooltip);
+	position: absolute;
+	bottom: calc(100% + 6px);
+	right: 0;
+	background: var(--theme-surface);
+	color: var(--theme-text);
+	padding: 6px 12px;
+	border-radius: 6px;
+	font-size: 12px;
+	white-space: nowrap;
+	border: 1px solid var(--theme-border);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	z-index: 10000;
+	pointer-events: none;
+}
+
+/* Hide tooltips when popup is visible */
+.desktop-memory-monitor.popup-open .memory-bar-row[data-tooltip]:hover::after {
+	display: none;
+}
+
+/* Memory monitor popup - shown when clicked */
+.memory-monitor-popup {
+	position: fixed;
+	bottom: 28px;
+	right: 12px;
+	width: 320px;
+	max-height: 400px;
+	display: none;
 	flex-direction: column;
-	align-items: flex-end;
-	gap: 8px;
-	padding: 8px 12px;
+	gap: 12px;
 	background: color-mix(in srgb, var(--theme-surface), transparent 30%);
-	backdrop-filter: blur(2px) saturate(180%);
+	backdrop-filter: blur(15px) saturate(180%);
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-radius: 12px;
 	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-	z-index: 9998;
-	user-select: none;
-	cursor: pointer;
-	min-width: 100px;
-	overflow: hidden;
+	padding: 16px;
+	z-index: 9999;
+	overflow-y: auto;
 }
 
-.desktop-memory-monitor.active {
-	background: color-mix(in srgb, var(--theme-surface), transparent 30%);
-	backdrop-filter: blur(5px) saturate(180%);
-	box-shadow: 0 0 16px rgba(0, 0, 0, 0.3);
+.desktop-memory-monitor.active ~ .memory-monitor-popup,
+.memory-monitor-popup.visible {
+	display: flex;
 }
 
-.desktop-memory-monitor.expanded {
-	min-width: 280px;
-	align-items: stretch;
+/* Memory monitor details inside popup */
+.memory-monitor-popup .system-section {
+	margin-bottom: 12px;
+	background: rgba(0, 0, 0, 0.2);
+	border-radius: 6px;
+	padding: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.memory-bars-wrapper {
+.memory-monitor-popup .system-section:last-child {
+	margin-bottom: 0;
+}
+
+.memory-monitor-popup .section-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 10px;
+	font-weight: 600;
+	color: var(--theme-text-muted);
+	margin-bottom: 8px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.memory-monitor-popup .section-header .material-icons {
+	font-size: 14px;
+	color: var(--theme-primary);
+}
+
+.memory-monitor-popup .info-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+
+.memory-monitor-popup .info-cell {
 	display: flex;
 	flex-direction: column;
-	align-items: stretch;
-	gap: 8px;
-	width: 100%;
 }
 
-.memory-monitor-details {
-	display: none;
+.memory-monitor-popup .info-cell .label {
+	font-size: 9px;
+	color: var(--theme-text-muted);
+	margin-bottom: 2px;
+}
+
+.memory-monitor-popup .info-cell .value {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--theme-text);
+	font-variant-numeric: tabular-nums;
+	line-height: 1.2;
+}
+
+.memory-monitor-popup .info-cell .unit {
+	font-size: 9px;
+	color: var(--theme-text-muted);
+	margin-left: 2px;
+}
+
+.memory-monitor-popup .gpu-name {
+	font-size: 11px;
+	color: var(--theme-text);
 	margin-bottom: 8px;
-	padding-bottom: 12px;
-	border-bottom: 1px solid var(--theme-border);
-}
-
-.desktop-memory-monitor.expanded .memory-monitor-details {
-	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	opacity: 0.9;
+	padding-bottom: 8px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	font-weight: 500;
 }
 
 .system-section {
@@ -468,16 +619,18 @@
 	flex-direction: column;
 	align-items: stretch;
 	justify-content: center;
-	width: 100%;
-	cursor: pointer;
+	flex: 1;
+	max-width: 120px;
+	min-width: 80px;
+	min-height: 16px;
 	position: relative;
 }
 
 .memory-bar {
 	width: 100%;
-	height: 12px;
+	height: 6px;
 	background: var(--theme-bg-light);
-	border-radius: 3px;
+	border-radius: 2px;
 	position: relative;
 	overflow: hidden;
 	border: none;

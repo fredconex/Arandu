@@ -425,11 +425,15 @@ class DesktopManager {
             this.hideDockContextMenu();
             // Don't hide folder view here - it should only close via back button or overlay click
 
-            // Collapse memory monitor when clicking outside
+            // Close memory monitor popup when clicking outside
             const memoryMonitor = document.getElementById('desktop-memory-monitor');
-            if (memoryMonitor && !memoryMonitor.contains(e.target)) {
-                memoryMonitor.classList.remove('expanded');
+            const memoryPopup = document.getElementById('memory-monitor-popup');
+            if (memoryMonitor && !memoryMonitor.contains(e.target) && !memoryPopup.contains(e.target)) {
                 memoryMonitor.classList.remove('active');
+                memoryMonitor.classList.remove('popup-open');
+                if (memoryPopup) {
+                    memoryPopup.classList.remove('visible');
+                }
             }
 
             // Close search balloon when clicking outside
@@ -4949,14 +4953,15 @@ class DesktopManager {
         // If window has very low visibility (< 5%), center it
         if (visibilityPercentage < 0.05) {
             // Center the window in the viewport
-            newLeft = Math.max(20, (viewportWidth - rect.width) / 2);
+            newLeft = Math.max(70, (viewportWidth - rect.width) / 2);
             newTop = Math.max(20, (viewportHeight - rect.height) / 2);
         } else {
             // Otherwise, just ensure minimum visibility at edges
             const margin = 50; // Minimum visible margin
+            const dockWidth = 60; // Width of the left dock
 
             // Check and adjust horizontal position
-            if (currentLeft + rect.width < margin) {
+            if (currentLeft + rect.width < margin + dockWidth) {
                 newLeft = margin - rect.width + 100; // Show at least 100px of window
             } else if (currentLeft > viewportWidth - margin) {
                 newLeft = viewportWidth - margin;
@@ -5625,32 +5630,45 @@ class DesktopManager {
 
     setupSystemMonitorIcon() {
         const monitorIcon = document.getElementById('desktop-memory-monitor');
+        const popup = document.getElementById('memory-monitor-popup');
+
         if (monitorIcon) {
-            // Add click event listener to toggle expanded state
-            monitorIcon.addEventListener('click', async (e) => {
+            // Helper to toggle popup
+            const togglePopup = async (e) => {
                 e.stopPropagation();
                 try {
-                    // Fetch fresh system stats each time
                     const stats = await invoke('get_system_stats');
-                    this.toggleMemoryMonitorExpanded(stats, monitorIcon);
+                    this.toggleMemoryMonitorPopup(stats, monitorIcon);
                 } catch (error) {
                     console.error('Failed to fetch system stats:', error);
                 }
+            };
+
+            // Click on the main bar or any child element toggles popup
+            monitorIcon.addEventListener('click', togglePopup);
+
+            // Also toggle when clicking on individual bar rows
+            const barRows = monitorIcon.querySelectorAll('.memory-bar-row');
+            barRows.forEach(row => {
+                row.addEventListener('click', togglePopup);
             });
         }
     }
 
-    toggleMemoryMonitorExpanded(stats, monitorElement) {
-        const isExpanded = monitorElement.classList.contains('expanded');
+    toggleMemoryMonitorPopup(stats, monitorElement) {
+        const popup = document.getElementById('memory-monitor-popup');
+        const isActive = monitorElement.classList.contains('active');
 
-        if (isExpanded) {
-            // Collapse
-            monitorElement.classList.remove('expanded');
+        if (isActive) {
+            // Hide popup
             monitorElement.classList.remove('active');
+            popup.classList.remove('visible');
+            monitorElement.classList.remove('popup-open');
         } else {
-            // Expand and show details
-            monitorElement.classList.add('expanded');
+            // Show popup
             monitorElement.classList.add('active');
+            monitorElement.classList.add('popup-open');
+            popup.classList.add('visible');
             this.updateMemoryMonitorDetails(stats);
         }
     }
@@ -6072,22 +6090,30 @@ class DesktopManager {
             vramFill.style.background = getBarColor(vramPercent);
         }
 
-        // Update the title attributes for hover tooltips
+        // Update the title attributes for hover tooltips on labels and bars
         const memoryMonitor = document.getElementById('desktop-memory-monitor');
         if (memoryMonitor) {
-            const containers = memoryMonitor.querySelectorAll('.memory-bar-container');
-            const ramContainer = containers[0];
-            const vramContainer = containers[1];
+            const ramRows = memoryMonitor.querySelectorAll('.memory-bar-row');
+            const ramRow = ramRows[0];
+            const vramRow = ramRows[1];
+            const ramLabel = ramRow?.querySelector('.memory-label');
+            const vramLabel = vramRow?.querySelector('.memory-label');
+            const ramContainer = ramRow?.querySelector('.memory-bar-container');
+            const vramContainer = vramRow?.querySelector('.memory-bar-container');
 
-            if (ramContainer) {
-                ramContainer.title = `RAM: ${stats.memory_used_gb.toFixed(2)}GB / ${stats.memory_total_gb.toFixed(2)}GB (${ramPercent.toFixed(1)}%)`;
-            }
+            const ramTooltip = `RAM: ${stats.memory_used_gb.toFixed(2)}GB / ${stats.memory_total_gb.toFixed(2)}GB (${ramPercent.toFixed(1)}%)`;
+            const vramTooltip = stats.gpu_name !== "Unknown" && stats.gpu_name !== "No NVIDIA GPU detected" && stats.gpu_name !== "No GPU detected"
+                ? `VRAM: ${stats.gpu_memory_used_gb.toFixed(2)}GB / ${stats.gpu_memory_total_gb.toFixed(2)}GB (${vramPercent.toFixed(1)}%)`
+                : 'VRAM: Not available';
 
-            if (vramContainer) {
+            // Set tooltip using data-tooltip attribute for CSS tooltip
+            if (ramRow) ramRow.dataset.tooltip = ramTooltip;
+
+            if (vramRow) {
                 if (stats.gpu_name !== "Unknown" && stats.gpu_name !== "No NVIDIA GPU detected" && stats.gpu_name !== "No GPU detected") {
-                    vramContainer.title = `VRAM: ${stats.gpu_memory_used_gb.toFixed(2)}GB / ${stats.gpu_memory_total_gb.toFixed(2)}GB (${vramPercent.toFixed(1)}%)`;
+                    vramRow.dataset.tooltip = vramTooltip;
                 } else {
-                    vramContainer.title = 'VRAM: Not available';
+                    vramRow.dataset.tooltip = 'VRAM: Not available';
                     // If no GPU, set VRAM bar to 0%
                     if (vramFill) {
                         vramFill.style.width = '0%';

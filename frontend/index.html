@@ -83,24 +83,32 @@
         <!-- Architecture Models List -->
         <div class="architecture-models-list hidden" id="architecture-models-list"></div>
 
-        <!-- RAM and VRAM usage indicators on desktop -->
-        <div class="desktop-memory-monitor" id="desktop-memory-monitor" title="System Information">
-            <div class="memory-monitor-details" id="memory-monitor-details">
-                <!-- Details will be populated here -->
-            </div>
+        <!-- RAM and VRAM usage thin bar at bottom right of desktop -->
+        <div class="desktop-memory-monitor" id="desktop-memory-monitor">
             <div class="memory-bars-wrapper">
-                <div class="memory-bar-container" title="RAM Usage">
-                    <div class="memory-bar-ram memory-bar">
-                        <div class="memory-fill"></div>
-                        <div class="memory-text">RAM</div>
+                <div class="memory-bar-row" data-tooltip="">
+                    <span class="memory-label">RAM</span>
+                    <div class="memory-bar-container">
+                        <div class="memory-bar-ram memory-bar">
+                            <div class="memory-fill"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="memory-bar-container" title="VRAM Usage">
-                    <div class="memory-bar-vram memory-bar">
-                        <div class="memory-fill"></div>
-                        <div class="memory-text">VRAM</div>
+                <div class="memory-bar-row" data-tooltip="">
+                    <span class="memory-label">VRAM</span>
+                    <div class="memory-bar-container">
+                        <div class="memory-bar-vram memory-bar">
+                            <div class="memory-fill"></div>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Memory monitor popup - shows system details -->
+        <div class="memory-monitor-popup" id="memory-monitor-popup">
+            <div class="memory-monitor-details" id="memory-monitor-details">
+                <!-- Details will be populated here when popup is shown -->
             </div>
         </div>
 

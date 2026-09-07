@@ -489,6 +489,8 @@
 
 .chat-application-window .window-content {
 	padding: 16px 16px 16px 0;
+	height: calc(100% - 40px);
+	overflow: hidden;
 }
 
 /* Huggingface Search Window */
