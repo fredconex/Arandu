@@ -88,10 +88,7 @@ fn is_unfinished_download_file(path: &Path) -> bool {
     if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
         let lower = file_name.to_lowercase();
         return lower.ends_with(".download")
-            || lower.contains(".download.part")
-            || lower.ends_with(".part")
-            || (lower.contains(".part") && lower.split(".part").last().unwrap_or("").chars().all(|c| c.is_ascii_digit()))
-            || lower.ends_with(".tmp");
+            || lower.ends_with(".download.state");
     }
     false
 }

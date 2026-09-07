@@ -448,6 +448,9 @@ async fn execute_download(
 
         // Check if final file already exists
         if final_path.exists() {
+            // Clean up leftover temp files from previous failed/interrupted download attempt
+            let _ = tokio::fs::remove_file(&temp_path).await;
+            let _ = tokio::fs::remove_file(&state_path).await;
             let mut download_manager = state.download_manager.lock().await;
             if let Some(status) = download_manager.downloads.get_mut(&download_id) {
                 status.files_completed = file_index + 1;
