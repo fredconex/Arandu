@@ -644,13 +644,23 @@ class DesktopManager {
             searchDockIcon.addEventListener('click', (e) => {
                 e.stopPropagation();
 
-                // Toggle folder view - if already open, close it
+                // Check if folder view is already open
                 const folderView = document.getElementById('search-folder-view');
                 if (folderView && !folderView.classList.contains('hidden')) {
-                    // Check if we're in "All Models" folder
-                    const folderTitle = document.getElementById('search-folder-title');
-                    const isAllModels = folderTitle && folderTitle.textContent === 'Models';
-                    this.hideSearchFolderView(isAllModels);
+                    // Check if the folder view is behind other elements
+                    const folderZIndex = parseInt(folderView.style.zIndex) || 0;
+                    
+                    if (folderZIndex < this.windowZIndex) {
+                        // Folder view is open but behind - bring it to front
+                        folderView.style.zIndex = ++this.windowZIndex;
+                        document.querySelectorAll('.window, .folder-view').forEach(w => w.classList.remove('active'));
+                        folderView.classList.add('active');
+                    } else {
+                        // Folder view is already on top - close it
+                        const folderTitle = document.getElementById('search-folder-title');
+                        const isAllModels = folderTitle && folderTitle.textContent === 'Models';
+                        this.hideSearchFolderView(isAllModels);
+                    }
                     return;
                 }
 
