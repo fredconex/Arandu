@@ -1,7 +1,7 @@
 /* Window Management Styles */
 
 .window {
-	position: fixed;
+	position: absolute;
 	background: var(--theme-surface);
 	border: 1px solid var(--theme-border);
 	border-radius: 8px 8px 0 0;
@@ -9,9 +9,6 @@
 	min-width: 400px;
 	min-height: 300px;
 	z-index: 500;
-	/* overflow: hidden; - Removed to allow resize handles outside */
-	/* Disabled backdrop-filter to test for cursor ghosting - re-enable if not the issue */
-	/* backdrop-filter: blur(10px); */
 }
 
 /* Resize Handles */
@@ -158,9 +155,10 @@
 
 /* Window Content */
 .window-content {
-	height: calc(100% - 40px);
-	overflow: auto;
+	overflow: visible;
 	padding: 16px;
+	position: relative;
+	height: calc(100% - 40px);
 }
 
 /* Server Terminal Window */
@@ -450,8 +448,11 @@
 	max-height: 90vh;
 }
 
+.properties-window.maximized {
+	max-height: none;
+}
+
 .properties-window .window-content {
-	overflow-y: auto;
 	max-height: calc(100% - 40px);
 }
 
