@@ -910,6 +910,23 @@
       "description": "Keep the Mixture of Experts (MoE) weights of the first N layers in the CPU"
     },    
     {
+      "id": "cpu_ffn_offload",
+      "name": "CPU Dense FFN Layers",
+      "type": "slider",
+      "argument": "-ncffn",
+      "aliases": [
+        "--n-cpu-ffn"
+      ],
+      "isFlag": false,
+      "min": 0,
+      "max": 99,
+      "step": 1,
+      "default": 0,
+      "unit": "layers",
+      "category": "Hardware",
+      "description": "Keep the dense FFN weights of the first N layers in the CPU (dense models; for MoE expert weights use --n-cpu-moe)"
+    },
+    {
       "id": "cpu_threads",
       "name": "CPU Threads",
       "type": "slider",
@@ -1089,6 +1106,72 @@
       "default": "--mmap",
       "category": "Hardware",
       "description": "Whether to memory-map model (default: enabled)"
+    },
+    {
+      "id": "load_mode",
+      "name": "Load Mode",
+      "type": "select",
+      "argument": "-lm",
+      "aliases": [
+        "--load-mode"
+      ],
+      "isFlag": false,
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "mmap",
+          "label": "mmap"
+        },
+        {
+          "value": "mlock",
+          "label": "mlock"
+        },
+        {
+          "value": "mmap+mlock",
+          "label": "mmap+mlock"
+        },
+        {
+          "value": "dio",
+          "label": "DIO"
+        }
+      ],
+      "default": "auto",
+      "category": "Hardware",
+      "description": "Model loading mode (default: auto)"
+    },
+    {
+      "id": "lazy_mode",
+      "name": "Lazy Mode",
+      "type": "select",
+      "argument": "-lzm",
+      "aliases": [
+        "--lazy-mode"
+      ],
+      "isFlag": false,
+      "options": [
+        {
+          "value": "on",
+          "label": "On"
+        },
+        {
+          "value": "auto",
+          "label": "Auto"
+        },
+        {
+          "value": "off",
+          "label": "Off"
+        }
+      ],
+      "default": "auto",
+      "category": "Hardware",
+      "description": "On-demand reading of certain tensors, for example per-layer embeddings (default: auto)"
     },
     {
       "id": "numa",
