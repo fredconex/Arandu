@@ -633,6 +633,47 @@ select.property-input {
 	background: #c0392b;
 }
 
+/* Per-preset backend footer (bottom of properties-main) */
+.preset-backend-footer {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 12px;
+	border-top: 1px solid var(--theme-border);
+	background: var(--theme-surface);
+	flex-shrink: 0;
+}
+
+.preset-backend-footer-label {
+	font-size: 11px;
+	color: var(--theme-text-muted);
+	font-weight: 600;
+}
+
+/* Compact per-preset backend selector */
+.preset-backend-selector {
+	flex: 1;
+	min-width: 0;
+	padding: 4px 24px 4px 8px;
+	background: var(--theme-surface);
+	border: 1px solid var(--theme-border);
+	border-radius: 4px;
+	color: var(--theme-text);
+	font-size: 11px;
+	cursor: pointer;
+	outline: none;
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23e3f2fd' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 8px center;
+}
+
+.preset-backend-selector:focus {
+	outline: none;
+	border-color: var(--theme-accent);
+	box-shadow: 0 0 0 2px rgba(41, 182, 246, 0.2);
+}
+
 /* Properties Header Row */
 .properties-header-row {
 	display: flex;

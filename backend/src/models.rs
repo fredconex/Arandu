@@ -46,6 +46,10 @@ pub struct ModelPreset {
     pub name: String,
     pub custom_args: String,
     pub is_default: bool,
+    /// Per-preset backend folder override. None = fall back to the global
+    /// active backend (then latest installed version).
+    #[serde(default)]
+    pub backend_folder: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

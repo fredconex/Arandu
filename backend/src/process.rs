@@ -34,12 +34,23 @@ fn resolve_model_path(path: &str, models_directory: &str) -> String {
 async fn resolve_llama_server_path_with_fallback(
     state: &AppState,
     global_config: &GlobalConfig,
+    model_backend_folder: Option<&str>,
 ) -> std::path::PathBuf {
     use std::fs;
     use std::time::SystemTime;
 
     let exe_name = if cfg!(windows) { "llama-server.exe" } else { "llama-server" };
-    
+
+    // Per-model backend override takes precedence when explicitly set.
+    if let Some(backend_folder) = model_backend_folder {
+        if !backend_folder.trim().is_empty() {
+            let preferred = std::path::Path::new(backend_folder).join(exe_name);
+            if preferred.exists() {
+                return preferred;
+            }
+        }
+    }
+
     // First, try the preferred path using active executable folder
     if let Some(active_path) = &global_config.active_executable_folder {
         let preferred = std::path::Path::new(active_path).join(exe_name);
@@ -163,6 +174,7 @@ impl Drop for ProcessHandle {
 pub async fn launch_model_server(
     model_path: String,
     state: &AppState,
+    preset_backend_folder: Option<&str>,
 ) -> Result<LaunchResult, Box<dyn std::error::Error>> {
     let (global_config, model_config) = {
         let config = state.config.lock().await;
@@ -173,17 +185,18 @@ pub async fn launch_model_server(
         (config.clone(), model_config)
     };
     
-    // Resolve server path with fallback to latest installed version if needed
-    let executable_path = resolve_llama_server_path_with_fallback(state, &global_config).await;
-    
+    // Resolve server path with fallback to latest installed version if needed.
+    // preset_backend_folder overrides the global active backend when set.
+    let executable_path = resolve_llama_server_path_with_fallback(state, &global_config, preset_backend_folder).await;
+
     if !executable_path.exists() {
         return Err(format!("Server executable not found at: {:?}", executable_path).into());
     }
-    
+
     let requested_port = parse_port_from_args(&model_config.custom_args, model_config.server_port);
     let actual_port = find_available_port(requested_port);
     let host = parse_host_from_args(&model_config.custom_args, &model_config.server_host);
-    
+
     // If we had to change the port, update the model config for this session
     let final_port = if actual_port != requested_port {
         println!("Port {} was in use, using port {} instead", requested_port, actual_port);
@@ -191,7 +204,7 @@ pub async fn launch_model_server(
     } else {
         requested_port
     };
-    
+
     // Build command with custom args if any
     let mut full_command = vec![executable_path.to_string_lossy().to_string()];
     let base_args = vec![
@@ -302,6 +315,7 @@ pub async fn launch_model_server(
 pub async fn launch_model_external(
     model_path: String,
     state: &AppState,
+    preset_backend_folder: Option<&str>,
 ) -> Result<LaunchResult, Box<dyn std::error::Error>> {
     let (global_config, model_config) = {
         let config = state.config.lock().await;
@@ -311,10 +325,11 @@ pub async fn launch_model_external(
             .unwrap_or_else(|| ModelConfig::new(model_path.clone()));
         (config.clone(), model_config)
     };
-    
-    // Resolve server path with fallback to latest installed version if needed
-    let executable_path = resolve_llama_server_path_with_fallback(state, &global_config).await;
-    
+
+    // Resolve server path with fallback to latest installed version if needed.
+    // preset_backend_folder overrides the global active backend when set.
+    let executable_path = resolve_llama_server_path_with_fallback(state, &global_config, preset_backend_folder).await;
+
     if !executable_path.exists() {
         return Err(format!("Server executable not found at: {:?}", executable_path).into());
     }

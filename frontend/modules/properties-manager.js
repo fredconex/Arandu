@@ -182,12 +182,17 @@ class PropertiesManager {
             const settingsConfig = await this.desktop.loadSettingsConfig();
             console.log('Settings config loaded:', settingsConfig.length, 'settings');
 
+            // Load available backends for the per-preset backend selector
+            const backendOptions = await this.getBackendOptions();
+
             // Generate Visualizer HTML
             const visualizerHTML = await this.generateArgumentsVisualizer(config.custom_args || '', settingsConfig);
 
-            // Determine which preset is selected for the title
+            // Determine which preset is selected for the title and its backend
             const selectedPreset = selectedPresetId ? presets.find(p => p.id === selectedPresetId) : null;
             const argumentsTitle = selectedPreset ? `Arguments (${selectedPreset.name})` : 'Arguments';
+            const presetBackendFolder = selectedPreset ? (selectedPreset.backend_folder || null) : null;
+            const backendSelectorHTML = this.buildPresetBackendSelectorHTML(presetBackendFolder, backendOptions);
 
             // Generate file info HTML if metadata is available
             let fileInfoHTML = '';
@@ -276,21 +281,25 @@ class PropertiesManager {
 
                         <div id="view-raw" class="arguments-content hidden">
                             <div class="property-group">
-                                 <div class="custom-args-section">
+                                <div class="custom-args-section">
                                     <textarea class="property-textarea" data-field="custom_args" placeholder="Additional custom arguments will be preserved" spellcheck="false">${config.custom_args || ''}</textarea>
                                 </div>
-                               <div class="copy-args-container">
-                                   <button class="copy-args-btn" onclick="propertiesManager.copyArgumentsAsRaw()" title="Copy all arguments as raw text">
-                                       <span class="material-icons">content_copy</span>
-                                   </button>
-                                   <button class="paste-args-btn" onclick="propertiesManager.pasteArgumentsAsRaw()" title="Paste arguments from clipboard">
-                                       <span class="material-icons">content_paste</span>
-                                   </button>
-                               </div>
+                                <div class="copy-args-container">
+                                    <button class="copy-args-btn" onclick="propertiesManager.copyArgumentsAsRaw()" title="Copy all arguments as raw text">
+                                        <span class="material-icons">content_copy</span>
+                                    </button>
+                                    <button class="paste-args-btn" onclick="propertiesManager.pasteArgumentsAsRaw()" title="Paste arguments from clipboard">
+                                        <span class="material-icons">content_paste</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="settings-sidebar">
+                        <div class="preset-backend-footer">
+                            <span class="preset-backend-footer-label">Backend</span>
+                            ${backendSelectorHTML}
+                                                    </div>
+                                                </div>
+                                                <div class="settings-sidebar">
                         <div class="settings-header">
                             <h4>Available Settings</h4>
                             <button class="settings-menu-btn" onclick="propertiesManager.showSettingsMenu(event)" title="Settings options">
@@ -528,12 +537,19 @@ class PropertiesManager {
         }
 
         // Update the preset in working list directly
-        const textarea = window.querySelector('[data-field="custom_args"]');
-        if (textarea) {
-            const preset = window.workingPresets.find(p => p.id === currentPresetId);
-            if (preset) {
+        const preset = window.workingPresets.find(p => p.id === currentPresetId);
+        if (preset) {
+            // Save custom args
+            const textarea = window.querySelector('[data-field="custom_args"]');
+            if (textarea) {
                 preset.custom_args = textarea.value.trim();
-                console.log(`Updated preset ${currentPresetId} in working list:`, preset.custom_args);
+                console.log(`Updated preset ${currentPresetId} args:`, preset.custom_args);
+            }
+            // Save backend folder for this preset.
+            // An empty value means "use the currently active backend" (no override).
+            const backendSelect = window.querySelector('#preset-backend-selector');
+            if (backendSelect) {
+                preset.backend_folder = (backendSelect.value !== '') ? backendSelect.value : null;
             }
         }
     }
@@ -579,8 +595,24 @@ class PropertiesManager {
             if (argumentsTitle) {
                 argumentsTitle.textContent = `Arguments (${preset.name})`;
             }
+
+            // Update the per-preset backend selector to reflect this preset's backend_folder
+            this.updatePresetBackendSelector(activeWindow, preset.backend_folder || null);
         } catch (error) {
             console.error('Error loading preset:', error);
+        }
+    }
+
+    updatePresetBackendSelector(activeWindow, backendFolder) {
+        const select = activeWindow.querySelector('#preset-backend-selector');
+        if (!select) return;
+
+        const value = backendFolder || '';
+        // If the backend folder isn't one of the options, clear it (default)
+        if (value !== '' && ![...select.options].some(o => o.value === value)) {
+            select.value = '';
+        } else {
+            select.value = value;
         }
     }
 
@@ -611,7 +643,8 @@ class PropertiesManager {
                 id: 'preset_' + Date.now(),
                 name: 'New Preset',
                 custom_args: customArgs,
-                is_default: false
+                is_default: false,
+                backend_folder: null
             };
 
             // Add to working presets list
@@ -791,7 +824,8 @@ class PropertiesManager {
                 id: 'preset_' + Date.now(),
                 name: original.name + ' (Copy)',
                 custom_args: original.custom_args,
-                is_default: false
+                is_default: false,
+                backend_folder: original.backend_folder || null
             };
 
             // Add to working presets list
@@ -1361,6 +1395,92 @@ class PropertiesManager {
         }
     }
 
+    async getBackendOptions() {
+        try {
+            const invoke = this.getInvoke();
+            if (!invoke) return null;
+            const versions = await invoke('list_llamacpp_versions', {});
+            return versions || [];
+        } catch (e) {
+            console.error('Failed to load backend options:', e);
+            return null;
+        }
+    }
+
+    getBackendDisplayName(backendType) {
+        const displayNames = {
+            'cpu': 'CPU',
+            'cuda': 'CUDA',
+            'cuda12': 'CUDA 12',
+            'cuda13': 'CUDA 13',
+            'rocm': 'ROCm',
+            'vulkan': 'Vulkan',
+            'opencl': 'OpenCL',
+            'metal': 'Metal'
+        };
+        return displayNames[backendType] || (backendType ? backendType.toUpperCase() : '');
+    }
+
+    sortBackendOptions(backendOptions) {
+        // Mirror the llama.cpp manager's ordering:
+        // 1) group by base version (name with the "-backend" suffix stripped),
+        // 2) sort groups numerically descending,
+        // 3) within a group: CPU first, then other backends alphabetically.
+        if (!Array.isArray(backendOptions)) return [];
+        const groups = new Map();
+        for (const v of backendOptions) {
+            const name = v.name || '';
+            let base = name;
+            let backend = '';
+            const idx = name.lastIndexOf('-');
+            if (idx > 0) {
+                base = name.slice(0, idx);
+                backend = name.slice(idx + 1);
+            }
+            const key = base || name;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push({ name, backend, path: v.path, is_active: v.is_active });
+        }
+        const keys = Array.from(groups.keys());
+        keys.sort((a, b) => {
+            const na = parseInt(a.replace(/\D/g, '')) || 0;
+            const nb = parseInt(b.replace(/\D/g, '')) || 0;
+            if (nb !== na) return nb - na;
+            return a.localeCompare(b);
+        });
+        const sorted = [];
+        for (const key of keys) {
+            const items = groups.get(key);
+            items.sort((a, b) => {
+                const rankA = a.backend === 'cpu' ? 0 : 1;
+                const rankB = b.backend === 'cpu' ? 0 : 1;
+                if (rankA !== rankB) return rankA - rankB;
+                return a.backend.localeCompare(b.backend);
+            });
+            for (const it of items) {
+                const label = it.backend ? `${key} ${this.getBackendDisplayName(it.backend)}` : key;
+                sorted.push({ label, path: it.path, is_active: it.is_active });
+            }
+        }
+        return sorted;
+    }
+
+    buildPresetBackendSelectorHTML(backendFolder, backendOptions) {
+        // Compact <select> for the selected preset's backend choice.
+        // value "" (empty) means "use the currently active backend" (no override).
+        let options = ['<option value="">Default</option>'];
+        const sorted = this.sortBackendOptions(backendOptions);
+        for (const v of sorted) {
+            const selected = (v.path === backendFolder) ? ' selected' : '';
+            options.push(`<option value="${this.escapeHTML(v.path)}"${selected}>${this.escapeHTML(v.label)}${v.is_active ? ' (active)' : ''}</option>`);
+        }
+        return `
+            <select id="preset-backend-selector" class="preset-backend-selector" title="Backend for this preset">
+                ${options.join('')}
+            </select>
+        `;
+    }
+
     async saveProperties() {
         const activeWindow = document.querySelector('.properties-window:not(.hidden)');
         if (!activeWindow) {
@@ -1374,7 +1494,7 @@ class PropertiesManager {
 
         const modelPath = atob(propertyGroup.dataset.modelPath);
 
-        // Save current preset changes to working list
+        // Save current preset changes (arguments + backend) to working list
         await this.saveCurrentPresetToTemp(activeWindow, modelPath);
 
         console.log('Saving all preset changes for', modelPath);
