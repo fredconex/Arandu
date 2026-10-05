@@ -54,7 +54,17 @@ class DesktopManager {
         this.sessionSyncTimer = setInterval(() => this.syncSessionState(), 5000);
 
         // Save session state before page unload
-        window.addEventListener('beforeunload', () => this.syncSessionState());
+        // CRITICAL FIX: Use a non-blocking approach for beforeunload
+        window.addEventListener('beforeunload', () => {
+            // Fire and forget - don't wait for completion as it blocks shutdown
+            this.syncSessionState().catch(e => console.error('Error in beforeunload sync:', e));
+            
+            // Clear the periodic sync timer immediately
+            if (this.sessionSyncTimer) {
+                clearInterval(this.sessionSyncTimer);
+                this.sessionSyncTimer = null;
+            }
+        });
 
         // Handle page load complete
         this.handlePageLoad();
@@ -5844,28 +5854,35 @@ class DesktopManager {
 
 
     async syncSessionState() {
+        // CRITICAL FIX: Don't block on errors, use Promise.allSettled for parallel execution
         try {
-            // Sync desktop state
-            await this.saveDesktopState();
+            // Sync all states in parallel with timeout
+            const syncPromises = [
+                this.saveDesktopState(),
+                ...Array.from(this.windows.entries()).map(([windowId, windowElement]) => 
+                    this.saveWindowState(windowId, windowElement)
+                )
+            ];
 
-            // Sync all windows
-            for (const [windowId, windowElement] of this.windows) {
-                await this.saveWindowState(windowId, windowElement);
-            }
-
-            // Sync terminals
+            // Add terminal syncs
             if (terminalManager) {
                 for (const [windowId, terminalData] of terminalManager.getAllTerminals()) {
-                    await terminalManager.saveTerminalState(windowId, terminalData);
+                    syncPromises.push(terminalManager.saveTerminalState(windowId, terminalData));
                 }
             }
 
-            // Sync chats through chat app
+            // Add chat syncs
             if (window.chatApp && window.chatApp.chats) {
                 for (const [windowId, chatData] of window.chatApp.chats) {
-                    await window.chatApp.saveChatState(windowId, chatData);
+                    syncPromises.push(window.chatApp.saveChatState(windowId, chatData));
                 }
             }
+
+            // Execute all in parallel with timeout
+            await Promise.race([
+                Promise.allSettled(syncPromises),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Session sync timeout')), 1000))
+            ]);
 
         } catch (error) {
             console.error('Error syncing session state:', error);

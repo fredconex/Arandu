@@ -308,17 +308,11 @@ class TerminalManager {
                 if (data.output && Array.isArray(data.output) && data.output.length > 0) {
                     outputBuffer.push(...data.output);
 
-                    // Save output to terminal data (keep last 3000 lines in memory)
-                    const terminalData = this.terminals.get(windowId);
-                    if (terminalData) {
-                        if (!terminalData.output) terminalData.output = [];
-                        terminalData.output.push(...data.output);
-                        if (terminalData.output.length > this.maxTerminalLines) {
-                            terminalData.output = terminalData.output.slice(-this.maxTerminalLines);
-                        }
-                        this.terminals.set(windowId, terminalData);
-                    }
-
+                    // CRITICAL FIX: Don't accumulate output in terminalData - it's redundant and causes memory bloat
+                    // The backend already stores it in ProcessInfo.output (capped at 3000 lines)
+                    // The DOM already has it (capped at 3000 lines)
+                    // We don't need a third copy that grows forever
+                    
                     // Throttle updates to prevent UI freezing but be responsive
                     const now = Date.now();
                     if (now - lastOutputTime > minUpdateInterval || outputBuffer.length > 50) {
@@ -867,6 +861,8 @@ class TerminalManager {
 
     async saveTerminalState(windowId, terminalData) {
         try {
+            // CRITICAL FIX: Don't save the entire output array - it's already stored in backend
+            // Only save metadata needed for restoration
             const response = await fetch('/api/session/terminal', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -878,7 +874,8 @@ class TerminalManager {
                     host: terminalData.host,
                     port: terminalData.port,
                     status: terminalData.status,
-                    output: terminalData.output || [],
+                    // REMOVED: output: terminalData.output || [],  // This was accumulating GBs of data!
+                    output: [],  // Empty - backend already stores output in ProcessInfo
                     activeVersion: terminalData.activeVersion || '',
                     launchArgs: terminalData.launchArgs || null
                 })

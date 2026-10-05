@@ -125,37 +125,51 @@ impl AppState {
             return;
         }
         
-        let mut child_processes = self.child_processes.lock().await;
-        let mut running_processes = self.running_processes.lock().await;
+        // CRITICAL FIX: Use timeout to prevent hanging on cleanup
+        use tokio::time::{timeout, Duration};
         
-        for (process_id, handle_arc) in child_processes.drain() {
-            println!("Terminating process: {}", process_id);
-            let mut handle_guard = handle_arc.lock().await;
-            if let Some(mut child) = handle_guard.take_child() {
-                match child.kill().await {
-                    Ok(_) => println!("Successfully killed process: {}", process_id),
-                    Err(e) => {
-                        eprintln!("Failed to kill process {}: {}", process_id, e);
-                        // Try to force kill on Windows
-                        #[cfg(windows)]
-                        {
-                            if let Some(id) = child.id() {
-                                println!("Attempting force kill of PID: {}", id);
-                                let _ = std::process::Command::new("taskkill")
-                                    .args(["/PID", &id.to_string(), "/F"])
-                                    .output();
+        let cleanup_future = async {
+            let mut child_processes = self.child_processes.lock().await;
+            let mut running_processes = self.running_processes.lock().await;
+            
+            for (process_id, handle_arc) in child_processes.drain() {
+                println!("Terminating process: {}", process_id);
+                let mut handle_guard = handle_arc.lock().await;
+                if let Some(mut child) = handle_guard.take_child() {
+                    match child.kill().await {
+                        Ok(_) => println!("Successfully killed process: {}", process_id),
+                        Err(e) => {
+                            eprintln!("Failed to kill process {}: {}", process_id, e);
+                            // Try to force kill on Windows
+                            #[cfg(windows)]
+                            {
+                                if let Some(id) = child.id() {
+                                    println!("Attempting force kill of PID: {}", id);
+                                    let _ = std::process::Command::new("taskkill")
+                                        .args(["/PID", &id.to_string(), "/F", "/T"])
+                                        .output();
+                                }
                             }
                         }
                     }
+                } else {
+                    println!("Process {} already terminated", process_id);
                 }
-            } else {
-                println!("Process {} already terminated", process_id);
+            }
+            
+            // Clear the running processes list
+            running_processes.clear();
+            println!("Process cleanup completed");
+        };
+        
+        // Timeout after 3 seconds
+        match timeout(Duration::from_secs(3), cleanup_future).await {
+            Ok(_) => println!("Cleanup completed successfully"),
+            Err(_) => {
+                eprintln!("Cleanup timed out after 3 seconds, forcing cleanup");
+                self.force_cleanup_all_processes();
             }
         }
-        
-        // Clear the running processes list
-        running_processes.clear();
-        println!("Process cleanup completed");
     }
     
     // Force cleanup that drops all child processes immediately
