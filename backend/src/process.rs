@@ -6,6 +6,7 @@ use uuid::Uuid;
 use chrono::Utc;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 use crate::models::*;
 use crate::AppState;
 use crate::config::save_settings;
@@ -135,6 +136,8 @@ async fn resolve_llama_server_path_with_fallback(
 pub struct ProcessHandle {
     child: Option<Child>,
     process_id: String,
+    // CRITICAL FIX: Add cancellation token to stop output reading task
+    cancellation_token: Option<CancellationToken>,
 }
 
 impl ProcessHandle {
@@ -142,7 +145,12 @@ impl ProcessHandle {
         Self {
             child: Some(child),
             process_id,
+            cancellation_token: None,
         }
+    }
+    
+    pub fn set_cancellation_token(&mut self, token: CancellationToken) {
+        self.cancellation_token = Some(token);
     }
     
     pub fn take_child(&mut self) -> Option<Child> {
@@ -162,6 +170,12 @@ impl ProcessHandle {
 // the child process will still be terminated due to kill_on_drop(true)
 impl Drop for ProcessHandle {
     fn drop(&mut self) {
+        // CRITICAL FIX: Cancel the output reading task first
+        if let Some(token) = &self.cancellation_token {
+            token.cancel();
+            println!("ProcessHandle Drop: Cancelled output reading task for process {}", self.process_id);
+        }
+        
         if let Some(child) = self.child.take() {
             println!("ProcessHandle dropping for {}, child will be killed by kill_on_drop", self.process_id);
             // Don't try to create async runtime in Drop - just drop the child
@@ -286,7 +300,13 @@ pub async fn launch_model_server(
     }
     
     // Store the child process using simplified wrapper
-    let process_handle = Arc::new(Mutex::new(ProcessHandle::new(child, process_id.clone())));
+    let mut process_handle = ProcessHandle::new(child, process_id.clone());
+    
+    // CRITICAL FIX: Create cancellation token for the output reading task
+    let cancellation_token = CancellationToken::new();
+    process_handle.set_cancellation_token(cancellation_token.clone());
+    
+    let process_handle = Arc::new(Mutex::new(process_handle));
     {
         let mut child_processes = state.child_processes.lock().await;
         child_processes.insert(process_id.clone(), process_handle.clone());
@@ -298,7 +318,7 @@ pub async fn launch_model_server(
     let handle_clone = process_handle.clone();
     
     tokio::spawn(async move {
-        handle_process_output(state_clone, process_id_clone, handle_clone, stdout, stderr).await;
+        handle_process_output(state_clone, process_id_clone, handle_clone, stdout, stderr, cancellation_token).await;
     });
     
     Ok(LaunchResult {
@@ -433,6 +453,7 @@ async fn handle_process_output(
     process_handle: Arc<Mutex<ProcessHandle>>,
     stdout: tokio::process::ChildStdout,
     stderr: tokio::process::ChildStderr,
+    cancellation_token: CancellationToken,
 ) {
     
     let mut stdout_reader = BufReader::new(stdout);
@@ -442,9 +463,17 @@ async fn handle_process_output(
     
     loop {
         tokio::select! {
+            // CRITICAL FIX: Check for cancellation on every iteration
+            _ = cancellation_token.cancelled() => {
+                println!("Output reading task for process {} was cancelled, exiting loop", process_id);
+                break;
+            }
             read_stdout = stdout_reader.read_until(b'\n', &mut stdout_buf) => {
                 match read_stdout {
-                    Ok(0) => break, // EOF
+                    Ok(0) => {
+                        println!("stdout EOF for process {}", process_id);
+                        break;
+                    }
                     Ok(_) => {
                         let line = String::from_utf8_lossy(&stdout_buf).to_string();
                         let formatted_line = format!("[OUT] {}", line.trim_end());
@@ -452,14 +481,17 @@ async fn handle_process_output(
                         stdout_buf.clear();
                     },
                     Err(e) => {
-                        eprintln!("Error reading stdout: {}", e);
+                        eprintln!("Error reading stdout for process {}: {}", process_id, e);
                         break;
                     }
                 }
             },
             read_stderr = stderr_reader.read_until(b'\n', &mut stderr_buf) => {
                 match read_stderr {
-                    Ok(0) => break, // EOF
+                    Ok(0) => {
+                        println!("stderr EOF for process {}", process_id);
+                        break;
+                    }
                     Ok(_) => {
                         let line = String::from_utf8_lossy(&stderr_buf).to_string();
                         let formatted_line = format!("[INFO] {}", line.trim_end());
@@ -467,13 +499,15 @@ async fn handle_process_output(
                         stderr_buf.clear();
                     },
                     Err(e) => {
-                        eprintln!("Error reading stderr: {}", e);
+                        eprintln!("Error reading stderr for process {}: {}", process_id, e);
                         break;
                     }
                 }
             }
         }
     }
+    
+    println!("Output reading loop exited for process {}", process_id);
     
     // Wait for process to finish and get exit code
     let exit_code = {
@@ -541,6 +575,20 @@ pub async fn terminate_process(
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("Terminating process: {}", process_id);
     
+    // CRITICAL FIX: Cancel the output reading task BEFORE killing the process
+    {
+        let child_processes = state.child_processes.lock().await;
+        if let Some(handle_arc) = child_processes.get(&process_id) {
+            let handle_guard = handle_arc.lock().await;
+            // The cancellation token will be triggered when we drop the handle
+            // or we can explicitly cancel it here by dropping the guard
+            drop(handle_guard);
+        }
+    }
+    
+    // Small delay to let the cancellation propagate
+    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    
     // Kill the child process first, with timeout and forceful fallback
     {
         use tokio::time::{timeout, Duration};
@@ -564,7 +612,7 @@ pub async fn terminate_process(
                                 {
                                     use std::process::Command;
                                     if let Some(pid) = child.id() {
-                                        let _ = Command::new("taskkill").args(["/PID", &pid.to_string(), "/F"]).output();
+                                        let _ = Command::new("taskkill").args(["/PID", &pid.to_string(), "/F", "/T"]).output();
                                         println!("Forcefully killed process {} with PID {} after timeout", process_id, pid);
                                     }
                                 }

@@ -208,12 +208,31 @@ class TerminalManager {
 
         // Track last scroll position to determine if user is scrolled up
         let isScrolledToBottom = true;
+        
+        // CRITICAL FIX: Track timeout IDs for cleanup
+        let pollingTimeoutId = null;
+        let isPollingActive = true;
 
         // Batch updates to reduce DOM operations
         let outputBuffer = [];
         let updateTimer = null;
         let lastOutputTime = 0;
         const minUpdateInterval = 50; // ms
+        
+        // Store cleanup function on terminal info for external cancellation
+        terminalInfo.stopOutputPolling = () => {
+            console.log(`🛑 [POLL CLEANUP] Stopping output polling for process ${processId}`);
+            isPollingActive = false;
+            if (pollingTimeoutId) {
+                clearTimeout(pollingTimeoutId);
+                pollingTimeoutId = null;
+            }
+            if (updateTimer) {
+                clearTimeout(updateTimer);
+                updateTimer = null;
+            }
+        };
+        this.terminals.set(windowId, terminalInfo);
 
         const flushOutputBuffer = (outputDiv) => {
             if (outputBuffer.length > 0) {
@@ -249,15 +268,23 @@ class TerminalManager {
 
         const pollOutput = async () => {
             try {
+                // CRITICAL FIX: Check if polling was cancelled
+                if (!isPollingActive) {
+                    console.log(`⏹️ [POLL STOP] Polling cancelled for process ${processId}`);
+                    return;
+                }
+                
                 // Check if this loop is still the active one for this window
                 if (terminalInfo.processId !== processId) {
                     console.log(`⏹️ [POLL STOP] Stopping loop for old process ${processId} (New: ${terminalInfo.processId})`);
+                    isPollingActive = false;
                     return;
                 }
 
                 const invoke = this.getInvoke();
                 if (!invoke) {
                     console.error('Tauri invoke not available for output polling');
+                    isPollingActive = false;
                     return;
                 }
                 const data = await invoke('get_process_output', { processId: processId });
@@ -307,24 +334,31 @@ class TerminalManager {
                 }
 
                 // Check if process is still running
-                if (data.is_running !== false && (terminalInfo.status === 'running' || terminalInfo.status === 'starting')) {
-                    setTimeout(pollOutput, 100);
+                if (data.is_running !== false && (terminalInfo.status === 'running' || terminalInfo.status === 'starting') && isPollingActive) {
+                    pollingTimeoutId = setTimeout(pollOutput, 100);
                 } else if (data.is_running === false) {
                     if (terminalInfo.processId !== processId) {
                         console.log(`⏹️ [POLL STOP] Old process ${processId} stopped, but active process is now ${terminalInfo.processId}. Not updating status.`);
+                        isPollingActive = false;
                         return;
                     }
                     console.log('Process has stopped, finalizing output');
                     if (updateTimer) {
                         clearTimeout(updateTimer);
+                        updateTimer = null;
                     }
                     flushOutputBuffer(outputDiv);
                     this.updateServerStatus(windowId, 'stopped', data.return_code || 0);
+                    isPollingActive = false;
+                } else {
+                    // Process stopped or polling cancelled
+                    isPollingActive = false;
                 }
             } catch (error) {
                 const currentTerminalInfo = this.terminals.get(windowId);
                 if (currentTerminalInfo && currentTerminalInfo.processId !== processId) {
                     console.log(`⏹️ [POLL STOP] Stale loop for old process ${processId} caught error (new process: ${currentTerminalInfo.processId}). Stopping silently.`);
+                    isPollingActive = false;
                     return;
                 }
 
@@ -343,6 +377,7 @@ class TerminalManager {
                     }
                     outputDiv.scrollTop = outputDiv.scrollHeight;
                 }
+                isPollingActive = false;
                 return;
             }
         };
@@ -361,6 +396,20 @@ class TerminalManager {
 
         if (terminalInfo.healthPollingProcessId === terminalInfo.processId) return;
         terminalInfo.healthPollingProcessId = terminalInfo.processId;
+        
+        // CRITICAL FIX: Track timeout ID for cleanup
+        let healthPollingTimeoutId = null;
+        let isHealthPollingActive = true;
+        
+        // Store cleanup function on terminal info
+        terminalInfo.stopHealthPolling = () => {
+            console.log(`🛑 [HEALTH CLEANUP] Stopping health polling for window ${windowId}`);
+            isHealthPollingActive = false;
+            if (healthPollingTimeoutId) {
+                clearTimeout(healthPollingTimeoutId);
+                healthPollingTimeoutId = null;
+            }
+        };
         this.terminals.set(windowId, terminalInfo);
 
         const maxAttempts = 300;
@@ -368,11 +417,19 @@ class TerminalManager {
         let attempts = 0;
 
         const pollHealth = async () => {
+            // CRITICAL FIX: Check if polling was cancelled
+            if (!isHealthPollingActive) {
+                console.log(`⏹️ [HEALTH STOP] Health polling cancelled for window ${windowId}`);
+                return;
+            }
+            
             const currentInfo = this.terminals.get(windowId);
             if (!currentInfo || currentInfo.processId !== terminalInfo.processId) {
+                isHealthPollingActive = false;
                 return;
             }
             if (currentInfo.status === 'stopped' || currentInfo.status === 'terminating') {
+                isHealthPollingActive = false;
                 return;
             }
 
@@ -419,10 +476,13 @@ class TerminalManager {
 
             if (attempts >= maxAttempts) {
                 addLine(`Warning: Server did not respond after ${maxAttempts}s. It may still be starting.`, 'server-warning');
+                isHealthPollingActive = false;
                 return;
             }
 
-            setTimeout(pollHealth, intervalMs);
+            if (isHealthPollingActive) {
+                healthPollingTimeoutId = setTimeout(pollHealth, intervalMs);
+            }
         };
 
         pollHealth();
@@ -502,6 +562,22 @@ class TerminalManager {
 
     async stopServer(processId, windowId, modelPath, modelName) {
         try {
+            // CRITICAL FIX: Stop all polling loops before killing process
+            const terminalInfo = this.terminals.get(windowId);
+            if (terminalInfo) {
+                console.log(`🛑 [CLEANUP] Stopping all polling loops for window ${windowId}`);
+                
+                // Stop output polling
+                if (typeof terminalInfo.stopOutputPolling === 'function') {
+                    terminalInfo.stopOutputPolling();
+                }
+                
+                // Stop health polling
+                if (typeof terminalInfo.stopHealthPolling === 'function') {
+                    terminalInfo.stopHealthPolling();
+                }
+            }
+            
             const invoke = this.getInvoke();
             if (!invoke) {
                 console.error('Tauri invoke not available for process termination');
@@ -827,6 +903,22 @@ class TerminalManager {
     }
 
     removeTerminal(windowId) {
+        // CRITICAL FIX: Stop all polling loops before removing terminal
+        const terminalInfo = this.terminals.get(windowId);
+        if (terminalInfo) {
+            console.log(`🛑 [CLEANUP] Cleaning up terminal ${windowId}`);
+            
+            // Stop output polling
+            if (typeof terminalInfo.stopOutputPolling === 'function') {
+                terminalInfo.stopOutputPolling();
+            }
+            
+            // Stop health polling
+            if (typeof terminalInfo.stopHealthPolling === 'function') {
+                terminalInfo.stopHealthPolling();
+            }
+        }
+        
         this.terminals.delete(windowId);
     }
 
