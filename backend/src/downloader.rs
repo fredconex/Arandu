@@ -986,7 +986,7 @@ async fn execute_download(
     }
 
     // Emit event to frontend
-    app_handle.emit("download-complete", ()).unwrap();
+    let _ = app_handle.emit("download-complete", ());
 
     Ok(())
 }
@@ -1075,9 +1075,10 @@ async fn extract_zip(zip_path: &Path, destination: &str, download_id: &str, app_
 
     for i in 0..total_files {
         let mut file = archive.by_index(i).map_err(|e| format!("Failed to read zip entry: {}", e))?;
-        let outpath = Path::new(destination).join(file.name());
+        let file_name = file.name().map_err(|e| format!("Failed to get file name: {}", e))?.to_string();
+        let outpath = Path::new(destination).join(&file_name);
 
-        if file.name().ends_with('/') {
+        if file_name.ends_with('/') {
             // Directory
             std::fs::create_dir_all(&outpath).map_err(|e| format!("Failed to create directory: {}", e))?;
         } else {
@@ -1104,7 +1105,7 @@ async fn extract_zip(zip_path: &Path, destination: &str, download_id: &str, app_
             "extraction_progress": progress,
             "extraction_total_files": total_files,
             "extraction_completed_files": completed_files,
-            "current_extracting_file": file.name()
+            "current_extracting_file": file_name
         }));
     }
 

@@ -105,7 +105,14 @@ class DownloadManager {
     }
 
     startTauriDownloadMonitoring() {
-        setInterval(() => this.refreshDownloads(), 2000);
+        // Self-scheduling (no overlap) and paused while the window is hidden
+        const tick = async () => {
+            if (!document.hidden) {
+                try { await this.refreshDownloads(); } catch (_) {}
+            }
+            setTimeout(tick, 2000);
+        };
+        setTimeout(tick, 2000);
     }
 
     // ─── Real-time Progress Updates ───────────────────────────────────────────

@@ -153,6 +153,12 @@ impl ProcessHandle {
         self.cancellation_token = Some(token);
     }
     
+    pub fn cancel_output_task(&self) {
+        if let Some(token) = &self.cancellation_token {
+            token.cancel();
+        }
+    }
+
     pub fn take_child(&mut self) -> Option<Child> {
         self.child.take()
     }
@@ -461,18 +467,22 @@ async fn handle_process_output(
     let mut stdout_buf = Vec::new();
     let mut stderr_buf = Vec::new();
     
-    loop {
+    let mut stdout_done = false;
+    let mut stderr_done = false;
+
+    // Keep reading until BOTH streams are closed (or we are cancelled). Each arm is
+    // disabled once its stream hits EOF/error so a closed stream can never spin the loop.
+    while !(stdout_done && stderr_done) {
         tokio::select! {
-            // CRITICAL FIX: Check for cancellation on every iteration
             _ = cancellation_token.cancelled() => {
                 println!("Output reading task for process {} was cancelled, exiting loop", process_id);
                 break;
             }
-            read_stdout = stdout_reader.read_until(b'\n', &mut stdout_buf) => {
+            read_stdout = stdout_reader.read_until(b'\n', &mut stdout_buf), if !stdout_done => {
                 match read_stdout {
                     Ok(0) => {
                         println!("stdout EOF for process {}", process_id);
-                        break;
+                        stdout_done = true;
                     }
                     Ok(_) => {
                         let line = String::from_utf8_lossy(&stdout_buf).to_string();
@@ -482,15 +492,15 @@ async fn handle_process_output(
                     },
                     Err(e) => {
                         eprintln!("Error reading stdout for process {}: {}", process_id, e);
-                        break;
+                        stdout_done = true;
                     }
                 }
             },
-            read_stderr = stderr_reader.read_until(b'\n', &mut stderr_buf) => {
+            read_stderr = stderr_reader.read_until(b'\n', &mut stderr_buf), if !stderr_done => {
                 match read_stderr {
                     Ok(0) => {
                         println!("stderr EOF for process {}", process_id);
-                        break;
+                        stderr_done = true;
                     }
                     Ok(_) => {
                         let line = String::from_utf8_lossy(&stderr_buf).to_string();
@@ -500,7 +510,7 @@ async fn handle_process_output(
                     },
                     Err(e) => {
                         eprintln!("Error reading stderr for process {}: {}", process_id, e);
-                        break;
+                        stderr_done = true;
                     }
                 }
             }
@@ -510,16 +520,19 @@ async fn handle_process_output(
     println!("Output reading loop exited for process {}", process_id);
     
     // Wait for process to finish and get exit code
-    let exit_code = {
+    // Take the child out under the lock, then release the lock BEFORE awaiting wait(),
+    // so terminate/cleanup can still lock the handle while we wait.
+    let child_opt = {
         let mut handle_guard = process_handle.lock().await;
-        if let Some(mut child_process) = handle_guard.take_child() {
-            match child_process.wait().await {
-                Ok(status) => status.code().unwrap_or(-1),
-                Err(_) => -1,
-            }
-        } else {
-            -1
+        handle_guard.take_child()
+    };
+    let exit_code = if let Some(mut child_process) = child_opt {
+        match child_process.wait().await {
+            Ok(status) => status.code().unwrap_or(-1),
+            Err(_) => -1,
         }
+    } else {
+        -1
     };
     
     // Update process status to stopped and clean up child process tracking
@@ -575,61 +588,58 @@ pub async fn terminate_process(
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("Terminating process: {}", process_id);
     
-    // CRITICAL FIX: Cancel the output reading task BEFORE killing the process
-    {
-        let child_processes = state.child_processes.lock().await;
-        if let Some(handle_arc) = child_processes.get(&process_id) {
-            let handle_guard = handle_arc.lock().await;
-            // The cancellation token will be triggered when we drop the handle
-            // or we can explicitly cancel it here by dropping the guard
-            drop(handle_guard);
-        }
-    }
-    
-    // Small delay to let the cancellation propagate
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-    
-    // Kill the child process first, with timeout and forceful fallback
-    {
-        use tokio::time::{timeout, Duration};
+    // Remove the handle from the map first and release the global lock immediately,
+    // so a slow kill/wait never blocks other launches, stops or the exit cleanup.
+    let handle_arc = {
         let mut child_processes = state.child_processes.lock().await;
-        if let Some(handle_arc) = child_processes.remove(&process_id) {
+        child_processes.remove(&process_id)
+    };
+
+    if let Some(handle_arc) = handle_arc {
+        use tokio::time::{timeout, Duration};
+
+        // Take the child and stop the output reader
+        let child_opt = {
             let mut handle_guard = handle_arc.lock().await;
-            if let Some(mut child) = handle_guard.take_child() {
-                match child.kill().await {
-                    Ok(_) => {
-                        // Wait for the process to actually exit, with timeout
-                        match timeout(Duration::from_secs(5), child.wait()).await {
-                            Ok(Ok(_)) => {
-                                println!("Successfully killed and waited for process: {}", process_id);
-                            },
-                            Ok(Err(e)) => {
-                                eprintln!("Error waiting for process {}: {}", process_id, e);
-                            },
-                            Err(_) => {
-                                // Timeout expired, forcefully kill
-                                #[cfg(windows)]
-                                {
-                                    use std::process::Command;
-                                    if let Some(pid) = child.id() {
-                                        let _ = Command::new("taskkill").args(["/PID", &pid.to_string(), "/F", "/T"]).output();
-                                        println!("Forcefully killed process {} with PID {} after timeout", process_id, pid);
-                                    }
+            handle_guard.cancel_output_task();
+            handle_guard.take_child()
+        };
+
+        if let Some(mut child) = child_opt {
+            #[cfg(windows)]
+            let pid_for_tree_kill = child.id();
+
+            match child.kill().await {
+                Ok(_) => {
+                    match timeout(Duration::from_secs(5), child.wait()).await {
+                        Ok(Ok(_)) => {
+                            println!("Successfully killed and waited for process: {}", process_id);
+                        },
+                        Ok(Err(e)) => {
+                            eprintln!("Error waiting for process {}: {}", process_id, e);
+                        },
+                        Err(_) => {
+                            #[cfg(windows)]
+                            {
+                                use std::process::Command;
+                                if let Some(pid) = pid_for_tree_kill {
+                                    let _ = Command::new("taskkill").args(["/PID", &pid.to_string(), "/F", "/T"]).output();
+                                    println!("Forcefully killed process {} with PID {} after timeout", process_id, pid);
                                 }
-                                #[cfg(unix)]
-                                {
-                                    use nix::sys::signal::{kill, Signal};
-                                    use nix::unistd::Pid;
-                                    if let Some(pid) = child.id() {
-                                        let _ = kill(Pid::from_raw(pid as i32), Signal::SIGKILL);
-                                        println!("Forcefully killed process {} with PID {} after timeout", process_id, pid);
-                                    }
+                            }
+                            #[cfg(unix)]
+                            {
+                                use nix::sys::signal::{kill, Signal};
+                                use nix::unistd::Pid;
+                                if let Some(pid) = child.id() {
+                                    let _ = kill(Pid::from_raw(pid as i32), Signal::SIGKILL);
+                                    println!("Forcefully killed process {} with PID {} after timeout", process_id, pid);
                                 }
                             }
                         }
-                    },
-                    Err(e) => eprintln!("Failed to kill process {}: {}", process_id, e),
-                }
+                    }
+                },
+                Err(e) => eprintln!("Failed to kill process {}: {}", process_id, e),
             }
         }
     }
@@ -833,4 +843,4 @@ fn parse_custom_args(custom_args: &str) -> Vec<String> {
     }
     
     args
-}
+}

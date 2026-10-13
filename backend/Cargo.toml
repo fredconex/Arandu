@@ -1,6 +1,6 @@
 [package]
 name = "Arandu"
-version = "0.6.9"
+version = "0.7.0"
 description = "Arandu: Desktop UI for llama.cpp model management and server launching"
 authors = ["Alfredo Fernandes"]
 edition = "2021"
@@ -25,23 +25,24 @@ panic = "abort" # Higher performance by disabling panic handlers.
 strip = true # Ensures debug symbols are removed.
 
 [build-dependencies]
-tauri-build = { version = "2.7.1", features = [] }
+tauri-build = { version = "2.7.2", features = [] }
 
 [dependencies]
-tauri = { version = "2.12.1", features = ["tray-icon", "devtools"] }
-tauri-plugin-opener = "2.7.0"
-tauri-plugin-fs = "2.6.0"
-tauri-plugin-dialog = "2.8.1"
-tauri-plugin-shell = "2.4.0"
-tauri-plugin-single-instance = "2.5.2"
+tauri = { version = "2.12.3", features = ["tray-icon", "devtools"] }
+tauri-plugin-opener = "2.7.1"
+tauri-plugin-fs = "2.7.0"
+tauri-plugin-dialog = "2.8.2"
+tauri-plugin-shell = "2.5.0"
+tauri-plugin-single-instance = "2.5.3"
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.151"
+serde_json = "1.0.154"
 tokio = { version = "1.53.2", features = ["full"] }
+tokio-util = "0.7.20"
 reqwest = { version = "0.13.5", features = ["json", "stream"] }
 glob = "0.3.4"
 regex = "1.13.1"
 chrono = { version = "0.4.45", features = ["serde"] }
-uuid = { version = "1.27.0", features = ["v4", "serde"] }
+uuid = { version = "1.28.0", features = ["v4", "serde"] }
 thiserror = "2.0.21"
 anyhow = "1.0.104"
 tracing = "0.1.44"
@@ -53,11 +54,15 @@ dirs = "7.0.0"
 urlencoding = "2.1"
 sysinfo = { version = "0.39.6", features = ["serde"] }
 gfxinfo = "0.1.2"
-zip = "8.6.0"
+zip = "9.0.2"
 url = "2.5.8"
 axum = "0.8.9"
 tower = "0.5.3"
 tower-http = { version = "0.7.1", features = ["cors"] }
-hyper = { version = "1.11.1", features = ["full"] }
+hyper = { version = "1.12.0", features = ["full"] }
 http-body-util = "0.1.5"
+
+[dev-dependencies]
+# Testing dependencies for property-based testing and integration tests
+proptest = "1.12.0"
 

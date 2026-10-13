@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tauri::{Manager, Listener, tray::TrayIconBuilder, menu::{Menu, MenuItemBuilder}};
+use tauri::{Manager, tray::TrayIconBuilder, menu::{Menu, MenuItemBuilder}};
 use tokio::sync::Mutex;
 use std::sync::Arc;
 
@@ -114,8 +114,18 @@ impl AppState {
         println!("Starting cleanup of all child processes...");
         
         let process_count = {
-            let child_processes = self.child_processes.lock().await;
-            child_processes.len()
+            // CRITICAL FIX: Use try_lock with timeout instead of blocking lock
+            match tokio::time::timeout(
+                tokio::time::Duration::from_millis(500),
+                self.child_processes.lock()
+            ).await {
+                Ok(guard) => guard.len(),
+                Err(_) => {
+                    eprintln!("Timeout waiting for child_processes lock, falling back to force cleanup");
+                    self.force_cleanup_all_processes();
+                    return;
+                }
+            }
         };
         
         println!("Found {} processes to clean up", process_count);
@@ -129,53 +139,89 @@ impl AppState {
         use tokio::time::{timeout, Duration};
         
         let cleanup_future = async {
-            let mut child_processes = self.child_processes.lock().await;
-            let mut running_processes = self.running_processes.lock().await;
+            // Try to acquire locks with timeout
+            let child_processes_result = timeout(
+                Duration::from_millis(500),
+                self.child_processes.lock()
+            ).await;
             
-            for (process_id, handle_arc) in child_processes.drain() {
-                println!("Terminating process: {}", process_id);
-                let mut handle_guard = handle_arc.lock().await;
-                if let Some(mut child) = handle_guard.take_child() {
-                    match child.kill().await {
-                        Ok(_) => println!("Successfully killed process: {}", process_id),
-                        Err(e) => {
-                            eprintln!("Failed to kill process {}: {}", process_id, e);
-                            // Try to force kill on Windows
-                            #[cfg(windows)]
-                            {
-                                if let Some(id) = child.id() {
-                                    println!("Attempting force kill of PID: {}", id);
-                                    let _ = std::process::Command::new("taskkill")
-                                        .args(["/PID", &id.to_string(), "/F", "/T"])
-                                        .output();
+            let running_processes_result = timeout(
+                Duration::from_millis(500),
+                self.running_processes.lock()
+            ).await;
+            
+            match (child_processes_result, running_processes_result) {
+                (Ok(mut child_processes), Ok(mut running_processes)) => {
+                    for (process_id, handle_arc) in child_processes.drain() {
+                        println!("Terminating process: {}", process_id);
+                        
+                        // Try to lock with timeout
+                        match timeout(Duration::from_millis(100), handle_arc.lock()).await {
+                            Ok(mut handle_guard) => {
+                                if let Some(mut child) = handle_guard.take_child() {
+                                    match child.kill().await {
+                                        Ok(_) => println!("Successfully killed process: {}", process_id),
+                                        Err(e) => {
+                                            eprintln!("Failed to kill process {}: {}", process_id, e);
+                                            // Try to force kill on Windows
+                                            #[cfg(windows)]
+                                            {
+                                                if let Some(id) = child.id() {
+                                                    println!("Attempting force kill of PID: {}", id);
+                                                    let _ = std::process::Command::new("taskkill")
+                                                        .args(["/PID", &id.to_string(), "/F", "/T"])
+                                                        .output();
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    println!("Process {} already terminated", process_id);
                                 }
+                            }
+                            Err(_) => {
+                                eprintln!("Timeout acquiring handle lock for process {}", process_id);
                             }
                         }
                     }
-                } else {
-                    println!("Process {} already terminated", process_id);
+                    
+                    // Clear the running processes list
+                    running_processes.clear();
+                    println!("Process cleanup completed");
+                }
+                _ => {
+                    eprintln!("Failed to acquire locks for cleanup");
                 }
             }
-            
-            // Clear the running processes list
-            running_processes.clear();
-            println!("Process cleanup completed");
         };
         
-        // Timeout after 3 seconds
-        match timeout(Duration::from_secs(3), cleanup_future).await {
+        // Timeout after 2 seconds total
+        match timeout(Duration::from_secs(2), cleanup_future).await {
             Ok(_) => println!("Cleanup completed successfully"),
             Err(_) => {
-                eprintln!("Cleanup timed out after 3 seconds, forcing cleanup");
+                eprintln!("Cleanup timed out after 2 seconds, forcing cleanup");
                 self.force_cleanup_all_processes();
             }
         }
     }
     
+    // Flag every active download as cancelled (non-blocking)
+    pub fn cancel_all_downloads(&self) {
+        if let Ok(dm) = self.download_manager.try_lock() {
+            for id in dm.downloads.keys() {
+                let (cancel, _pause) = dm.get_control_flags(id);
+                cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+        }
+    }
+
     // Force cleanup that drops all child processes immediately
     // This relies on kill_on_drop(true) to terminate the processes
     pub fn force_cleanup_all_processes(&self) {
         println!("Force cleaning up all child processes (synchronous)...");
+
+        // Stop any active downloads so their workers/progress tasks don't keep running
+        self.cancel_all_downloads();
         
         // Use try_lock to avoid blocking if already locked
         if let Ok(mut child_processes) = self.child_processes.try_lock() {
@@ -203,10 +249,14 @@ impl AppState {
                 // Kill all processes at once if we have PIDs
                 if !pids.is_empty() {
                     println!("Force killing {} PIDs", pids.len());
+                    // Fire all kills without waiting: taskkill keeps running on its own even
+                    // after we terminate, and waiting here blocked exit for seconds with big models.
+                    use std::os::windows::process::CommandExt;
                     for pid in pids {
                         let _ = std::process::Command::new("taskkill")
                             .args(["/PID", &pid.to_string(), "/F", "/T"]) // /T kills child processes too
-                            .status();
+                            .creation_flags(0x08000000) // CREATE_NO_WINDOW
+                            .spawn();
                     }
                 }
             }
@@ -1308,11 +1358,13 @@ async fn restart_application(
 ) -> Result<(), String> {
     println!("Application restart requested via command");
     
-    // Perform cleanup but don't exit
-    state.cleanup_all_processes().await;
-    
-    // Give time for cleanup to complete
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    // CRITICAL FIX: Use force cleanup instead of async
+    tokio::task::spawn_blocking({
+        let state_clone = state.inner().clone();
+        move || {
+            state_clone.force_cleanup_all_processes();
+        }
+    }).await.ok();
     
     println!("Application restart cleanup completed - frontend will reload");
     
@@ -1327,15 +1379,18 @@ async fn graceful_exit(
 ) -> Result<(), String> {
     println!("Graceful exit requested via command");
     
-    // Perform cleanup
-    state.cleanup_all_processes().await;
-    
-    // Give time for cleanup to complete
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    // CRITICAL FIX: Use force cleanup with shorter timeout
+    // The async cleanup can hang on stuck locks
+    tokio::task::spawn_blocking({
+        let state_clone = state.inner().clone();
+        move || {
+            state_clone.force_cleanup_all_processes();
+        }
+    }).await.ok();
     
     println!("Graceful exit cleanup completed");
     
-    // Exit the application
+    // Exit immediately - no sleep needed
     app.exit(0);
     
     Ok(())
@@ -1772,7 +1827,7 @@ async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error>> 
         let config = state.config.lock().await;
         if !config.models_directory.is_empty() {
             let models_dir = config.models_directory.clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 if let Err(e) = huggingface::cleanup_leftover_downloads(&models_dir).await {
                     eprintln!("Warning: Failed to cleanup leftover downloads: {}", e);
                 }
@@ -1788,7 +1843,7 @@ pub fn run() {
     // Initialize logging
     tracing_subscriber::fmt::init();
     
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -1813,8 +1868,7 @@ pub fn run() {
         }))
         .setup(|app| {
             // Initialize app state
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let state = rt.block_on(initialize_app_state())
+            let state = tauri::async_runtime::block_on(initialize_app_state())
                 .map_err(|e| format!("Failed to initialize app state: {}", e))?;
             
             println!("Application started, process tracking enabled with kill_on_drop");
@@ -2090,13 +2144,14 @@ pub fn run() {
                             }
                         }
                         "quit" => {
-                            // Perform cleanup and exit
-                            let state = app.state::<AppState>();
-                            let rt = tokio::runtime::Runtime::new().unwrap();
-                            rt.block_on(async {
+                            // Never block the UI thread: clean up on the async runtime, then exit.
+                            // RunEvent::Exit (below) force-cleans and arms the watchdog as a backstop.
+                            let handle = app.clone();
+                            let state = app.state::<AppState>().inner().clone();
+                            tauri::async_runtime::spawn(async move {
                                 state.cleanup_all_processes().await;
+                                handle.exit(0);
                             });
-                            app.exit(0);
                         }
                         _ => {}
                     }
@@ -2164,17 +2219,8 @@ pub fn run() {
                 });
             }
             
-            // Fallback cleanup on app before exit
-            let state_for_exit = state.clone();
-            app.listen("tauri://before-exit", move |_| {
-                println!("Before exit event received");
-                let state_clone = state_for_exit.clone();
-                tokio::spawn(async move {
-                    println!("Application before exit, emergency cleanup...");
-                    state_clone.cleanup_all_processes().await;
-                });
-            });
-            
+            // NOTE: exit cleanup is handled by RunEvent::Exit in run() below
+            // ("tauri://before-exit" is not a real Tauri 2 event and never fired).
             app.manage(state);
             Ok(())
         })
@@ -2233,6 +2279,37 @@ pub fn run() {
             hide_window,
             show_window
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            if let Some(state) = app_handle.try_state::<AppState>() {
+                state.force_cleanup_all_processes();
+            }
+            // Must happen HERE, synchronously: once this callback returns, Tauri calls
+            // ExitProcess, which kills our other threads and then hangs in DLL detach.
+            // Short grace so cancelled downloads can flush their state file.
+            std::thread::sleep(std::time::Duration::from_millis(150));
+            kill_self();
+        }
+    });
+}
+
+#[cfg(windows)]
+mod win_kill {
+    #[link(name = "kernel32")]
+    extern "system" {
+        pub fn GetCurrentProcess() -> isize;
+        pub fn TerminateProcess(h: isize, code: u32) -> i32;
+    }
+}
+
+/// Hard-kill the current process immediately (no DLL detach / runtime teardown).
+fn kill_self() -> ! {
+    #[cfg(windows)]
+    unsafe {
+        win_kill::TerminateProcess(win_kill::GetCurrentProcess(), 0);
+    }
+    std::process::exit(0)
 }
