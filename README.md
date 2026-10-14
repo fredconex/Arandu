@@ -36,7 +36,15 @@ https://github.com/fredconex/Arandu/releases
 <img width="1513" height="1081" alt="image" src="https://github.com/user-attachments/assets/0ce3d9da-4c61-4859-9c7a-5e018e3f5094" />
 
 
+## Star History
 
+<a href="https://www.star-history.com/?repos=fredconex%2FArandu&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=fredconex/Arandu&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=fredconex/Arandu&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=fredconex/Arandu&type=date&legend=top-left" />
+ </picture>
+</a>
 
 # Support development
 <a href="https://www.paypal.com/donate/?hosted_button_id=24CJHH95X3AQS"><img width=256px src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" alt="Donate with PayPal" /></a>
